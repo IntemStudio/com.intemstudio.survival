@@ -1,0 +1,405 @@
+[gd_scene format=3 uid="uid://dun1cpardk2xw"]
+
+[ext_resource type="Script" uid="uid://dsgxioo8wstff" path="res://game/game.gd" id="1_qclsr"]
+[ext_resource type="Script" path="res://ui/pause_menu.gd" id="2_pause"]
+[ext_resource type="Script" path="res://ui/weapon_select_menu.gd" id="3_weapon_select"]
+[ext_resource type="PackedScene" uid="uid://dsw8raqgacxsc" path="res://entities/player/player.tscn" id="2_a7q7f"]
+[ext_resource type="PackedScene" uid="uid://c2qg1nuvfnd4q" path="res://world/trees/pine_tree.tscn" id="3_6h7ij"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_exp"]
+bg_color = Color(0.35, 0.85, 1, 1)
+
+[sub_resource type="Curve2D" id="Curve2D_cp6e5"]
+_data = {
+"points": PackedVector2Array(0, 0, 0, 0, -1055, -697, 0, 0, 0, 0, 1057, -697, 0, 0, 0, 0, 1057, 671, 0, 0, 0, 0, -1055, 663, 0, 0, 0, 0, -1055, -689)
+}
+point_count = 5
+
+[node name="Game" type="Node2D" unique_id=327747119]
+y_sort_enabled = true
+script = ExtResource("1_qclsr")
+
+[node name="Timer" type="Timer" parent="." unique_id=173639759]
+wait_time = 0.3
+
+[node name="Player" parent="." unique_id=1174028023 instance=ExtResource("2_a7q7f")]
+unique_name_in_owner = true
+
+[node name="Path2D" type="Path2D" parent="Player" unique_id=1949369106]
+curve = SubResource("Curve2D_cp6e5")
+
+[node name="PathFollow2D" type="PathFollow2D" parent="Player/Path2D" unique_id=949713007]
+unique_name_in_owner = true
+position = Vector2(-1055, -697)
+
+[node name="HUD" type="CanvasLayer" parent="."]
+layer = 10
+
+[node name="HUDRoot" type="Control" parent="HUD"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="KillCountLabel" type="Label" parent="HUD/HUDRoot"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -280.0
+offset_top = 16.0
+offset_right = -24.0
+offset_bottom = 52.0
+grow_horizontal = 0
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/font_size = 28
+text = "처치: 0"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="TimeLabel" type="Label" parent="HUD/HUDRoot"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 10
+anchor_left = 0.5
+anchor_top = 0.0
+anchor_right = 0.5
+offset_left = -80.0
+offset_top = 16.0
+offset_right = 80.0
+offset_bottom = 56.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/font_size = 36
+text = "00:00"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ExperienceBar" type="ProgressBar" parent="HUD/HUDRoot"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 80.0
+offset_top = -48.0
+offset_right = -80.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_styles/fill = SubResource("StyleBoxFlat_exp")
+max_value = 5.0
+show_percentage = false
+
+[node name="LevelLabel" type="Label" parent="HUD/HUDRoot"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 80.0
+offset_top = -100.0
+offset_right = -80.0
+offset_bottom = -76.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_font_sizes/font_size = 22
+text = "Lv. 1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ExpLabel" type="Label" parent="HUD/HUDRoot"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 80.0
+offset_top = -48.0
+offset_right = -80.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_outline_color = Color(1, 1, 1, 0.9)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 16
+text = "0 / 5"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="WeaponSelectMenu" type="CanvasLayer" parent="."]
+layer = 40
+process_mode = 3
+unique_name_in_owner = true
+visible = false
+script = ExtResource("3_weapon_select")
+
+[node name="MenuOverlay" type="Control" parent="WeaponSelectMenu"]
+process_mode = 3
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="ColorRect" type="ColorRect" parent="WeaponSelectMenu/MenuOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.6)
+
+[node name="CenterContainer" type="CenterContainer" parent="WeaponSelectMenu/MenuOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="WeaponSelectMenu/MenuOverlay/CenterContainer"]
+layout_mode = 2
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="TitleLabel" type="Label" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 64
+text = "무기 선택"
+horizontal_alignment = 1
+
+[node name="RevolverButton" type="Button" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer"]
+process_mode = 3
+custom_minimum_size = Vector2(420, 52)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "리볼버 (85-175)"
+
+[node name="TommyGunsButton" type="Button" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer"]
+process_mode = 3
+custom_minimum_size = Vector2(420, 52)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "토미 건즈 (35-75)"
+
+[node name="BoomerangButton" type="Button" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer"]
+process_mode = 3
+custom_minimum_size = Vector2(420, 52)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "나무 부메랑 (50-115)"
+
+[node name="ConcoctionButton" type="Button" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer"]
+process_mode = 3
+custom_minimum_size = Vector2(420, 52)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "연금술 물약 (135-150)"
+
+[node name="PauseMenu" type="CanvasLayer" parent="."]
+layer = 20
+process_mode = 3
+unique_name_in_owner = true
+visible = false
+script = ExtResource("2_pause")
+
+[node name="MenuOverlay" type="Control" parent="PauseMenu"]
+process_mode = 3
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="ColorRect" type="ColorRect" parent="PauseMenu/MenuOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.439216)
+
+[node name="CenterContainer" type="CenterContainer" parent="PauseMenu/MenuOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="PauseMenu/MenuOverlay/CenterContainer"]
+layout_mode = 2
+theme_override_constants/separation = 40
+alignment = 1
+
+[node name="Label" type="Label" parent="PauseMenu/MenuOverlay/CenterContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 96
+text = "일시정지"
+horizontal_alignment = 1
+
+[node name="Buttons" type="VBoxContainer" parent="PauseMenu/MenuOverlay/CenterContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="ContinueButton" type="Button" parent="PauseMenu/MenuOverlay/CenterContainer/VBoxContainer/Buttons"]
+process_mode = 3
+custom_minimum_size = Vector2(280, 56)
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "계속하기"
+
+[node name="RestartButton" type="Button" parent="PauseMenu/MenuOverlay/CenterContainer/VBoxContainer/Buttons"]
+process_mode = 3
+custom_minimum_size = Vector2(280, 56)
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "다시하기"
+
+[node name="QuitButton" type="Button" parent="PauseMenu/MenuOverlay/CenterContainer/VBoxContainer/Buttons"]
+process_mode = 3
+custom_minimum_size = Vector2(280, 56)
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "게임 종료"
+
+[node name="GameOver" type="CanvasLayer" parent="." unique_id=880031702]
+layer = 30
+process_mode = 3
+unique_name_in_owner = true
+visible = false
+
+[node name="MenuOverlay" type="Control" parent="GameOver"]
+process_mode = 3
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="ColorRect" type="ColorRect" parent="GameOver/MenuOverlay" unique_id=1711581986]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.439216)
+
+[node name="CenterContainer" type="CenterContainer" parent="GameOver/MenuOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="GameOver/MenuOverlay/CenterContainer"]
+layout_mode = 2
+theme_override_constants/separation = 40
+alignment = 1
+
+[node name="Label" type="Label" parent="GameOver/MenuOverlay/CenterContainer/VBoxContainer" unique_id=970741770]
+layout_mode = 2
+theme_override_font_sizes/font_size = 124
+text = "Game Over"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Buttons" type="HBoxContainer" parent="GameOver/MenuOverlay/CenterContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 24
+alignment = 1
+
+[node name="RestartButton" type="Button" parent="GameOver/MenuOverlay/CenterContainer/VBoxContainer/Buttons"]
+process_mode = 3
+custom_minimum_size = Vector2(220, 56)
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "다시시작"
+
+[node name="QuitButton" type="Button" parent="GameOver/MenuOverlay/CenterContainer/VBoxContainer/Buttons"]
+process_mode = 3
+custom_minimum_size = Vector2(220, 56)
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "게임 종료"
+
+[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1066809076]
+layer = -32
+
+[node name="ColorRect" type="ColorRect" parent="CanvasLayer" unique_id=980385255]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PineTree" parent="." unique_id=1536469701 instance=ExtResource("3_6h7ij")]
+position = Vector2(66, 591)
+
+[node name="PineTree2" parent="." unique_id=896816878 instance=ExtResource("3_6h7ij")]
+position = Vector2(155, 643)
+
+[node name="PineTree3" parent="." unique_id=466383871 instance=ExtResource("3_6h7ij")]
+position = Vector2(-9.99997, 687)
+
+[node name="PineTree4" parent="." unique_id=50880364 instance=ExtResource("3_6h7ij")]
+position = Vector2(682, 254)
+
+[node name="PineTree5" parent="." unique_id=1152293371 instance=ExtResource("3_6h7ij")]
+position = Vector2(829, 384)
+
+[node name="PineTree11" parent="." unique_id=1342470195 instance=ExtResource("3_6h7ij")]
+position = Vector2(781, -296)
+
+[node name="PineTree6" parent="." unique_id=658083171 instance=ExtResource("3_6h7ij")]
+position = Vector2(-677, 313)
+
+[node name="PineTree7" parent="." unique_id=767266513 instance=ExtResource("3_6h7ij")]
+position = Vector2(-788, 370)
+
+[node name="PineTree8" parent="." unique_id=1473712656 instance=ExtResource("3_6h7ij")]
+position = Vector2(-829, 229)
+
+[node name="PineTree9" parent="." unique_id=2039282013 instance=ExtResource("3_6h7ij")]
+position = Vector2(-346, -355)
+
+[node name="PineTree10" parent="." unique_id=1043826134 instance=ExtResource("3_6h7ij")]
+position = Vector2(-573, -231)
+
+[connection signal="pressed" from="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/RevolverButton" to="WeaponSelectMenu" method="_on_revolver_button_pressed"]
+[connection signal="pressed" from="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/TommyGunsButton" to="WeaponSelectMenu" method="_on_tommy_guns_button_pressed"]
+[connection signal="pressed" from="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/BoomerangButton" to="WeaponSelectMenu" method="_on_boomerang_button_pressed"]
+[connection signal="pressed" from="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/ConcoctionButton" to="WeaponSelectMenu" method="_on_concoction_button_pressed"]
+[connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]
+[connection signal="health_depleted" from="Player" to="." method="_on_player_health_depleted"]
+[connection signal="pressed" from="PauseMenu/MenuOverlay/CenterContainer/VBoxContainer/Buttons/ContinueButton" to="." method="_on_pause_continue_pressed"]
+[connection signal="pressed" from="PauseMenu/MenuOverlay/CenterContainer/VBoxContainer/Buttons/RestartButton" to="." method="_on_pause_restart_pressed"]
+[connection signal="pressed" from="PauseMenu/MenuOverlay/CenterContainer/VBoxContainer/Buttons/QuitButton" to="." method="_on_pause_quit_pressed"]
+[connection signal="pressed" from="GameOver/MenuOverlay/CenterContainer/VBoxContainer/Buttons/RestartButton" to="." method="_on_restart_button_pressed"]
+[connection signal="pressed" from="GameOver/MenuOverlay/CenterContainer/VBoxContainer/Buttons/QuitButton" to="." method="_on_quit_button_pressed"]

@@ -1,0 +1,23 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://weapons/melee/melee_swipe.gd" id="1_swipe"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_swipe"]
+size = Vector2(120, 56)
+
+[node name="MeleeSwipe" type="Area2D"]
+collision_layer = 0
+collision_mask = 2
+monitoring = true
+monitorable = false
+script = ExtResource("1_swipe")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_swipe")
+
+[node name="Visual" type="ColorRect" parent="."]
+offset_left = -60.0
+offset_top = -28.0
+offset_right = 60.0
+offset_bottom = 28.0
+color = Color(1, 0.85, 0.35, 0.35)

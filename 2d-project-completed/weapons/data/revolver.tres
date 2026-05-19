@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://weapons/data/weapon_data.gd" id="1_weapon"]
+[ext_resource type="Texture2D" uid="uid://cswb5do8rrj7q" path="res://art/shared/pistol.png" id="2_texture"]
+
+[resource]
+script = ExtResource("1_weapon")
+display_name = "Revolver"
+display_name_ko = "리볼버"
+weapon_type = "Ranged"
+weapon_subtype = "Gun"
+rarity = "Common"
+hand = "One-Handed"
+range_type = "Far"
+effect = "Primary attack deals Thrusting Damage."
+texture = ExtResource("2_texture")
+min_damage = 85
+max_damage = 175
+attacks_per_second = 2.0

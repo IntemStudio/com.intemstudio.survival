@@ -1,0 +1,13 @@
+[gd_scene format=3 uid="uid://djnlnt3r37t6g"]
+
+[ext_resource type="Script" path="res://weapons/concoction/poison_explosion.gd" id="1_poison"]
+[ext_resource type="Texture2D" path="res://art/shared/fx/circle.png" id="2_circle"]
+
+[node name="PoisonExplosion" type="Node2D"]
+z_index = 50
+script = ExtResource("1_poison")
+
+[node name="Sprite" type="Sprite2D" parent="."]
+unique_name_in_owner = true
+modulate = Color(0.45, 0.95, 0.35, 0.55)
+texture = ExtResource("2_circle")
