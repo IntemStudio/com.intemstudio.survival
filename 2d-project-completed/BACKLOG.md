@@ -22,6 +22,7 @@
 | 상태이상 | 독(연금), 쐐기(nettles), 피격·독 데미지 플로팅 텍스트 |
 | 오브젝트 풀 | `ScenePool` + `PoolUtil` — 발사체, 경험치 오브, 몹 7종 (`Game/ObjectPools`, prewarm) |
 | 픽업·경험치 | 오브(`ScenePool`, `exp_orbs` 그룹, 픽업 범위 자석·수집); 자석 아이템 1% 드랍·전장 오브 일괄 자석·주황 2× 크기 |
+| 플레이어 피격 | `%HurtBox` 접촉 DPS(`DAMAGE_RATE`×겹친 몹 수), 몹 `attack_distance` 정지 후에도 충돌체 겹침, 플로팅 데미지 최소 1 |
 | 기타 | 몹 분리, 나무 장애물 충돌, 처치 수·시간 HUD |
 
 ---
@@ -56,6 +57,7 @@
 
 ## 밸런스·디자인
 
+- [ ] **접촉 피해 거리·히트박스 정렬** — `attack_distance`(중심 간 85)에서 몹이 멈춰도 `HurtBox`(84×54)와 몹 원형 충돌(r≈67)이 겹쳐 정지 상태 DPS가 남음. 의도 유지 시 수치 문서화, 완화 시 `attack_distance`↑ / HurtBox 축소 / 접촉 시에만 피해 / i-frame 중 선택. (`AGENTS.md` 접촉 피해 섹션)
 - [ ] **`threat` 활용 설계** — 예: 플레이어 접촉 데미지 배수, 스폰 밀도와 분리한 “압박도” 지표로 쓸지 결정 후 연결.
 - [ ] **플레이테스트 기반 키프레임 조정** — `default_balance_table.tres`의 `design_intent`는 문서용; 0~20분 체감 곡선 검증·튜닝.
 - [ ] **동시 생존 몹 상한 UX** — `max_alive_mobs` 도달 시 스폰 스킵만 함. HUD·디버그 표시 없음.
@@ -105,7 +107,7 @@
 - 무기 선택 “리롤” 1회(소모품·레벨 대가)
 - 시간 제한 이벤트(예: 5분마다 30초 고밀도)
 - `pine_tree` 파괴·불 장판 등 환경 상호작용
-- 플레이어 넉백·무적 프레임·대시
+- 플레이어 넉백·무적 프레임 (대시는 구현됨 — `AGENTS.md` 플레이어 이동·대시)
 - 몹 투사체 레이어 추가 시 `godot-core.mdc` 물리 레이어 일괄 수정
 - 에디터에서 `BalanceTable` 프리뷰(현재 분·비율 그래프)
 - 간단한 런 종료 리포트 JSON 저장(밸런스 튜닝용)
@@ -118,9 +120,11 @@
 2. **무기 추가** → 카탈로그 + `gun.gd` 타입 처리 + `weapon_id` 고유 + 선택 UI 풀. 새 투사체는 `pool_reset`/`PoolUtil.release`. 툴팁에 새 스탯·특수 규칙이 보이면 `weapon_data.gd`의 `build_select_tooltip_bbcode()`도 같이 갱신
 3. **풀 대상 이펙트 추가** → `ScenePool.acquire` + `pool_reset`/`pool_on_acquire` + `PoolUtil.release_node`, prewarm 수치
 4. **자석·픽업 변경** → `mob.gd` 드랍 확률·`magnet_pickup`·`exp_orb`·`player.gd` `collect`/`start_magnet` 분기; `AGENTS.md` 픽업 섹션 동기화
-5. **이 항목 완료** → 위 목록에서 해당 줄 삭제 또는 “완료(날짜)” 한 줄로 축약
-6. **기각** → 이유 한 줄 남기고 삭제하거나 “기각” 섹션으로 이동(선택)
+4b. **대시·게이지 변경** → `player.gd` 상수·`_update_dash_cooldown_gauge`·`player.tscn` `%DashCooldownBar`; `AGENTS.md` 플레이어 이동·대시 섹션 동기화
+5. **접촉 피해·피격 UX 변경** → `player.gd`/`player.tscn` `HurtBox`, `mob.gd` `attack_distance`, 몹 충돌 shape, `DAMAGE_RATE`·플로팅 간격; `AGENTS.md` 접촉 피해 섹션 동기화
+6. **이 항목 완료** → 위 목록에서 해당 줄 삭제 또는 “완료(날짜)” 한 줄로 축약
+7. **기각** → 이유 한 줄 남기고 삭제하거나 “기각” 섹션으로 이동(선택)
 
 ---
 
-*마지막 갱신: 코드베이스 기준 2026-05-21. 구현이 바뀌면 이 문서도 함께 맞춥니다.*
+*마지막 갱신: 코드베이스 기준 2026-05-21 (접촉 피해·HurtBox 겹침 문서화). 구현이 바뀌면 이 문서도 함께 맞춥니다.*

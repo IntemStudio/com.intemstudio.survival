@@ -14,7 +14,7 @@
 
 ## 프로젝트 개요
 
-Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확장). 한 판에서 이동·접촉 피해·레벨업·무기 선택·시간에 따른 몹 웨이브 생존을 처리합니다.
+Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확장). 한 판에서 이동·대시·접촉 피해·레벨업·무기 선택·시간에 따른 몹 웨이브 생존을 처리합니다.
 
 - **실행 씬:** `survivors_game.tscn` (`project.godot` → `run/main_scene`)
 - **오케스트레이션:** 루트 노드 `Game` + `game/game.gd`
@@ -30,10 +30,10 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | `game/game.gd` | 스폰 타이머, 밸런스 시계, 처치 HUD, 일시정지/게임오버, 무기 선택 |
 | `game/pool/` | `ScenePool` (`scene_pool.gd`), `PoolUtil` — 공통 `acquire` / `release` |
 | `game/balance/` | `BalanceTable`, phase, `MobSpawnSelector`, `default_balance_table.tres` |
-| `entities/player/` | 이동, 경험치, 무기 컨테이너, 피격 |
+| `entities/player/` | 이동, 대시·쿨다운 게이지, 경험치, 무기 컨테이너, 피격 |
 | `entities/mob/` | 공용 `mob.gd` + 변종 `.tscn` |
 | `weapons/` | `WeaponData`, catalog, `gun`, 투사체·근접·마법 등 |
-| `ui/` | 무기 선택(3택1 + 설명 패널), 일시정지 |
+| `ui/` | 무기 선택(3택1 + 설명 + 자동 선택·우선순위), 일시정지 |
 | `effects/exp_orb/` | 경험치 오브 (`exp_orbs` 그룹, `ScenePool` 적용) |
 | `effects/magnet_pickup/` | 자석 아이템 (1% 드랍, 풀 미적용) |
 | `effects/health_pickup/` | 체력 회복 아이템 (1% 드랍, +30 HP, 풀 미적용) |
@@ -45,11 +45,31 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 ## 런타임 흐름 (요약)
 
 1. `_ready`: `BalanceTable` 로드 → 시작 무기 선택(버튼 호버 시 `%WeaponSelectMenu` 설명 패널) → 트리 `paused`
-2. `on_weapon_chosen` → `Player.add_weapon` → `_ensure_game_started` → 스폰 `Timer` 시작
-3. 타이머마다: `%PathFollow2D` 위치에 `spawn_mob` (`ScenePool`으로 몹 acquire) → `initialize_spawn_health`로 HP
-4. `leveled_up` → 무기 선택 대기열; 메뉴가 열려 있으면 스폰 시계 정지. 선택 UI는 `WeaponSelectMenu.present_random_choices` → 버튼 라벨 + `WeaponData.build_select_tooltip_bbcode()` 상세
-5. `health_depleted` → 게임오버 UI, `paused`
-6. 몹 `_die()` → 처치 등록 → 연기 VFX → **경험치 오브**(`ScenePool.acquire`) → 각 **1%** **자석**·**체력**(`instantiate`) → 몹 `PoolUtil.release_node`
+2. `Game.show_weapon_select` → `present_random_choices` → `show()` → `on_menu_opened()` → `paused`. 닫을 때 `on_menu_closed()` → `hide()` (`game.gd`)
+3. `on_weapon_chosen` → `Player.add_weapon` → `_ensure_game_started` → 스폰 `Timer` 시작
+4. 타이머마다: `%PathFollow2D` 위치에 `spawn_mob` (`ScenePool`으로 몹 acquire) → `initialize_spawn_health`로 HP
+5. `leveled_up` → 무기 선택 대기열; 메뉴가 열려 있으면 스폰 시계 정지. 선택 UI는 `WeaponSelectMenu.present_random_choices` → 버튼 라벨 + `WeaponData.build_select_tooltip_bbcode()` 상세
+6. `health_depleted` → 게임오버 UI, `paused`
+7. 몹 `_die()` → 처치 등록 → 연기 VFX → **경험치 오브**(`ScenePool.acquire`) → 각 **1%** **자석**·**체력**(`instantiate`) → 몹 `PoolUtil.release_node`
+
+---
+
+## 무기 선택 UI (`WeaponSelectMenu`)
+
+씬: `survivors_game.tscn` — `WeaponSelectMenu/MenuOverlay/.../VBoxContainer` 아래 `AutoSelectRow`, `AutoPriorityPanel`, `ContentHBox`(선택 버튼·`DetailPanel`). 스크립트: `ui/weapon_select_menu.gd`.
+
+| 기능 | 동작 |
+|------|------|
+| 수동 선택 | `ChoicesVBox` 버튼 4개(표시는 `CHOICE_COUNT`=3) → `Game.on_weapon_chosen` |
+| 설명 | 호버·포커스·자동 대상 시 `WeaponData.build_select_tooltip_bbcode()` → `DetailLabel` |
+| 자동 선택 | `AutoSelectToggle` 켜면 `on_menu_opened` 후 **3초** 뒤 `_pick_auto_select_index()`로 확정 |
+| 우선순위 | `AutoPriorityPanel`의 `PrioritySlot0~2` ▲▼ — `_auto_priority_order` (`Ranged`/`Magic`/`Melee` 순서, **한 판 동안** 유지). 기본: 원거리 → 마법 → 근접 |
+| 카운트다운 | `AutoSelectCountdownLabel` (`자동 선택까지 N.N초`) |
+| 자동 게이지 | 대상 버튼 자식 `AutoGaugeTrack`·`AutoGaugeFill` (`show_behind_parent`) — 글자 위를 가리지 않음 |
+
+**왜 `on_menu_opened` / `on_menu_closed`:** `CanvasLayer`의 `show()`/`hide()`는 네이티브 오버라이드 불가(경고·에러). `game.gd`가 표시·숨김 직후 위 메서드를 호출해 자동 선택 타이머를 시작·정리한다.
+
+**자동 선택 중:** 대상 버튼만 투명 테두리 스타일 + 배경 게이지; 수동 클릭·토글 OFF·우선순위 변경 시 타이머 취소(우선순위 변경 시 자동 ON이면 3초 재시작).
 
 ---
 
@@ -65,6 +85,45 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 - **비주얼:** 오브 scale `0.35`(파란), 자석·체력 `0.7`(주황·초록, 오브의 2배).
 - **플레이어 분기:** `player.gd` `_on_pickup_range_area_entered` — `collect` 우선, 없으면 `start_magnet`.
 - **자석·체력은 풀 밖:** 드랍 빈도가 낮아 `ScenePool` 미사용. 풀 도입 시 `pool_reset`/`pool_on_acquire`·`PoolUtil.release_node` 계약 필요.
+
+---
+
+## 플레이어 이동·대시
+
+| 항목 | 값/동작 |
+|------|---------|
+| 이동 입력 | `move_left` / `move_right` / `move_up` / `move_down` (WASD, `project.godot`) |
+| 대시 입력 | `dash` (스페이스) |
+| 이동 속도 | 600 (`player.gd` `_physics_process`) |
+| 대시 방향 | 현재 이동 입력 벡터; 입력 없으면 `_last_move_direction`(최근 이동 방향) |
+| 대시 속도·지속 | 1400, 0.18초 — 대시 중에는 방향 고정, 일반 이동 입력 무시 |
+| 쿨다운 | 0.5초 (`DASH_COOLDOWN`) |
+| 무적 | 없음 — 대시 중에도 접촉 피해 동일 ([접촉 피해](#플레이어-접촉-피해) 참고) |
+
+- **쿨다운 게이지:** `player.tscn` `%DashCooldownBar` (56×12, 발밑 `ProgressBar`). `_dash_cooldown_remaining > 0`일 때만 표시, 채움 = 경과 쿨다운, 0이 되면 `visible = false`. 갱신은 `player.gd` `_update_dash_cooldown_gauge()`.
+- **플레이어 `%` 노드:** `%HappyBoo`, `%Weapons`, `%HurtBox`, `%PickupRange`, `%HealthBar`, `%DashCooldownBar` — 이름·경로 변경 시 `player.gd`·`player.tscn` grep.
+
+---
+
+## 플레이어 접촉 피해
+
+플레이어 이동·대시와 무관하게, `%HurtBox`와 겹친 몹 `CharacterBody2D`가 있으면 매 프레임 체력이 깎입니다 (`player.gd` `_physics_process`).
+
+| 항목 | 값·위치 |
+|------|---------|
+| 판정 | `%HurtBox.get_overlapping_bodies()` — `collision_mask = 2` (몹 레이어) |
+| HurtBox 크기 | `player.tscn` 사각형 **84×54** (`monitorable = false`) |
+| 초당 피해 | `DAMAGE_RATE = 6.0` × **겹친 몹 수** |
+| 플로팅 숫자 | `DAMAGE_FLOAT_INTERVAL = 0.2`초마다, `maxi(int(누적), 1)` → 화면 **최소 1** (실제 DPS와 체감이 다를 수 있음) |
+
+**가만히 서 있어도 맞는 이유**
+
+1. 몹은 `Player/Path2D`의 `%PathFollow2D`에 스폰된 뒤 플레이어를 추적합니다.
+2. `mob.gd`는 중심 간 거리가 `attack_distance`(기본 **85**) 이하이면 `velocity = 0`으로 정지합니다.
+3. 정지 거리(중심↔중심)와 충돌체 크기는 별개입니다. 기본 몹 원형 충돌 **r≈67**(Y 오프셋 -28) + HurtBox 사각형이면, 85px에서 멈춰도 **HurtBox와 물리 겹침이 남아** 접촉 피해가 계속됩니다.
+4. 스폰 타이머가 돌면 주변에 몹이 쌓이고, 겹친 수만큼 피해량이 배수됩니다.
+
+**튜닝 시 같이 볼 것:** `mob.gd` `attack_distance`, 몹 `.tscn` `CollisionShape2D`, `player.tscn` `HurtBox`, `player.gd` `DAMAGE_RATE` / `DAMAGE_FLOAT_INTERVAL`. 한쪽만 바꾸면 “멈췄는데 안 맞음” 또는 “멀리서 1씩 뜸”처럼 어긋날 수 있습니다.
 
 ---
 
@@ -85,7 +144,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 - 기본 리소스·VFX: `preload("res://...")`
 - 살아 있는 몹: `get_tree().get_nodes_in_group("mobs")` (풀에 있는 비활성 몹은 그룹에 없음)
 - 무기 추가·몹 사망: `call_deferred`
-- 무기 데이터: `WeaponData` Resource + catalog 풀 → 랜덤 3택1; 설명 문자열은 `build_select_tooltip_bbcode()` (표시는 `ui/weapon_select_menu.gd` + `survivors_game.tscn` `ContentHBox/DetailPanel`)
+- 무기 데이터: `WeaponData` Resource + catalog 풀 → 랜덤 3택1; 설명·자동 선택 UI는 `ui/weapon_select_menu.gd` + `survivors_game.tscn` (`AutoSelectRow`, `AutoPriorityPanel`, `ContentHBox/DetailPanel`)
 
 ## 오브젝트 풀 (`ScenePool`)
 
@@ -117,8 +176,10 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | 난이도 곡선 | `default_balance_table.tres`, `balance_table.gd` |
 | 몹 타입 추가 | `mob.gd`, `mob_spawn_selector.gd`, `mob_*.tscn`, balance `.tres` |
 | 무기 추가 | `weapon_data.gd`, `weapons/catalogs/*`, `gun.gd`, `player.gd`, `ui/weapon_select_menu.gd` |
-| 무기 선택·설명 UI | `ui/weapon_select_menu.gd`, `survivors_game.tscn` (`ContentHBox`, `DetailPanel`), `weapon_data.gd` (`build_select_tooltip_bbcode`) |
+| 무기 선택·자동 선택 UI | `ui/weapon_select_menu.gd`, `game/game.gd` (`on_menu_opened`/`closed`), `survivors_game.tscn` (`AutoSelectRow`, `AutoPriorityPanel`, `ContentHBox`), `weapon_data.gd` (`build_select_tooltip_bbcode`) |
 | 경험치·픽업 아이템 | `effects/exp_orb/exp_orb.gd`, `effects/magnet_pickup/`, `effects/health_pickup/`, `entities/player/player.gd` (`heal_health`), `entities/mob/mob.gd` (드랍 확률) |
+| 대시·쿨다운 UI | `entities/player/player.gd`, `entities/player/player.tscn` (`%DashCooldownBar`), `project.godot` (`dash` 입력) |
+| 접촉 피해·피격 표시 | `entities/player/player.gd`, `entities/player/player.tscn` (`HurtBox`), `entities/mob/mob.gd` (`attack_distance`), `effects/floating_damage_text/floating_damage_text.gd` |
 
 ---
 

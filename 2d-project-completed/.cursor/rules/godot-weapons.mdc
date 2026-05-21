@@ -27,6 +27,8 @@ Skipping step 2 makes the weapon invisible in level-up selection.
 - Level-up must go through `Player.leveled_up` → `Game.show_weapon_select` → `Game.on_weapon_chosen` → `add_weapon.call_deferred`.
 - While weapon select is open, do not unpause or start spawn timer via side paths.
 - `get_tree().paused = true` during weapon select and game over; resume only through `resume_game()` / `on_weapon_chosen` / restart.
+- `Game.show_weapon_select` must call `%WeaponSelectMenu.on_menu_opened()` after `show()`; `on_weapon_chosen` must call `on_menu_closed()` before `hide()`.
+- Do not override `show()` / `hide()` on `WeaponSelectMenu` (`CanvasLayer`); use `on_menu_opened` / `on_menu_closed` instead.
 
 ## Damage API
 
@@ -37,7 +39,10 @@ Skipping step 2 makes the weapon invisible in level-up selection.
 
 - You must keep weapon pools sourced from the three catalogs; do not hardcode weapon lists only in the scene without updating catalogs.
 - `CHOICE_COUNT` and `_buttons` node paths must stay consistent with `survivors_game.tscn` button names (`ContentHBox/ChoicesVBox/*`, `ContentHBox/DetailPanel/.../DetailLabel`).
+- Auto-select UI paths must stay consistent with `survivors_game.tscn`: `AutoSelectRow/AutoSelectToggle`, `AutoSelectCountdownLabel`, `AutoPriorityPanel/PrioritySlot0~2` (`TypeLabel`, `UpButton`, `DownButton`).
 - Weapon detail text must come from `WeaponData.build_select_tooltip_bbcode()`; do not duplicate stat formatting in the menu script.
+- Auto-pick priority must use `_auto_priority_order` (`Ranged` / `Magic` / `Melee`); do not hardcode a fixed priority map separate from the in-game ▲▼ UI.
+- Auto-select gauge fills must use `show_behind_parent` so button labels stay readable.
 
 ## When editing weapon select tooltip text
 

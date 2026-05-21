@@ -27,6 +27,7 @@ If you skip step 2 or 3, the mob will never spawn in play.
 
 - Differentiate variants only via `.tscn` exports (`base_max_health`, `speed_min`/`speed_max`, `mob_kind`, `slime_tint`, collision shape size).
 - Boss/special/elite/ranged/fast scenes must remain instantiable as `Mob`.
+- When changing `attack_distance` or mob `CollisionShape2D`, verify overlap with Player `%HurtBox` — player damage uses `get_overlapping_bodies()`, not `attack_distance` alone (see `AGENTS.md` contact damage section).
 
 ## When editing balance-driven spawn
 
