@@ -4,11 +4,43 @@
 [ext_resource type="Resource" path="res://game/balance/default_balance_table.tres" id="4_balance"]
 [ext_resource type="Script" path="res://ui/pause_menu.gd" id="2_pause"]
 [ext_resource type="Script" path="res://ui/weapon_select_menu.gd" id="3_weapon_select"]
+[ext_resource type="Script" path="res://ui/balance_notice_banner.gd" id="5_balance_notice"]
 [ext_resource type="PackedScene" uid="uid://dsw8raqgacxsc" path="res://entities/player/player.tscn" id="2_a7q7f"]
 [ext_resource type="PackedScene" uid="uid://c2qg1nuvfnd4q" path="res://world/trees/pine_tree.tscn" id="3_6h7ij"]
+[ext_resource type="Script" path="res://world/floor/checker_background.gd" id="6_checker_bg"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_exp"]
 bg_color = Color(0.35, 0.85, 1, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_balance_notice"]
+bg_color = Color(1, 1, 1, 0.88)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_weapon_detail"]
+bg_color = Color(0.12, 0.12, 0.14, 0.92)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.55, 0.55, 0.6, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 12.0
+content_margin_top = 12.0
+content_margin_right = 12.0
+content_margin_bottom = 12.0
+content_margin_left = 16.0
+content_margin_top = 10.0
+content_margin_right = 16.0
+content_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_balance_phase"]
+bg_color = Color(1, 0.62, 0.18, 1)
 
 [sub_resource type="Curve2D" id="Curve2D_cp6e5"]
 _data = {
@@ -80,6 +112,60 @@ theme_override_font_sizes/font_size = 36
 text = "00:00"
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="BalanceNoticeBanner" type="Control" parent="HUD/HUDRoot"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 10
+anchor_left = 0.5
+anchor_top = 0.0
+anchor_right = 0.5
+offset_left = -360.0
+offset_top = 68.0
+offset_right = 360.0
+offset_bottom = 176.0
+grow_horizontal = 2
+mouse_filter = 2
+script = ExtResource("5_balance_notice")
+
+[node name="PanelContainer" type="PanelContainer" parent="HUD/HUDRoot/BalanceNoticeBanner"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_balance_notice")
+
+[node name="VBox" type="VBoxContainer" parent="HUD/HUDRoot/BalanceNoticeBanner/PanelContainer"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="NoticeLabel" type="Label" parent="HUD/HUDRoot/BalanceNoticeBanner/PanelContainer/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.1, 0.1, 0.1, 1)
+theme_override_font_sizes/font_size = 20
+text = "초반 적응 구간 — 기본 몬스터만"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="PhaseProgressBar" type="ProgressBar" parent="HUD/HUDRoot/BalanceNoticeBanner/PanelContainer/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 14)
+layout_mode = 2
+theme_override_styles/fill = SubResource("StyleBoxFlat_balance_phase")
+max_value = 100.0
+show_percentage = false
+
+[node name="SegmentLabel" type="Label" parent="HUD/HUDRoot/BalanceNoticeBanner/PanelContainer/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.25, 0.25, 0.25, 1)
+theme_override_font_sizes/font_size = 14
+text = "0.0 / 1분"
+horizontal_alignment = 1
 
 [node name="ExperienceBar" type="ProgressBar" parent="HUD/HUDRoot"]
 layout_mode = 1
@@ -184,33 +270,63 @@ theme_override_font_sizes/font_size = 64
 text = "무기 선택"
 horizontal_alignment = 1
 
-[node name="RevolverButton" type="Button" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer"]
+[node name="ContentHBox" type="HBoxContainer" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 24
+alignment = 1
+
+[node name="ChoicesVBox" type="VBoxContainer" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/ContentHBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="RevolverButton" type="Button" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/ChoicesVBox"]
 process_mode = 3
 custom_minimum_size = Vector2(420, 52)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "리볼버 (85-175)"
 
-[node name="TommyGunsButton" type="Button" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer"]
+[node name="TommyGunsButton" type="Button" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/ChoicesVBox"]
 process_mode = 3
 custom_minimum_size = Vector2(420, 52)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "토미 건즈 (35-75)"
 
-[node name="BoomerangButton" type="Button" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer"]
+[node name="BoomerangButton" type="Button" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/ChoicesVBox"]
 process_mode = 3
 custom_minimum_size = Vector2(420, 52)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "나무 부메랑 (50-115)"
 
-[node name="ConcoctionButton" type="Button" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer"]
+[node name="ConcoctionButton" type="Button" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/ChoicesVBox"]
 process_mode = 3
 custom_minimum_size = Vector2(420, 52)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "연금술 물약 (135-150)"
+
+[node name="DetailPanel" type="PanelContainer" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/ContentHBox"]
+custom_minimum_size = Vector2(340, 280)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_weapon_detail")
+
+[node name="MarginContainer" type="MarginContainer" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/DetailPanel"]
+layout_mode = 2
+
+[node name="DetailLabel" type="RichTextLabel" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/DetailPanel/MarginContainer"]
+custom_minimum_size = Vector2(316, 256)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/default_color = Color(0.92, 0.92, 0.95, 1)
+theme_override_font_sizes/normal_font_size = 18
+bbcode_enabled = true
+fit_content = true
+scroll_active = true
+autowrap_mode = 3
+text = "버튼에 마우스를 올리면 설명이 표시됩니다."
 
 [node name="PauseMenu" type="CanvasLayer" parent="."]
 layer = 20
@@ -360,6 +476,9 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
+color = Color(0.72, 0.76, 0.68, 1)
+script = ExtResource("6_checker_bg")
 
 [node name="PineTree" parent="." unique_id=1536469701 instance=ExtResource("3_6h7ij")]
 position = Vector2(66, 591)
@@ -394,10 +513,10 @@ position = Vector2(-346, -355)
 [node name="PineTree10" parent="." unique_id=1043826134 instance=ExtResource("3_6h7ij")]
 position = Vector2(-573, -231)
 
-[connection signal="pressed" from="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/RevolverButton" to="WeaponSelectMenu" method="_on_revolver_button_pressed"]
-[connection signal="pressed" from="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/TommyGunsButton" to="WeaponSelectMenu" method="_on_tommy_guns_button_pressed"]
-[connection signal="pressed" from="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/BoomerangButton" to="WeaponSelectMenu" method="_on_boomerang_button_pressed"]
-[connection signal="pressed" from="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/ConcoctionButton" to="WeaponSelectMenu" method="_on_concoction_button_pressed"]
+[connection signal="pressed" from="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/ChoicesVBox/RevolverButton" to="WeaponSelectMenu" method="_on_revolver_button_pressed"]
+[connection signal="pressed" from="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/ChoicesVBox/TommyGunsButton" to="WeaponSelectMenu" method="_on_tommy_guns_button_pressed"]
+[connection signal="pressed" from="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/ChoicesVBox/BoomerangButton" to="WeaponSelectMenu" method="_on_boomerang_button_pressed"]
+[connection signal="pressed" from="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/ChoicesVBox/ConcoctionButton" to="WeaponSelectMenu" method="_on_concoction_button_pressed"]
 [connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]
 [connection signal="health_depleted" from="Player" to="." method="_on_player_health_depleted"]
 [connection signal="pressed" from="PauseMenu/MenuOverlay/CenterContainer/VBoxContainer/Buttons/ContinueButton" to="." method="_on_pause_continue_pressed"]

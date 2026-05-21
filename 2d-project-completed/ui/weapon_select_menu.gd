@@ -8,15 +8,22 @@ const CHOICE_COUNT := 3
 var _current_choices: Array[WeaponData] = []
 
 @onready var _buttons: Array[Button] = [
-	$MenuOverlay/CenterContainer/VBoxContainer/RevolverButton,
-	$MenuOverlay/CenterContainer/VBoxContainer/TommyGunsButton,
-	$MenuOverlay/CenterContainer/VBoxContainer/BoomerangButton,
-	$MenuOverlay/CenterContainer/VBoxContainer/ConcoctionButton,
+	$MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/ChoicesVBox/RevolverButton,
+	$MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/ChoicesVBox/TommyGunsButton,
+	$MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/ChoicesVBox/BoomerangButton,
+	$MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/ChoicesVBox/ConcoctionButton,
 ]
 @onready var _title_label: Label = $MenuOverlay/CenterContainer/VBoxContainer/TitleLabel
+@onready var _detail_label: RichTextLabel = (
+	$MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/DetailPanel/MarginContainer/DetailLabel
+)
 
 
 func _ready() -> void:
+	for i in _buttons.size():
+		var button := _buttons[i]
+		button.mouse_entered.connect(_on_choice_hovered.bind(i))
+		button.focus_entered.connect(_on_choice_hovered.bind(i))
 	hide()
 
 
@@ -63,6 +70,18 @@ func _update_button_labels() -> void:
 		else:
 			button.visible = false
 			button.disabled = true
+	_show_weapon_detail(0)
+
+
+func _on_choice_hovered(index: int) -> void:
+	_show_weapon_detail(index)
+
+
+func _show_weapon_detail(index: int) -> void:
+	if index < 0 or index >= _current_choices.size():
+		_detail_label.text = ""
+		return
+	_detail_label.text = _current_choices[index].build_select_tooltip_bbcode()
 
 
 func _select_weapon_at_index(index: int) -> void:

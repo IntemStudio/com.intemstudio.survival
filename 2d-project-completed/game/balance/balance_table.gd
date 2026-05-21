@@ -40,6 +40,63 @@ func get_phase_for_time(elapsed_seconds: float) -> BalancePhase:
 	return _finalize_phase(result, sorted, minutes)
 
 
+# 경과 시간에 적용 중인 분 키프레임(보간 하한)을 반환합니다.
+func get_active_keyframe_for_time(elapsed_seconds: float) -> BalancePhase:
+	var sorted: Array[BalancePhase] = _get_sorted_phases()
+	if sorted.is_empty():
+		return BalancePhase.new()
+
+	var minutes: float = maxf(elapsed_seconds, 0.0) / 60.0
+	var active: BalancePhase = sorted[0]
+	for phase in sorted:
+		if minutes + 0.0001 >= phase.minute:
+			active = phase
+		else:
+			break
+	return active
+
+
+# 현재 키프레임·다음 키프레임·구간 진행률(0~1)을 반환합니다.
+func get_keyframe_segment_for_time(elapsed_seconds: float) -> Dictionary:
+	var sorted: Array[BalancePhase] = _get_sorted_phases()
+	var empty_result := {
+		"active": BalancePhase.new(),
+		"next_minute": 0.0,
+		"elapsed_minutes": 0.0,
+		"progress": 0.0,
+		"is_final": true,
+	}
+	if sorted.is_empty():
+		return empty_result
+
+	var minutes: float = maxf(elapsed_seconds, 0.0) / 60.0
+	var active_index := 0
+	for index in range(sorted.size()):
+		if minutes + 0.0001 >= sorted[index].minute:
+			active_index = index
+		else:
+			break
+
+	var active: BalancePhase = sorted[active_index]
+	var is_final := active_index >= sorted.size() - 1
+	var next_minute := active.minute
+	var progress := 1.0
+	if not is_final:
+		var upper: BalancePhase = sorted[active_index + 1]
+		next_minute = upper.minute
+		var span := next_minute - active.minute
+		if span > 0.0:
+			progress = clampf((minutes - active.minute) / span, 0.0, 1.0)
+
+	return {
+		"active": active,
+		"next_minute": next_minute,
+		"elapsed_minutes": minutes,
+		"progress": progress,
+		"is_final": is_final,
+	}
+
+
 func _get_sorted_phases() -> Array[BalancePhase]:
 	var cache_key := _compute_phases_cache_key()
 	if cache_key != _phases_cache_key:

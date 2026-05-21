@@ -5,10 +5,10 @@ const TEXTURE := preload("res://art/shared/pistol.png")
 const BOOMERANG_SCENE := preload("res://weapons/boomerang/boomerang.tscn")
 const CONCOCTION_SCENE := preload("res://weapons/concoction/concoction.tscn")
 
-static var _cache: Array = []
+static var _cache: Array[WeaponData] = []
 
 
-static func get_all() -> Array:
+static func get_all() -> Array[WeaponData]:
 	if _cache.is_empty():
 		_build_cache()
 	return _cache.duplicate()
@@ -54,8 +54,8 @@ static func _build_cache() -> void:
 		_cache.append(_create_weapon(entry))
 
 
-static func _create_weapon(entry: Dictionary):
-	var weapon: Resource = WeaponDataScript.new()
+static func _create_weapon(entry: Dictionary) -> WeaponData:
+	var weapon: WeaponData = WeaponDataScript.new()
 	weapon.weapon_id = entry["id"]
 	weapon.display_name = entry["en"]
 	weapon.display_name_ko = entry["ko"]

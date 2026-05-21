@@ -83,6 +83,7 @@ func _process(delta: float) -> void:
 		_elapsed_seconds += delta
 		_apply_spawn_interval_from_phase()
 	%TimeLabel.text = _format_time(_elapsed_seconds)
+	_update_balance_phase_hud()
 
 
 func _is_balance_clock_running() -> bool:
@@ -109,6 +110,13 @@ func _apply_spawn_interval_from_phase(force: bool = false) -> void:
 		return
 	_last_spawn_density = density
 	$Timer.wait_time = base_spawn_interval / maxf(density, 0.01)
+
+
+func _update_balance_phase_hud() -> void:
+	if not balance_table:
+		return
+	var segment := balance_table.get_keyframe_segment_for_time(_elapsed_seconds)
+	%BalanceNoticeBanner.update_display(segment)
 
 
 func _count_alive_mobs() -> int:

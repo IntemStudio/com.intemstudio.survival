@@ -62,8 +62,138 @@ func get_unique_key() -> String:
 
 
 func get_select_label() -> String:
-	var name_ko := display_name_ko if not display_name_ko.is_empty() else display_name
-	return "%s (%d-%d)" % [name_ko, min_damage, max_damage]
+	return "%s (%d-%d)" % [get_display_name_localized(), min_damage, max_damage]
+
+
+func get_display_name_localized() -> String:
+	return display_name_ko if not display_name_ko.is_empty() else display_name
+
+
+func build_select_tooltip_bbcode() -> String:
+	var lines: PackedStringArray = []
+	var hand_tag := ""
+	if hand == "One-Handed":
+		hand_tag = " [1손]"
+	elif hand == "Two-Handed":
+		hand_tag = " [2손]"
+	lines.append("[color=#ffdd55]%s%s[/color]" % [get_display_name_localized(), hand_tag])
+	lines.append("%s / %s" % [_weapon_type_ko(), weapon_subtype])
+	if not damage_element.is_empty():
+		lines.append("[color=#c9a87a]피해 속성: %s[/color]" % _damage_element_ko())
+	lines.append("데미지: %d-%d" % [min_damage, max_damage])
+	lines.append("공격 속도: %.2g APS" % attacks_per_second)
+	if has_burst():
+		lines.append("연사: %d발" % burst_count)
+	if hit_count > 1:
+		lines.append("타격 횟수: %d회" % hit_count)
+	lines.append("사거리: %s (%d)" % [_range_type_ko(), int(_get_attack_range())])
+	if is_explosion_ranged() and explosion_radius > 0.0:
+		lines.append("폭발 반경: %d" % int(explosion_radius))
+	if damage_element == "poison":
+		lines.append("독 피해: %d-%d (%.1f초)" % [poison_damage_min, poison_damage_max, poison_duration])
+	if applies_nettles:
+		lines.append("쐐기: %.1f초" % nettles_duration)
+	if returns_to_owner:
+		lines.append("투척 후 복귀")
+	if is_orbit_magic():
+		lines.append("공격 방식: 궤도")
+	if homing_strength > 0.0:
+		lines.append("유도 탄")
+	var effect_ko := _effect_ko()
+	if not effect_ko.is_empty():
+		lines.append("")
+		lines.append(effect_ko)
+	return "\n".join(lines)
+
+
+func _weapon_type_ko() -> String:
+	match weapon_type:
+		"Ranged":
+			return "원거리"
+		"Melee":
+			return "근접"
+		"Magic":
+			return "마법"
+		_:
+			return weapon_type
+
+
+func _damage_element_ko() -> String:
+	match damage_element:
+		"thrusting":
+			return "관통"
+		"slashing":
+			return "베기"
+		"striking":
+			return "타격"
+		"poison":
+			return "독"
+		"explosion":
+			return "폭발"
+		"fire":
+			return "화염"
+		"nature":
+			return "자연"
+		"radiant":
+			return "광휘"
+		"sound":
+			return "음파"
+		"magic":
+			return "마법"
+		_:
+			return damage_element
+
+
+func _range_type_ko() -> String:
+	match range_type:
+		"Very Short":
+			return "극근"
+		"Short":
+			return "근거리"
+		"Medium":
+			return "중거리"
+		"Far":
+			return "원거리"
+		"Very Far":
+			return "극원거리"
+		_:
+			return range_type
+
+
+func _get_attack_range() -> float:
+	if is_melee():
+		return get_melee_range()
+	if is_throwing():
+		return throw_range
+	return get_projectile_range()
+
+
+func _effect_ko() -> String:
+	if effect.is_empty():
+		return ""
+	if effect == "On combat start, grants En Garde.":
+		return "효과: 전투 시작 시 En Garde 부여"
+	var text := effect
+	text = text.replace("Primary attack deals ", "")
+	text = text.replace("Primary attacks deal ", "")
+	text = text.replace("Primary attack ", "")
+	if not applies_nettles:
+		text = text.replace(" and inflicts Nettles.", " · 쐐기 부여")
+	if hit_count <= 1:
+		text = text.replace(" and can hit multiple times.", " · 다중 타격")
+	text = text.replace("thrusting damage", "관통 피해")
+	text = text.replace("slashing damage", "베기 피해")
+	text = text.replace("striking damage", "타격 피해")
+	text = text.replace("poison damage", "독 피해")
+	text = text.replace("explosion damage", "폭발 피해")
+	text = text.replace("fire damage", "화염 피해")
+	text = text.replace("magical damage", "마법 피해")
+	text = text.replace("nature damage", "자연 피해")
+	text = text.replace("radiant damage", "광휘 피해")
+	text = text.replace("sound damage", "음파 피해")
+	text = text.replace("spins a flail that deals ", "철퇴 회전 · ")
+	text = text.trim_suffix(".")
+	return "효과: %s" % text
 
 
 func is_melee() -> bool:

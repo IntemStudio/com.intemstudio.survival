@@ -32,7 +32,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | `entities/player/` | 이동, 경험치, 무기 컨테이너, 피격 |
 | `entities/mob/` | 공용 `mob.gd` + 변종 `.tscn` |
 | `weapons/` | `WeaponData`, catalog, `gun`, 투사체·근접·마법 등 |
-| `ui/` | 무기 선택, 일시정지 |
+| `ui/` | 무기 선택(3택1 + 설명 패널), 일시정지 |
 | `effects/` | 경험치 구슬, 데미지 텍스트, 사망 이펙트 |
 | `characters/` | Slime / HappyBoo 비주얼 |
 
@@ -40,10 +40,10 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 
 ## 런타임 흐름 (요약)
 
-1. `_ready`: `BalanceTable` 로드 → 시작 무기 선택 → 트리 `paused`
+1. `_ready`: `BalanceTable` 로드 → 시작 무기 선택(버튼 호버 시 `%WeaponSelectMenu` 설명 패널) → 트리 `paused`
 2. `on_weapon_chosen` → `Player.add_weapon` → `_ensure_game_started` → 스폰 `Timer` 시작
 3. 타이머마다: `%PathFollow2D` 위치에 `spawn_mob`, 경과 시간으로 phase, `initialize_spawn_health`로 HP
-4. `leveled_up` → 무기 선택 대기열; 메뉴가 열려 있으면 스폰 시계 정지
+4. `leveled_up` → 무기 선택 대기열; 메뉴가 열려 있으면 스폰 시계 정지. 선택 UI는 `WeaponSelectMenu.present_random_choices` → 버튼 라벨 + `WeaponData.build_select_tooltip_bbcode()` 상세
 5. `health_depleted` → 게임오버 UI, `paused`
 
 ---
@@ -65,7 +65,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 - 기본 리소스·VFX: `preload("res://...")`
 - 살아 있는 몹: `get_tree().get_nodes_in_group("mobs")`
 - 무기 추가·몹 사망: `call_deferred`
-- 무기 데이터: `WeaponData` Resource + catalog 풀 → 랜덤 3택1
+- 무기 데이터: `WeaponData` Resource + catalog 풀 → 랜덤 3택1; 설명 문자열은 `build_select_tooltip_bbcode()` (표시는 `ui/weapon_select_menu.gd` + `survivors_game.tscn` `ContentHBox/DetailPanel`)
 
 ---
 
@@ -77,6 +77,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | 난이도 곡선 | `default_balance_table.tres`, `balance_table.gd` |
 | 몹 타입 추가 | `mob.gd`, `mob_spawn_selector.gd`, `mob_*.tscn`, balance `.tres` |
 | 무기 추가 | `weapon_data.gd`, `weapons/catalogs/*`, `gun.gd`, `player.gd`, `ui/weapon_select_menu.gd` |
+| 무기 선택·설명 UI | `ui/weapon_select_menu.gd`, `survivors_game.tscn` (`ContentHBox`, `DetailPanel`), `weapon_data.gd` (`build_select_tooltip_bbcode`) |
 
 ---
 

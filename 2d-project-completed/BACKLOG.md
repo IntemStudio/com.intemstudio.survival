@@ -18,6 +18,7 @@
 | 밸런스 | `BalanceTable` 분 키프레임, HP 배수·스폰 밀도·몹 비율 보간, 보스/특수 몹 계단형 플래그 |
 | 몹 | basic / fast / ranged / elite / special_a·b / boss — 공용 `mob.gd`, 프리팹 수치·색만 다름 |
 | 무기 | Ranged·Melee·Magic 카탈로그 + `gun.gd` (탄환·근접·마법·투척·부메랑·연금·궤도 등) |
+| 무기 선택 UI | 3택1 버튼 + 호버/포커스 시 `WeaponData.build_select_tooltip_bbcode()` 설명 패널 (`DetailPanel`) |
 | 상태이상 | 독(연금), 쐐기(nettles), 피격·독 데미지 플로팅 텍스트 |
 | 기타 | 경험치 구슬·자석, 몹 분리, 나무 장애물 충돌, 처치 수·시간 HUD |
 
@@ -64,11 +65,10 @@
 ## UX / UI
 
 - [ ] **무기 선택 UI 정리** — `CHOICE_COUNT = 3`인데 버튼 4개·노드명(`RevolverButton` 등)이 초기 예제 잔재. 동적 버튼 생성 또는 이름 통일.
-- [ ] **무기 설명 표시** — 선택지에 `effect`·속성(독·폭발·쐐기) 요약 미표시.
 - [ ] **현재 페이즈·위협 HUD** — 생존 시간만 표시. “지금 구간 의도”·`threat`·주요 스폰 비율 요약(디버그용이라도).
 - [ ] **게임오버 통계** — 처치 수·생존 시간·도달 레벨·보유 무기 목록.
 - [ ] **쐐기·독 디버프 비주얼** — 로직은 있으나 몹 위 상태 아이콘·틴트 약함(확인 후 보강).
-- [ ] **로컬라이제이션 정리** — 카탈로그 `display_name_ko` vs UI 혼용 기준 확정.
+- [ ] **로컬라이제이션 정리** — `display_name_ko`는 선택 UI에 사용 중. `weapon_subtype`·`effect`는 `build_select_tooltip_bbcode()`에서 부분 치환(`_effect_ko`); 카탈로그 `effect_ko`·분류 한글 필드는 미도입.
 
 ---
 
@@ -112,7 +112,7 @@
 ## 작업할 때 체크 (항목 추가·완료 시)
 
 1. **몹 추가** → `mob_*.tscn` + `mob_spawn_selector.gd` + `default_balance_table.tres` (`.mdc` 필수)
-2. **무기 추가** → 카탈로그 + `gun.gd` 타입 처리 + `weapon_id` 고유 + 선택 UI 풀
+2. **무기 추가** → 카탈로그 + `gun.gd` 타입 처리 + `weapon_id` 고유 + 선택 UI 풀. 툴팁에 새 스탯·특수 규칙이 보이면 `weapon_data.gd`의 `build_select_tooltip_bbcode()`도 같이 갱신
 3. **이 항목 완료** → 위 목록에서 해당 줄 삭제 또는 “완료(날짜)” 한 줄로 축약
 4. **기각** → 이유 한 줄 남기고 삭제하거나 “기각” 섹션으로 이동(선택)
 

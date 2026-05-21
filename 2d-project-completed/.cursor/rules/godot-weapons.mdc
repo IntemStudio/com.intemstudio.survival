@@ -35,7 +35,13 @@ Skipping step 2 makes the weapon invisible in level-up selection.
 ## When editing `ui/weapon_select_menu.gd`
 
 - You must keep weapon pools sourced from the three catalogs; do not hardcode weapon lists only in the scene without updating catalogs.
-- `CHOICE_COUNT` and `_buttons` node paths must stay consistent with `survivors_game.tscn` button names.
+- `CHOICE_COUNT` and `_buttons` node paths must stay consistent with `survivors_game.tscn` button names (`ContentHBox/ChoicesVBox/*`, `ContentHBox/DetailPanel/.../DetailLabel`).
+- Weapon detail text must come from `WeaponData.build_select_tooltip_bbcode()`; do not duplicate stat formatting in the menu script.
+
+## When editing weapon select tooltip text
+
+- Update `WeaponData.build_select_tooltip_bbcode()` (and `_effect_ko()` if needed) when adding stats or special rules that players should see before picking a weapon.
+- Throwing weapons must use `throw_range` for displayed range; melee uses `get_melee_range()`; other ranged/magic projectiles use `get_projectile_range()`.
 
 ## When touching catalogs
 
