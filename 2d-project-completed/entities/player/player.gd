@@ -83,7 +83,9 @@ func _update_experience_hud() -> void:
 
 
 func _on_pickup_range_area_entered(area: Area2D) -> void:
-	if area.has_method("start_magnet"):
+	if area.has_method("collect"):
+		area.collect(self)
+	elif area.has_method("start_magnet"):
 		area.start_magnet(self)
 
 

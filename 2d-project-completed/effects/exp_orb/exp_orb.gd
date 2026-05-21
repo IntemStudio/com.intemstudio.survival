@@ -12,6 +12,7 @@ var _magnet_time := 0.0
 
 
 func _ready() -> void:
+	add_to_group("exp_orbs")
 	await get_tree().physics_frame
 	var player := get_node_or_null("/root/Game/Player")
 	if player and global_position.distance_to(player.global_position) <= player.pickup_range:

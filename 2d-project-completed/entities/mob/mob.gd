@@ -206,4 +206,11 @@ func _die() -> void:
 	get_parent().add_child(exp_orb)
 	exp_orb.global_position = global_position
 
+	const MAGNET_DROP_CHANCE := 0.01
+	if randf() < MAGNET_DROP_CHANCE:
+		var magnet_scene = preload("res://effects/magnet_pickup/magnet_pickup.tscn")
+		var magnet = magnet_scene.instantiate()
+		get_parent().add_child(magnet)
+		magnet.global_position = global_position + Vector2(randf_range(-24.0, 24.0), randf_range(-24.0, 24.0))
+
 	queue_free()
