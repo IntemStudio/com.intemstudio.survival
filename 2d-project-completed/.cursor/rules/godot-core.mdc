@@ -1,0 +1,36 @@
+---
+description: Godot survival — global constraints and prohibitions
+alwaysApply: true
+---
+
+# Godot 2D Survival (core)
+
+Godot 4.x GDScript survivors-like game. Main scene: `res://survivors_game.tscn`. Orchestrator: root node `Game` + `game/game.gd`. Do not apply Unity/C# project rules here. Map/rationale: `AGENTS.md` (Korean). Game-logic comments in `.gd`: Korean one-line purpose (match existing style).
+
+## Must not
+
+- Do not rename the main scene root node `Game` or change `run/main_scene` without updating every `/root/Game` reference.
+- Do not rename or remove `%`-referenced nodes in `survivors_game.tscn` (`%Player`, `%PathFollow2D`, `%WeaponSelectMenu`, etc.) without updating all `%` usages.
+- Do not change the group name `mobs`.
+- Do not edit `.uid` files manually.
+- Do not add per-variant mob scripts; all mob scenes must use `res://entities/mob/mob.gd`.
+
+## Must (scene contract)
+
+- Spawn position must come from `%PathFollow2D` under `Player/Path2D` in the main scene.
+- `Game.spawn_mob()` must instantiate a node that is a `Mob` and call `initialize_spawn_health()` before `add_child`.
+- On mob death, kills must still reach `Game.register_kill()` via the existing `mob.gd` `_die()` path.
+
+## When changing cross-scene paths
+
+- If you change `/root/Game`, `/root/Game/Player`, or HUD paths, you must grep the repo and update every caller (`mob.gd`, `gun.gd`, `player.gd`, `exp_orb.gd`, etc.) in the same change.
+
+## Pause / game start
+
+- Do not start the spawn `Timer` until `_ensure_game_started()` runs (after initial weapon select flow completes).
+- When `get_tree().paused` is true, do not advance the balance elapsed clock (`_is_balance_clock_running` in `game.gd`).
+
+## Physics layers (do not change casually)
+
+- Mob bodies: `collision_layer = 2`, `collision_mask = 3`.
+- If you change mob layers, you must update weapon/projectile `collision_mask` consistently in the same PR.

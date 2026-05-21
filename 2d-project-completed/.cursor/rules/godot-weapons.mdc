@@ -1,0 +1,42 @@
+---
+description: Weapons, player loadout, weapon select UI, and game flow
+globs: weapons/**,entities/player/**,game/game.gd,ui/weapon_select_menu*
+alwaysApply: false
+---
+
+# Weapons & player
+
+## When adding a new weapon, you must
+
+1. Define stats on `WeaponData` (`weapons/data/weapon_data.gd`) via `.tres` or a catalog entry in `weapons/catalogs/`.
+2. Register it in the correct catalog (`ranged_weapon_catalog.gd`, `melee_weapon_catalog.gd`, or `magic_weapon_catalog.gd`) so `WeaponSelectMenu` can offer it.
+3. Ensure `weapon_id` (or unique `resource_path`) is unique — duplicate keys break `Player.has_weapon` / menu filtering.
+4. Verify `weapons/core/gun.gd` already handles the weapon’s `weapon_type` / `weapon_subtype` / `magic_attack_style` / `ranged_attack_style`; if not, extend `gun.gd` and the required projectile/melee scene in the same change.
+
+Skipping step 2 makes the weapon invisible in level-up selection.
+
+## Must not
+
+- Do not equip weapons by instancing `gun.tscn` outside `Player.add_weapon()`.
+- Do not add duplicate weapons to `_owned_weapons` (respect `get_unique_key()`).
+- Do not break `Gun.equip_weapon` → `arrange_slot` orbit layout on `%Weapons`.
+
+## Must (player / game flow)
+
+- Level-up must go through `Player.leveled_up` → `Game.show_weapon_select` → `Game.on_weapon_chosen` → `add_weapon.call_deferred`.
+- While weapon select is open, do not unpause or start spawn timer via side paths.
+- `get_tree().paused = true` during weapon select and game over; resume only through `resume_game()` / `on_weapon_chosen` / restart.
+
+## Damage API
+
+- Use `Mob.take_damage` / `Mob.apply_weapon_damage` / `Mob.take_magic_damage` — do not write ad-hoc `health -=` on mobs from new weapon code.
+- Use `FloatingDamageText` spawn helpers for new damage types; do not invent parallel floating text systems.
+
+## When editing `ui/weapon_select_menu.gd`
+
+- You must keep weapon pools sourced from the three catalogs; do not hardcode weapon lists only in the scene without updating catalogs.
+- `CHOICE_COUNT` and `_buttons` node paths must stay consistent with `survivors_game.tscn` button names.
+
+## When touching catalogs
+
+- After changing catalog cache build logic, you must ensure new weapons appear in `_get_all_weapons()` used by `present_random_choices`.

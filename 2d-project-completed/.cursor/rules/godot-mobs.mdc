@@ -1,0 +1,36 @@
+---
+description: Mob scenes and spawn pipeline — mandatory co-updates
+globs: entities/mob/**,game/balance/mob_spawn_selector.gd
+alwaysApply: false
+---
+
+# Mobs
+
+## When adding a new mob scene, you must (in one change set)
+
+1. Add `mob_<name>.tscn` that uses script `res://entities/mob/mob.gd` and `class_name Mob`.
+2. Add a `PackedScene` constant and branch in `game/balance/mob_spawn_selector.gd` (`MobSpawnSelector.pick_scene`).
+3. Update `game/balance/default_balance_table.tres` (or the active `BalanceTable`) so spawn ratios / flags can select the new mob.
+4. Keep `collision_layer = 2` and `collision_mask = 3` unless you also update all weapon hit masks.
+
+If you skip step 2 or 3, the mob will never spawn in play.
+
+## Must not
+
+- Do not duplicate AI, damage, poison, or death logic in new `.gd` files under `entities/mob/`.
+- Do not spawn mobs without going through `Game.spawn_mob()` → `MobSpawnSelector.pick_scene` → `initialize_spawn_health(hp_multiplier)`.
+- Do not remove `add_to_group("mobs")` from `mob.gd`.
+
+## Must (variant scenes)
+
+- Differentiate variants only via `.tscn` exports (`base_max_health`, `speed_min`/`speed_max`, `mob_kind`, `slime_tint`, collision shape size).
+- Boss/special/elite/ranged/fast scenes must remain instantiable as `Mob`.
+
+## When editing balance-driven spawn
+
+- If you add a new spawn category, you must extend `BalancePhase` fields, `BalanceTable._finalize_phase` / `_normalize_spawn_ratios`, and `default_balance_table.tres` together.
+- Do not assume linear interpolation for `boss_spawn_enabled` or `special_mob_count`; they use step resolution in `BalanceTable`.
+
+## Death and HUD
+
+- Do not bypass `_request_die()` / `_die()` for kill counting, smoke, or exp orb drops.
