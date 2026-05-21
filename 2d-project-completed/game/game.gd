@@ -1,12 +1,21 @@
 extends Node2D
 
+const DEFAULT_BALANCE_TABLE := preload("res://game/balance/default_balance_table.tres")
+
+@export var balance_table: BalanceTable
+@export_range(0.05, 2.0, 0.01, "or_greater") var base_spawn_interval := 0.3
+@export_range(1, 500, 1) var max_alive_mobs := 100
+
 var _elapsed_seconds := 0.0
+var _last_spawn_density := -1.0
 var kill_count := 0
 var _game_started := false
 var _pending_weapon_selects := 0
 
 
 func _ready() -> void:
+	if not balance_table:
+		balance_table = DEFAULT_BALANCE_TABLE
 	_update_kill_count_hud()
 	$Timer.stop()
 	%Player.leveled_up.connect(_on_player_leveled_up)
@@ -41,6 +50,7 @@ func _ensure_game_started() -> void:
 	if _game_started:
 		return
 	_game_started = true
+	_apply_spawn_interval_from_phase(true)
 	$Timer.start()
 
 
@@ -69,8 +79,40 @@ func _update_kill_count_hud() -> void:
 
 
 func _process(delta: float) -> void:
-	_elapsed_seconds += delta
+	if _is_balance_clock_running():
+		_elapsed_seconds += delta
+		_apply_spawn_interval_from_phase()
 	%TimeLabel.text = _format_time(_elapsed_seconds)
+
+
+func _is_balance_clock_running() -> bool:
+	return _game_started and not get_tree().paused
+
+
+func get_elapsed_seconds() -> float:
+	return _elapsed_seconds
+
+
+func get_current_balance_phase() -> BalancePhase:
+	return _query_balance_phase()
+
+
+func _query_balance_phase() -> BalancePhase:
+	if not balance_table:
+		return BalancePhase.new()
+	return balance_table.get_phase_for_time(_elapsed_seconds)
+
+
+func _apply_spawn_interval_from_phase(force: bool = false) -> void:
+	var density := _query_balance_phase().spawn_density
+	if not force and is_equal_approx(density, _last_spawn_density):
+		return
+	_last_spawn_density = density
+	$Timer.wait_time = base_spawn_interval / maxf(density, 0.01)
+
+
+func _count_alive_mobs() -> int:
+	return get_tree().get_nodes_in_group("mobs").size()
 
 
 func _format_time(seconds: float) -> String:
@@ -81,9 +123,20 @@ func _format_time(seconds: float) -> String:
 
 
 func spawn_mob():
+	if _count_alive_mobs() >= max_alive_mobs:
+		return
+
 	%PathFollow2D.progress_ratio = randf()
-	var new_mob = preload("res://entities/mob/mob.tscn").instantiate()
+	var phase := _query_balance_phase()
+	var mob_scene := MobSpawnSelector.pick_scene(phase)
+	var new_mob: Mob = mob_scene.instantiate() as Mob
+	if not new_mob:
+		push_error("Game.spawn_mob: spawn scene must instantiate a Mob.")
+		return
 	new_mob.global_position = %PathFollow2D.global_position
+
+	new_mob.initialize_spawn_health(phase.hp_multiplier)
+
 	add_child(new_mob)
 
 

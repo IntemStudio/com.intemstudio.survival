@@ -1,12 +1,18 @@
 extends CharacterBody2D
+class_name Mob
 
 signal died
 
 @export var attack_distance := 85.0
+@export var base_max_health := 200
+@export var mob_kind: StringName = &"basic"
+@export var speed_min := 160.0
+@export var speed_max := 240.0
+@export var slime_tint := Color(1.0, 1.0, 1.0, 1.0)
 
-var speed = randf_range(200, 300) * 0.8
-var max_health := 200
-var health := max_health
+var speed := 200.0
+var max_health := base_max_health
+var health := base_max_health
 
 var _poison_stacks: Array[Dictionary] = []
 var _nettles_timer := 0.0
@@ -20,10 +26,20 @@ const TARGET_INDICATOR_BASE_SCALE := Vector2(2.4, 2.4)
 @onready var _target_indicator: Sprite2D = %TargetIndicator
 
 
+# 스폰 직전 Game에서 호출해 밸런스 HP 배수를 반영합니다.
+func initialize_spawn_health(hp_multiplier: float) -> void:
+	var scaled := maxi(1, roundi(base_max_health * maxf(hp_multiplier, 0.01)))
+	max_health = scaled
+	health = scaled
+
+
 func _ready() -> void:
+	speed = randf_range(speed_min, speed_max)
 	add_to_group("mobs")
+	health = mini(health, max_health)
 	%HealthBar.max_value = max_health
 	%HealthBar.value = health
+	%Slime.modulate = slime_tint
 	%Slime.play_walk()
 
 

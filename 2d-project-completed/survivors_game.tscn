@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://dun1cpardk2xw"]
 
 [ext_resource type="Script" uid="uid://dsgxioo8wstff" path="res://game/game.gd" id="1_qclsr"]
+[ext_resource type="Resource" path="res://game/balance/default_balance_table.tres" id="4_balance"]
 [ext_resource type="Script" path="res://ui/pause_menu.gd" id="2_pause"]
 [ext_resource type="Script" path="res://ui/weapon_select_menu.gd" id="3_weapon_select"]
 [ext_resource type="PackedScene" uid="uid://dsw8raqgacxsc" path="res://entities/player/player.tscn" id="2_a7q7f"]
@@ -18,6 +19,7 @@ point_count = 5
 [node name="Game" type="Node2D" unique_id=327747119]
 y_sort_enabled = true
 script = ExtResource("1_qclsr")
+balance_table = ExtResource("4_balance")
 
 [node name="Timer" type="Timer" parent="." unique_id=173639759]
 wait_time = 0.3

@@ -1,0 +1,51 @@
+[gd_scene load_steps=5 format=3 uid="uid://c8mobspeca01"]
+
+[ext_resource type="Script" path="res://entities/mob/mob.gd" id="1_mob"]
+[ext_resource type="PackedScene" uid="uid://ogik4s70pgwl" path="res://characters/slime/slime.tscn" id="2_slime"]
+[ext_resource type="Texture2D" uid="uid://dn80eu1qs371v" path="res://art/shared/fx/circle.png" id="3_ring"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_spec_a"]
+radius = 67.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_spec_a_hp"]
+bg_color = Color(0.35, 0.9, 0.55, 1)
+
+[node name="MobSpecialA" type="CharacterBody2D"]
+collision_layer = 2
+collision_mask = 3
+script = ExtResource("1_mob")
+mob_kind = &"special_a"
+base_max_health = 220
+speed_min = 170.0
+speed_max = 250.0
+slime_tint = Color(0.55, 1, 0.65, 1)
+
+[node name="Slime" parent="." instance=ExtResource("2_slime")]
+unique_name_in_owner = true
+scale = Vector2(1.12, 1.12)
+
+[node name="TargetIndicator" type="Sprite2D" parent="."]
+unique_name_in_owner = true
+visible = false
+z_index = 50
+position = Vector2(0, -76)
+modulate = Color(0.4, 1, 0.6, 0.92)
+scale = Vector2(2.5, 2.5)
+texture = ExtResource("3_ring")
+
+[node name="HealthBar" type="ProgressBar" parent="."]
+unique_name_in_owner = true
+z_index = 100
+offset_left = -52.0
+offset_top = -124.0
+offset_right = 52.0
+offset_bottom = -102.0
+theme_override_styles/fill = SubResource("StyleBoxFlat_spec_a_hp")
+max_value = 220.0
+value = 220.0
+show_percentage = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -30)
+shape = SubResource("CircleShape2D_spec_a")
+debug_color = Color(0.3, 0.9, 0.5, 0.42)
