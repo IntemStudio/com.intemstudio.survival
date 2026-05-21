@@ -15,10 +15,22 @@ collision_layer = 2
 collision_mask = 3
 script = ExtResource("1_mob")
 mob_kind = &"ranged"
-attack_distance = 120.0
+attack_distance = 360.0
 speed_min = 120.0
 speed_max = 180.0
 slime_tint = Color(0.9, 0.7, 1, 1)
+ranged_attack_enabled = true
+ranged_cooldown = 1.4
+ranged_damage_min = 6
+ranged_damage_max = 10
+ranged_projectile_speed = 520.0
+ranged_max_distance = 900.0
+ranged_spawn_offset = Vector2(0, -40)
+
+[node name="AttackRangeRing" type="Sprite2D" parent="."]
+z_index = -10
+modulate = Color(0.75, 0.45, 0.95, 0.28)
+texture = ExtResource("3_ring")
 
 [node name="Slime" parent="." instance=ExtResource("2_slime")]
 unique_name_in_owner = true

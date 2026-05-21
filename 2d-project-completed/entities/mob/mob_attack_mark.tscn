@@ -1,0 +1,12 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://entities/mob/mob_attack_mark.gd" id="1_mark"]
+[ext_resource type="Texture2D" uid="uid://dn80eu1qs371v" path="res://art/shared/fx/circle.png" id="2_ring"]
+
+[node name="MobAttackMark" type="Node2D"]
+z_index = 80
+script = ExtResource("1_mark")
+
+[node name="Sprite" type="Sprite2D" parent="."]
+scale = Vector2(1.1, 1.1)
+texture = ExtResource("2_ring")

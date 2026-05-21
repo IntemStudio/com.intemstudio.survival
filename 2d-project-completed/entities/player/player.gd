@@ -22,6 +22,7 @@ var _last_move_direction := Vector2.RIGHT
 var _dash_direction := Vector2.ZERO
 var _dash_time_remaining := 0.0
 var _dash_cooldown_remaining := 0.0
+var auto_attack_enabled := true
 
 
 func _ready() -> void:
@@ -30,6 +31,30 @@ func _ready() -> void:
 	%PickupRange.area_entered.connect(_on_pickup_range_area_entered)
 	%DashCooldownBar.visible = false
 	_update_experience_hud()
+	_update_auto_attack_hud()
+
+
+func is_auto_attack_enabled() -> bool:
+	return auto_attack_enabled
+
+
+# F키 등으로 자동 공격 on/off를 전환합니다.
+func set_auto_attack_enabled(enabled: bool) -> void:
+	if auto_attack_enabled == enabled:
+		return
+	auto_attack_enabled = enabled
+	_apply_auto_attack_to_weapons()
+	_update_auto_attack_hud()
+
+
+func toggle_auto_attack() -> void:
+	set_auto_attack_enabled(not auto_attack_enabled)
+
+
+func _apply_auto_attack_to_weapons() -> void:
+	for gun in %Weapons.get_children():
+		if gun.has_method("refresh_auto_attack"):
+			gun.refresh_auto_attack()
 
 
 func get_owned_weapons() -> Array[WeaponData]:
@@ -68,6 +93,17 @@ func get_exp_to_level() -> int:
 	return base_exp_to_level * level
 
 
+# 몹 원거리 투사체 1발 피해 (접촉 DPS와 별도).
+func apply_mob_projectile_damage(amount: int) -> void:
+	if amount <= 0:
+		return
+	health -= float(amount)
+	%HealthBar.value = health
+	FloatingDamageText.spawn_player_damage(global_position, amount)
+	if health <= 0.0:
+		health_depleted.emit()
+
+
 # 체력 회복 아이템 등에서 호출합니다.
 func heal_health(amount: float) -> void:
 	var max_hp: float = %HealthBar.max_value
@@ -95,6 +131,36 @@ func _update_experience_hud() -> void:
 	exp_bar.value = experience
 	hud_root.get_node("LevelLabel").text = "Lv. %d" % level
 	hud_root.get_node("ExpLabel").text = "%d / %d" % [experience, exp_to_level]
+
+
+func _update_auto_attack_hud() -> void:
+	var label := get_node_or_null("%AutoAttackLabel") as Label
+	if not label:
+		return
+	if auto_attack_enabled:
+		label.text = "자동 공격: ON (F)"
+		label.add_theme_color_override("font_color", Color(0.1, 0.45, 0.15))
+	else:
+		label.text = "자동 공격: OFF (F)"
+		label.add_theme_color_override("font_color", Color(0.55, 0.12, 0.12))
+
+
+func _is_auto_attack_input_blocked() -> bool:
+	var game := get_node_or_null("/root/Game")
+	if not game:
+		return false
+	if game.is_weapon_select_open() or game.is_pause_menu_open() or game.is_game_over():
+		return true
+	return false
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if _is_auto_attack_input_blocked():
+		return
+	if not event.is_action_pressed("toggle_auto_attack") or event.echo:
+		return
+	toggle_auto_attack()
+	get_viewport().set_input_as_handled()
 
 
 # 대시 쿨다운 중에만 발밑 게이지를 표시합니다.

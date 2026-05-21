@@ -1,6 +1,6 @@
 ---
 description: ScenePool object pooling — acquire, release, pooled node contract
-globs: game/pool/**,game/game.gd,entities/mob/mob.gd,effects/exp_orb/**,weapons/core/gun.gd,weapons/core/bullet_2d.gd,weapons/magic/**,weapons/melee/**,weapons/throwing/**,weapons/boomerang/**,weapons/concoction/**
+globs: game/pool/**,game/game.gd,entities/mob/mob.gd,entities/mob/mob_projectile.gd,entities/mob/mob_attack_mark.gd,effects/exp_orb/**,weapons/core/gun.gd,weapons/core/bullet_2d.gd,weapons/magic/**,weapons/melee/**,weapons/throwing/**,weapons/boomerang/**,weapons/concoction/**
 alwaysApply: false
 ---
 
@@ -27,6 +27,7 @@ alwaysApply: false
 - Mobs: `Game.spawn_mob()` → `ScenePool.acquire` → set `global_position` → `initialize_spawn_health`.
 - Exp orbs: `mob.gd` `_die()` → `acquire(EXP_ORB_SCENE, parent)` → set position.
 - Projectiles / orbit magic: `gun.gd` `_spawn_from_pool` → setup → `PoolUtil.release_node` on end.
+- Mob ranged: `mob.gd` telegraph → `acquire(MOB_ATTACK_MARK_SCENE)` parent=mob → timer → `release` mark → `acquire(MOB_PROJECTILE_SCENE)` parent=spawn layer → `PoolUtil.release_node` on projectile end. Prewarm: `prewarm_mob_attack_marks`, `prewarm_mob_projectiles` on `ObjectPools`.
 
 ## Not pooled (current)
 

@@ -40,11 +40,22 @@ func _physics_process(delta: float) -> void:
 	global_position = _player.global_position + Vector2.from_angle(_angle) * _orbit_radius
 	rotation = _angle + PI * 0.5
 
+	if not _is_player_auto_attack_enabled():
+		return
+
 	_attack_timer -= delta
 	if _attack_timer > 0.0:
 		return
 	_attack_timer = 1.0 / _weapon.attacks_per_second
 	_damage_overlapping_mobs()
+
+
+func _is_player_auto_attack_enabled() -> bool:
+	if not is_instance_valid(_player):
+		return false
+	if _player.has_method("is_auto_attack_enabled"):
+		return _player.is_auto_attack_enabled()
+	return true
 
 
 func _damage_overlapping_mobs() -> void:

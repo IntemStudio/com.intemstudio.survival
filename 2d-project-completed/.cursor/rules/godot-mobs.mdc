@@ -29,6 +29,14 @@ If you skip step 2 or 3, the mob will never spawn in play.
 - Boss/special/elite/ranged/fast scenes must remain instantiable as `Mob`.
 - When changing `attack_distance` or mob `CollisionShape2D`, verify overlap with Player `%HurtBox` — player damage uses `get_overlapping_bodies()`, not `attack_distance` alone (see `AGENTS.md` contact damage section).
 
+## Must (ranged — `mob_ranged.tscn`)
+
+- Set `ranged_attack_enabled = true` on the scene only; do not add a separate mob AI script.
+- Optional child nodes: `AttackRangeRing` (visual), telegraph uses pooled `mob_attack_mark` (not a permanent scene child).
+- Ranged attack flow lives in `mob.gd`: windup mark → `ranged_telegraph_delay` → `mob_projectile`; cancel mark on `pool_reset` / `_request_die`.
+- Player hit uses `player.apply_mob_projectile_damage`, not `Mob.apply_weapon_damage`.
+- Spawn requires `ranged_spawn_ratio` in active `BalanceTable` (default table: from minute 5).
+
 ## When editing balance-driven spawn
 
 - If you add a new spawn category, you must extend `BalancePhase` fields, `BalanceTable._finalize_phase` / `_normalize_spawn_ratios`, and `default_balance_table.tres` together.

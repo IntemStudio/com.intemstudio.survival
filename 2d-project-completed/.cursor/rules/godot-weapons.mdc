@@ -22,6 +22,13 @@ Skipping step 2 makes the weapon invisible in level-up selection.
 - Do not add duplicate weapons to `_owned_weapons` (respect `get_unique_key()`).
 - Do not break `Gun.equip_weapon` → `arrange_slot` orbit layout on `%Weapons`.
 
+## Auto attack toggle
+
+- Default: `Player.auto_attack_enabled` is true; `toggle_auto_attack` (F) toggles it.
+- `gun.gd` must respect `Player.is_auto_attack_enabled()` for timer start, `_on_timer_timeout`, and `refresh_auto_attack()`; orbit damage in `king_bible_orb.gd` must use the same check.
+- Do not bypass the toggle by calling `shoot()` from new code without an explicit design (e.g. manual attack key).
+- HUD: keep `%AutoAttackLabel` in sync via `Player._update_auto_attack_hud()` when changing toggle behavior or copy.
+
 ## Must (player / game flow)
 
 - Level-up must go through `Player.leveled_up` → `Game.show_weapon_select` → `Game.on_weapon_chosen` → `add_weapon.call_deferred`.
@@ -33,6 +40,7 @@ Skipping step 2 makes the weapon invisible in level-up selection.
 ## Damage API
 
 - Use `Mob.take_damage` / `Mob.apply_weapon_damage` / `Mob.take_magic_damage` — do not write ad-hoc `health -=` on mobs from new weapon code.
+- Per-weapon damage stats: recorded in `Game.register_weapon_damage` via `mob.gd` (`apply_weapon_damage` and poison DoT ticks with `weapon` on the stack). Do not call `register_weapon_damage` from weapon/projectile scripts.
 - Use `FloatingDamageText` spawn helpers for new damage types; do not invent parallel floating text systems.
 
 ## When editing `ui/weapon_select_menu.gd`

@@ -57,12 +57,34 @@ func _start_shooting() -> void:
 		return
 	if weapon.is_orbit_magic():
 		return
+	if not _is_auto_attack_enabled():
+		return
 	_shoot_timer.stop()
 	if weapon.has_burst():
 		_begin_burst()
 	else:
 		shoot()
 		_shoot_timer.start()
+
+
+# 플레이어 자동 공격 토글 시 타이머를 멈추거나 재개합니다.
+func refresh_auto_attack() -> void:
+	if not weapon or not is_inside_tree():
+		return
+	if weapon.is_orbit_magic():
+		return
+	if _is_auto_attack_enabled():
+		_start_shooting()
+	else:
+		_shoot_timer.stop()
+		_burst_shots_remaining = 0
+
+
+func _is_auto_attack_enabled() -> bool:
+	var player := _get_player()
+	if player and player.has_method("is_auto_attack_enabled"):
+		return player.is_auto_attack_enabled()
+	return true
 
 
 func _begin_burst() -> void:
@@ -306,6 +328,10 @@ func _on_timer_timeout() -> void:
 		return
 
 	if weapon.is_orbit_magic():
+		return
+
+	if not _is_auto_attack_enabled():
+		_shoot_timer.stop()
 		return
 
 	if weapon.has_burst():

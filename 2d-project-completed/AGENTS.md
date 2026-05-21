@@ -26,12 +26,13 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 
 | 경로 | 역할 |
 |------|------|
-| `survivors_game.tscn` | 메인 씬: `Game`, `Timer`, `%ObjectPools`, `Player`+스폰 경로, HUD, 일시정지, 무기 UI |
-| `game/game.gd` | 스폰 타이머, 밸런스 시계, 처치 HUD, 일시정지/게임오버, 무기 선택 |
+| `survivors_game.tscn` | 메인 씬: `Game`, `Timer`, `%ObjectPools`, `Player`+스폰 경로, HUD, 일시정지, 무기 UI, `%GameOver`·`%WeaponDamageList` |
+| `game/game.gd` | 스폰 타이머, 밸런스 시계, 처치 HUD, 일시정지/게임오버, 무기 선택, 무기별 피해 집계·게임오버 표시 |
+| `game/weapon_damage_tracker.gd` | `WeaponDamageTracker` — 무기 `get_unique_key()`별 누적 피해, 게임오버 행 목록 생성 |
 | `game/pool/` | `ScenePool` (`scene_pool.gd`), `PoolUtil` — 공통 `acquire` / `release` |
 | `game/balance/` | `BalanceTable`, phase, `MobSpawnSelector`, `default_balance_table.tres` |
-| `entities/player/` | 이동, 대시·쿨다운 게이지, 경험치, 무기 컨테이너, 피격 |
-| `entities/mob/` | 공용 `mob.gd` + 변종 `.tscn` |
+| `entities/player/` | 이동, 대시·쿨다운 게이지, 경험치, 무기 컨테이너, 피격, **자동 공격 토글(F)** |
+| `entities/mob/` | 공용 `mob.gd` + 변종 `.tscn`; ranged 전용 `mob_projectile`·`mob_attack_mark` |
 | `weapons/` | `WeaponData`, catalog, `gun`, 투사체·근접·마법 등 |
 | `ui/` | 무기 선택(3택1 + 설명 + 자동 선택·우선순위), 일시정지 |
 | `effects/exp_orb/` | 경험치 오브 (`exp_orbs` 그룹, `ScenePool` 적용) |
@@ -49,7 +50,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 3. `on_weapon_chosen` → `Player.add_weapon` → `_ensure_game_started` → 스폰 `Timer` 시작
 4. 타이머마다: `%PathFollow2D` 위치에 `spawn_mob` (`ScenePool`으로 몹 acquire) → `initialize_spawn_health`로 HP
 5. `leveled_up` → 무기 선택 대기열; 메뉴가 열려 있으면 스폰 시계 정지. 선택 UI는 `WeaponSelectMenu.present_random_choices` → 버튼 라벨 + `WeaponData.build_select_tooltip_bbcode()` 상세
-6. `health_depleted` → 게임오버 UI, `paused`
+6. `health_depleted` → `_populate_game_over_weapon_damage()` → `%GameOver` 표시, `paused` (재시작 시 씬 리로드로 집계 초기화)
 7. 몹 `_die()` → 처치 등록 → 연기 VFX → **경험치 오브**(`ScenePool.acquire`) → 각 **1%** **자석**·**체력**(`instantiate`) → 몹 `PoolUtil.release_node`
 
 ---
@@ -70,6 +71,24 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 **왜 `on_menu_opened` / `on_menu_closed`:** `CanvasLayer`의 `show()`/`hide()`는 네이티브 오버라이드 불가(경고·에러). `game.gd`가 표시·숨김 직후 위 메서드를 호출해 자동 선택 타이머를 시작·정리한다.
 
 **자동 선택 중:** 대상 버튼만 투명 테두리 스타일 + 배경 게이지; 수동 클릭·토글 OFF·우선순위 변경 시 타이머 취소(우선순위 변경 시 자동 ON이면 3초 재시작).
+
+---
+
+## 무기별 피해 집계·게임오버
+
+한 판 동안 몹에게 입힌 피해를 무기 단위로 누적하고, 사망 시 게임오버 패널에 표시합니다.
+
+| 항목 | 동작 |
+|------|------|
+| 집계 | `Game`의 `WeaponDamageTracker` (`game/weapon_damage_tracker.gd`), 키 = `WeaponData.get_unique_key()` |
+| 기록 경로 | `mob.gd` `apply_weapon_damage`·독 틱 `_apply_poison_tick` → `Game.register_weapon_damage` (무기 스크립트에서 직접 호출하지 않음) |
+| 독 도트 | `apply_poison` 스택에 `weapon` 보관 — 틱 피해도 해당 무기에 귀속 |
+| 게임오버 UI | `survivors_game.tscn` `GameOver/.../WeaponDamagePanel` — `%WeaponDamageList`에 보유 무기 전부(0 포함), 피해량 내림차순 + **합계** |
+| 미집계 | `Mob.take_damage`만 쓰는 폴백 경로(무기 없음), 플레이어·몹 투사체 피해 |
+
+**왜 `apply_weapon_damage` 한곳:** 탄환·근접·마법·연금·독 등 대부분이 이미 이 API를 탐. 새 무기도 `health -=` 대신 이 경로를 쓰면 통계·플로팅 텍스트가 같이 맞춰짐.
+
+**튜닝·확장 시:** 게임오버에 처치 수·생존 시간·레벨을 붙일 때는 `game.gd` `_on_player_health_depleted` / `_populate_game_over_weapon_damage` 근처에서 HUD 값을 읽어 라벨만 추가하면 됨.
 
 ---
 
@@ -94,6 +113,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 |------|---------|
 | 이동 입력 | `move_left` / `move_right` / `move_up` / `move_down` (WASD, `project.godot`) |
 | 대시 입력 | `dash` (스페이스) |
+| 자동 공격 토글 | `toggle_auto_attack` (F) — [자동 공격 토글](#자동-공격-토글) |
 | 이동 속도 | 600 (`player.gd` `_physics_process`) |
 | 대시 방향 | 현재 이동 입력 벡터; 입력 없으면 `_last_move_direction`(최근 이동 방향) |
 | 대시 속도·지속 | 1400, 0.18초 — 대시 중에는 방향 고정, 일반 이동 입력 무시 |
@@ -102,6 +122,25 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 
 - **쿨다운 게이지:** `player.tscn` `%DashCooldownBar` (56×12, 발밑 `ProgressBar`). `_dash_cooldown_remaining > 0`일 때만 표시, 채움 = 경과 쿨다운, 0이 되면 `visible = false`. 갱신은 `player.gd` `_update_dash_cooldown_gauge()`.
 - **플레이어 `%` 노드:** `%HappyBoo`, `%Weapons`, `%HurtBox`, `%PickupRange`, `%HealthBar`, `%DashCooldownBar` — 이름·경로 변경 시 `player.gd`·`player.tscn` grep.
+
+---
+
+## 자동 공격 토글
+
+무기는 기본적으로 `gun.gd` 타이머로 자동 발사합니다. **F**로 일시 정지·재개할 수 있습니다(무기 선택 UI의 “자동 선택”과 무관).
+
+| 항목 | 동작 |
+|------|------|
+| 입력 | `toggle_auto_attack` (**F**, `project.godot`) |
+| 상태 | `player.gd` `auto_attack_enabled` (기본 `true`) |
+| HUD | `survivors_game.tscn` `%AutoAttackLabel` — `자동 공격: ON/OFF (F)`, ON 녹색·OFF 붉은색 |
+| 일반 무기 | `gun.gd` `_shoot_timer` 정지·`refresh_auto_attack()` 재개; OFF 시 `_on_timer_timeout`도 무시 |
+| 궤도 마법 | `king_bible_orb.gd` — 플레이어 `is_auto_attack_enabled()`가 false면 궤도·이동만, 피해 없음 |
+| 입력 차단 | 무기 선택·일시정지·게임오버 중 F 무시 (`_is_auto_attack_input_blocked`) |
+
+**왜 플레이어가 소유:** `Gun`이 `_get_player()`로 상태를 읽고, `set_auto_attack_enabled` 시 `%Weapons` 자식 전원에 `refresh_auto_attack()` 호출. 새 무기 장착 시에도 OFF면 타이머가 켜지지 않음(`_start_shooting` 게이트).
+
+**튜닝·확장 시:** 수동 1회 공격(키 홀드) 등을 넣을 때는 `gun.shoot()`와 타이머 경로를 분리하고, OFF 상태에서도 허용할지 정책을 먼저 정한 뒤 `godot-weapons.mdc`와 같이 맞출 것.
 
 ---
 
@@ -127,12 +166,63 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 
 ---
 
+## 원거리 몹 (`mob_ranged`)
+
+`mob_ranged.tscn`만 `ranged_attack_enabled = true`. AI·발사·예고는 공용 `mob.gd`; 비주얼·수치는 프리팹 export.
+
+### 스폰
+
+- `MobSpawnSelector.pick_scene` — `phase.ranged_spawn_ratio` 구간에서 `MOB_RANGED_SCENE` (fast 다음 우선순위).
+- `default_balance_table.tres` — **생존 5분부터** `ranged_spawn_ratio` > 0 (0~4분은 0). 9분 이후 최대 약 **30%** (보스·특수·fast·elite와 경쟁).
+
+### 전투 루프
+
+| 단계 | 동작 |
+|------|------|
+| 이동 | 중심 간 `distance > attack_distance`(ranged **360**) → 추적, 이하 → 정지 |
+| 예고 | `mob_attack_mark`를 몹 자식으로 풀 acquire → 머리 위(`ranged_attack_mark_offset`, 기본 `(0,-72)`) |
+| 대기 | `ranged_telegraph_delay`(기본 **0.5초**, `create_timer` — 일시정지 시 함께 정지) |
+| 발사 | 타이머 후 `mob_projectile` 풀 spawn → `PoolUtil.release_node`로 마크 제거 |
+| 쿨다운 | 발사 직후 `ranged_cooldown`(기본 1.4초); 예고 중 `_ranged_windup_active`로 중복 예고 방지 |
+
+### 피해·물리
+
+| 항목 | 값·경로 |
+|------|---------|
+| 투사체 피해 | `player.apply_mob_projectile_damage` — `take_damage`/`WeaponDamageTracker` **미경유** |
+| 접촉 DPS | `%HurtBox` 기존과 **동시 가능** (가까이 붙으면 둘 다) |
+| 투사체 물리(A안) | `mob_projectile` `collision_mask = 1`; `body == Player`만 피해, `StaticBody2D`(소나무)는 탄 소멸 |
+| 탄 비행 | `ranged_max_distance` 900, `ranged_projectile_speed` 520 (발사 거리 ≠ `attack_distance`) |
+
+### 비주얼
+
+- 보라 슬라임 `slime_tint`, HP 바 보라.
+- `AttackRangeRing` — `attack_distance` 반경 링 (`_sync_attack_range_ring`, `pool_on_acquire` 시 갱신).
+- 예고 마크 — 주황빛 `circle.png`, 슬라임 tint 기반.
+
+### 풀 (`ObjectPools`)
+
+| 씬 | prewarm 기본 |
+|----|----------------|
+| `mob_projectile.tscn` | 32 |
+| `mob_attack_mark.tscn` | 20 |
+
+사망·`pool_reset` 시 `_cancel_ranged_telegraph()` — 마크 반환, 탄환 미발사.
+
+### 주요 export (`mob_ranged.tscn` / `mob.gd`)
+
+`attack_distance`, `ranged_attack_enabled`, `ranged_cooldown`, `ranged_damage_min/max`, `ranged_projectile_speed`, `ranged_max_distance`, `ranged_spawn_offset`, `ranged_telegraph_delay`, `ranged_attack_mark_offset`.
+
+**튜닝 시:** 몹 `collision_layer` 2 유지. 투사체 전용 레이어(B안)는 `godot-core.mdc` 물리 mask 일괄 변경 필요 — 현재 미적용.
+
+---
+
 ## 밸런스 모델 (왜 이렇게 동작하는지)
 
 - phase는 **분(minute)** 키프레임; `BalanceTable`이 키 사이 float를 **선형 보간**
 - `boss_spawn_enabled`, `special_mob_count`는 보간 후 **계단(step)** 적용
 - 스폰 비율 합이 1 초과 시 **정규화** 가능
-- 몹 **행동**은 동일; 변종은 프리팹 수치 + `MobSpawnSelector` 가중치만 다름
+- 몹 **행동**은 대부분 동일(`mob.gd`); **ranged**만 export로 투사체. 변종은 프리팹 수치 + `MobSpawnSelector` 가중치
 
 밸런스 전용 규칙 파일(`godot-balance.mdc`)은 `game/balance/**` 작업이 잦아질 때 추가.
 
@@ -155,7 +245,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | `ScenePool.acquire(scene, parent)` | 꺼내기 → `pool_reset` → 부모 재부착 → 활성화 → `pool_on_acquire`(마지막). 위치·`setup`·HP는 호출자가 `acquire` 반환 후 설정 |
 | `PoolUtil.release_node(node)` | 반환(풀 미등록이면 `queue_free`) |
 
-**이미 풀 적용:** 발사체(`gun.gd` 경유), 경험치 오브(`mob.gd` `_die`), 몹 7종(`game.gd` `spawn_mob`).
+**이미 풀 적용:** 발사체(`gun.gd` 경유), 경험치 오브(`mob.gd` `_die`), 몹 7종(`game.gd` `spawn_mob`), 몹 투사체·공격 예고 마크(`mob.gd` 원거리 텔레그래프).
 
 **풀링 노드 계약:** 스크립트에 `pool_reset()` / `pool_on_acquire()` 구현. **매 스폰 설정은 `_ready`가 아니라** `pool_on_acquire` 또는 호출자 설정(`initialize_spawn_health` 등). 수명 종료는 `queue_free` 대신 `PoolUtil.release_node(self)`. 그룹 `exp_orbs`는 `pool_on_acquire`에서 추가, `pool_reset`에서 제거.
 
@@ -173,13 +263,16 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 |------|------|
 | 오브젝트 풀 | `game/pool/scene_pool.gd`, `pool_util.gd`, `survivors_game.tscn` (`ObjectPools`) |
 | 스폰·시간·UI | `game/game.gd`, `survivors_game.tscn` |
+| 무기별 피해·게임오버 통계 | `game/weapon_damage_tracker.gd`, `game/game.gd` (`register_weapon_damage`, `_populate_game_over_weapon_damage`), `entities/mob/mob.gd` (`apply_weapon_damage`, `apply_poison`), `survivors_game.tscn` (`%WeaponDamageList`) |
 | 난이도 곡선 | `default_balance_table.tres`, `balance_table.gd` |
 | 몹 타입 추가 | `mob.gd`, `mob_spawn_selector.gd`, `mob_*.tscn`, balance `.tres` |
+| 원거리 몹 | `mob.gd`, `mob_ranged.tscn`, `mob_projectile.*`, `mob_attack_mark.*`, `player.apply_mob_projectile_damage`, `mob_spawn_selector.gd`, `default_balance_table.tres` (`ranged_spawn_ratio`), `scene_pool.gd` prewarm |
 | 무기 추가 | `weapon_data.gd`, `weapons/catalogs/*`, `gun.gd`, `player.gd`, `ui/weapon_select_menu.gd` |
 | 무기 선택·자동 선택 UI | `ui/weapon_select_menu.gd`, `game/game.gd` (`on_menu_opened`/`closed`), `survivors_game.tscn` (`AutoSelectRow`, `AutoPriorityPanel`, `ContentHBox`), `weapon_data.gd` (`build_select_tooltip_bbcode`) |
 | 경험치·픽업 아이템 | `effects/exp_orb/exp_orb.gd`, `effects/magnet_pickup/`, `effects/health_pickup/`, `entities/player/player.gd` (`heal_health`), `entities/mob/mob.gd` (드랍 확률) |
 | 대시·쿨다운 UI | `entities/player/player.gd`, `entities/player/player.tscn` (`%DashCooldownBar`), `project.godot` (`dash` 입력) |
-| 접촉 피해·피격 표시 | `entities/player/player.gd`, `entities/player/player.tscn` (`HurtBox`), `entities/mob/mob.gd` (`attack_distance`), `effects/floating_damage_text/floating_damage_text.gd` |
+| 자동 공격 토글·HUD | `player.gd` (`toggle_auto_attack`, `set_auto_attack_enabled`), `gun.gd` (`refresh_auto_attack`), `king_bible_orb.gd`, `survivors_game.tscn` (`%AutoAttackLabel`), `project.godot` |
+| 접촉 피해·피격 표시 | `player.gd`/`player.tscn` (`HurtBox`), `mob.gd` (`attack_distance`), `floating_damage_text.gd`; 원거리 탄환은 `apply_mob_projectile_damage` |
 
 ---
 

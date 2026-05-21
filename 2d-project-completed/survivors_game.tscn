@@ -61,6 +61,8 @@ wait_time = 0.3
 [node name="ObjectPools" type="Node" parent="."]
 unique_name_in_owner = true
 script = ExtResource("7_scene_pool")
+prewarm_mob_projectiles = 32
+prewarm_mob_attack_marks = 20
 
 [node name="SpeedCheat" type="Node" parent="."]
 script = ExtResource("8_speed_cheat")
@@ -230,6 +232,22 @@ theme_override_constants/outline_size = 3
 theme_override_font_sizes/font_size = 16
 text = "0 / 5"
 horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="AutoAttackLabel" type="Label" parent="HUD/HUDRoot"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -132.0
+offset_right = 280.0
+offset_bottom = -104.0
+grow_vertical = 0
+theme_override_colors/font_color = Color(0.1, 0.45, 0.15, 1)
+theme_override_font_sizes/font_size = 20
+text = "자동 공격: ON (F)"
 vertical_alignment = 1
 
 [node name="WeaponSelectMenu" type="CanvasLayer" parent="."]
@@ -589,6 +607,29 @@ theme_override_font_sizes/font_size = 124
 text = "Game Over"
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="WeaponDamagePanel" type="VBoxContainer" parent="GameOver/MenuOverlay/CenterContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="WeaponDamageTitle" type="Label" parent="GameOver/MenuOverlay/CenterContainer/VBoxContainer/WeaponDamagePanel"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "무기별 피해량"
+horizontal_alignment = 1
+
+[node name="WeaponDamageScroll" type="ScrollContainer" parent="GameOver/MenuOverlay/CenterContainer/VBoxContainer/WeaponDamagePanel"]
+custom_minimum_size = Vector2(520, 200)
+layout_mode = 2
+size_flags_horizontal = 4
+horizontal_scroll_mode = 0
+
+[node name="WeaponDamageList" type="VBoxContainer" parent="GameOver/MenuOverlay/CenterContainer/VBoxContainer/WeaponDamagePanel/WeaponDamageScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
 
 [node name="Buttons" type="HBoxContainer" parent="GameOver/MenuOverlay/CenterContainer/VBoxContainer"]
 layout_mode = 2

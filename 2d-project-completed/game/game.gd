@@ -11,6 +11,7 @@ var _last_spawn_density := -1.0
 var kill_count := 0
 var _game_started := false
 var _pending_weapon_selects := 0
+var _weapon_damage := WeaponDamageTracker.new()
 
 
 func _ready() -> void:
@@ -78,6 +79,11 @@ func _on_player_leveled_up(_new_level: int) -> void:
 func register_kill() -> void:
 	kill_count += 1
 	_update_kill_count_hud()
+
+
+# 몹 피해 적용 시 무기별 누적 피해량을 기록합니다.
+func register_weapon_damage(weapon: WeaponData, amount: int) -> void:
+	_weapon_damage.register(weapon, amount)
 
 
 func _update_kill_count_hud() -> void:
@@ -179,8 +185,55 @@ func resume_game() -> void:
 
 
 func _on_player_health_depleted():
+	_populate_game_over_weapon_damage()
 	%GameOver.show()
 	get_tree().paused = true
+
+
+func _populate_game_over_weapon_damage() -> void:
+	var list := %WeaponDamageList
+	for child in list.get_children():
+		child.queue_free()
+
+	var rows := _weapon_damage.build_display_rows(%Player.get_owned_weapons())
+	if rows.is_empty():
+		var empty_label := Label.new()
+		empty_label.text = "기록된 피해 없음"
+		empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		list.add_child(empty_label)
+		return
+
+	var grand_total := 0
+	for row in rows:
+		grand_total += int(row["total"])
+
+	for row in rows:
+		var weapon: WeaponData = row["weapon"]
+		var total: int = int(row["total"])
+		var label := Label.new()
+		label.text = "%s  %s" % [weapon.get_display_name_localized(), _format_damage(total)]
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.add_theme_font_size_override("font_size", 22)
+		list.add_child(label)
+
+	var total_label := Label.new()
+	total_label.text = "합계  %s" % _format_damage(grand_total)
+	total_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	total_label.add_theme_font_size_override("font_size", 24)
+	list.add_child(total_label)
+
+
+func _format_damage(amount: int) -> String:
+	var text := str(amount)
+	if amount < 1000:
+		return text
+	var parts: PackedStringArray = []
+	while text.length() > 3:
+		parts.insert(0, text.substr(text.length() - 3, 3))
+		text = text.substr(0, text.length() - 3)
+	if not text.is_empty():
+		parts.insert(0, text)
+	return ",".join(parts)
 
 
 func _restart_game() -> void:

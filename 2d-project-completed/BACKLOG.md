@@ -13,16 +13,17 @@
 
 | 영역 | 구현 요약 |
 |------|-----------|
-| 게임 루프 | 시작 무기 선택 → 스폰 타이머 → 시간 경과 HUD → 레벨업 무기 3택1 → 사망 시 게임오버·재시작 |
+| 게임 루프 | 시작 무기 선택 → 스폰 타이머 → 시간 경과 HUD → 레벨업 무기 3택1 → 사망 시 게임오버(무기별 누적 피해·합계)·재시작 |
 | 일시정지 | Esc, 무기 선택·게임오버 중 일시정지 차단 |
 | 밸런스 | `BalanceTable` 분 키프레임, HP 배수·스폰 밀도·몹 비율 보간, 보스/특수 몹 계단형 플래그 |
-| 몹 | basic / fast / ranged / elite / special_a·b / boss — 공용 `mob.gd`, 프리팹 수치·색만 다름 |
-| 무기 | Ranged·Melee·Magic 카탈로그 + `gun.gd` (탄환·근접·마법·투척·부메랑·연금·궤도 등) |
+| 몹 | basic / fast / elite / special_a·b / boss — 공용 `mob.gd`; **ranged** — 5분+ 스폰, `attack_distance` 360, 범위 링, 예고 마크 0.5초 후 투사체(풀), 접촉 DPS 병행 |
+| 무기 | Ranged·Melee·Magic 카탈로그 + `gun.gd` (탄환·근접·마법·투척·부메랑·연금·궤도 등); **F**로 자동 공격 ON/OFF, HUD `%AutoAttackLabel` |
 | 무기 선택 UI | 3택1 버튼 + 호버/포커스 시 `WeaponData.build_select_tooltip_bbcode()` 설명 패널 (`DetailPanel`) |
 | 상태이상 | 독(연금), 쐐기(nettles), 피격·독 데미지 플로팅 텍스트 |
-| 오브젝트 풀 | `ScenePool` + `PoolUtil` — 발사체, 경험치 오브, 몹 7종 (`Game/ObjectPools`, prewarm) |
+| 오브젝트 풀 | `ScenePool` + `PoolUtil` — 무기 발사체, 경험치 오브, 몹 7종, **몹 투사체·공격 예고 마크** (`prewarm_mob_projectiles` 32, `prewarm_mob_attack_marks` 20) |
 | 픽업·경험치 | 오브(`ScenePool`, `exp_orbs` 그룹, 픽업 범위 자석·수집); 자석 아이템 1% 드랍·전장 오브 일괄 자석·주황 2× 크기 |
-| 플레이어 피격 | `%HurtBox` 접촉 DPS(`DAMAGE_RATE`×겹친 몹 수), 몹 `attack_distance` 정지 후에도 충돌체 겹침, 플로팅 데미지 최소 1 |
+| 플레이어 피격 | `%HurtBox` 접촉 DPS; 원거리 `apply_mob_projectile_damage`(무기 통계 제외); 플로팅 최소 1 |
+| 무기 피해 통계 | `WeaponDamageTracker` + `mob.apply_weapon_damage`/독 틱 → 게임오버 `%WeaponDamageList` |
 | 기타 | 몹 분리, 나무 장애물 충돌, 처치 수·시간 HUD |
 
 ---
@@ -31,7 +32,6 @@
 
 프리팹·카탈로그·밸런스 테이블에는 있으나, 플레이 체감이 이름과 맞지 않거나 필드가 미사용인 항목입니다.
 
-- [ ] **원거리 몹(`mob_ranged`)** — `attack_distance`만 크고, 실제 원거리 공격·투사체 없음. 추적 AI는 기본 몹과 동일.
 - [ ] **특수 몹 A/B** — HP·속도·색만 다름. `design_intent`의 “패턴”에 해당하는 행동 없음.
 - [ ] **보스** — 체력·크기만 큼. 페이즈·고유 스킬·등장 연출·처치 보상 차별 없음.
 - [ ] **엘리트** — 스탯·비주얼만 강화. 기믹 없음.
@@ -70,7 +70,7 @@
 
 - [ ] **무기 선택 UI 정리** — `CHOICE_COUNT = 3`인데 버튼 4개·노드명(`RevolverButton` 등)이 초기 예제 잔재. 동적 버튼 생성 또는 이름 통일.
 - [ ] **현재 페이즈·위협 HUD** — 생존 시간만 표시. “지금 구간 의도”·`threat`·주요 스폰 비율 요약(디버그용이라도).
-- [ ] **게임오버 통계** — 처치 수·생존 시간·도달 레벨·보유 무기 목록.
+- [ ] **게임오버 통계 (추가)** — 생존 시간·도달 레벨·처치 수를 게임오버 패널에 함께 표시. (무기별 누적 피해·합계는 구현됨 — `AGENTS.md` 무기별 피해 집계·게임오버)
 - [ ] **쐐기·독 디버프 비주얼** — 로직은 있으나 몹 위 상태 아이콘·틴트 약함(확인 후 보강).
 - [ ] **로컬라이제이션 정리** — `display_name_ko`는 선택 UI에 사용 중. `weapon_subtype`·`effect`는 `build_select_tooltip_bbcode()`에서 부분 치환(`_effect_ko`); 카탈로그 `effect_ko`·분류 한글 필드는 미도입.
 
@@ -108,7 +108,7 @@
 - 시간 제한 이벤트(예: 5분마다 30초 고밀도)
 - `pine_tree` 파괴·불 장판 등 환경 상호작용
 - 플레이어 넉백·무적 프레임 (대시는 구현됨 — `AGENTS.md` 플레이어 이동·대시)
-- 몹 투사체 레이어 추가 시 `godot-core.mdc` 물리 레이어 일괄 수정
+- 몹 투사체 **B안**(전용 physics layer) — 현재 A안(mask 1, 나무 차단). 레이어 분리 시 `godot-core.mdc` 일괄 수정
 - 에디터에서 `BalanceTable` 프리뷰(현재 분·비율 그래프)
 - 간단한 런 종료 리포트 JSON 저장(밸런스 튜닝용)
 
@@ -121,10 +121,13 @@
 3. **풀 대상 이펙트 추가** → `ScenePool.acquire` + `pool_reset`/`pool_on_acquire` + `PoolUtil.release_node`, prewarm 수치
 4. **자석·픽업 변경** → `mob.gd` 드랍 확률·`magnet_pickup`·`exp_orb`·`player.gd` `collect`/`start_magnet` 분기; `AGENTS.md` 픽업 섹션 동기화
 4b. **대시·게이지 변경** → `player.gd` 상수·`_update_dash_cooldown_gauge`·`player.tscn` `%DashCooldownBar`; `AGENTS.md` 플레이어 이동·대시 섹션 동기화
+4c. **자동 공격 토글·HUD 변경** → `player.gd` (`auto_attack_enabled`, `toggle_auto_attack`), `gun.gd` (`refresh_auto_attack`, `_is_auto_attack_enabled`), `king_bible_orb.gd`, `survivors_game.tscn` `%AutoAttackLabel`, `project.godot` `toggle_auto_attack`; `AGENTS.md` 자동 공격 토글 섹션 동기화
+4d. **무기 피해 집계·게임오버 표시 변경** → `mob.gd` `apply_weapon_damage`/`apply_poison`, `game/weapon_damage_tracker.gd`, `game.gd` `register_weapon_damage`·`_populate_game_over_weapon_damage`, `survivors_game.tscn` `%WeaponDamageList`; `AGENTS.md` 무기별 피해 집계·게임오버 섹션 동기화
+4e. **원거리 몹·투사체·예고 마크** → `mob.gd` export·`mob_ranged.tscn`·`mob_projectile.*`·`mob_attack_mark.*`·`player.apply_mob_projectile_damage`·`scene_pool` prewarm·`ranged_spawn_ratio`; `AGENTS.md` 원거리 몹 섹션
 5. **접촉 피해·피격 UX 변경** → `player.gd`/`player.tscn` `HurtBox`, `mob.gd` `attack_distance`, 몹 충돌 shape, `DAMAGE_RATE`·플로팅 간격; `AGENTS.md` 접촉 피해 섹션 동기화
 6. **이 항목 완료** → 위 목록에서 해당 줄 삭제 또는 “완료(날짜)” 한 줄로 축약
 7. **기각** → 이유 한 줄 남기고 삭제하거나 “기각” 섹션으로 이동(선택)
 
 ---
 
-*마지막 갱신: 코드베이스 기준 2026-05-21 (접촉 피해·HurtBox 겹침 문서화). 구현이 바뀌면 이 문서도 함께 맞춥니다.*
+*마지막 갱신: 코드베이스 기준 2026-05-21 (원거리 몹·예고 마크 풀·범위 360, F키 자동 공격, 무기 피해 게임오버). 구현이 바뀌면 이 문서도 함께 맞춥니다.*
