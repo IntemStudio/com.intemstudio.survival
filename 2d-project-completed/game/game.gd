@@ -11,20 +11,9 @@ var _last_spawn_density := -1.0
 var kill_count := 0
 var _game_started := false
 var _pending_weapon_selects := 0
-var _left_shift_down := false
-
-const _SPEED_CHEAT_KEYS := {
-	KEY_0: 0.1,
-	KEY_1: 1.0,
-	KEY_2: 2.0,
-	KEY_3: 3.0,
-	KEY_4: 4.0,
-	KEY_5: 5.0,
-}
 
 
 func _ready() -> void:
-	Engine.time_scale = 1.0
 	if not balance_table:
 		balance_table = DEFAULT_BALANCE_TABLE
 	_update_kill_count_hud()
@@ -42,43 +31,19 @@ func is_pause_menu_open() -> bool:
 	return %PauseMenu.visible
 
 
-func _is_speed_cheat_blocked() -> bool:
-	return is_weapon_select_open() or is_pause_menu_open() or is_game_over()
-
-
-func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.keycode == KEY_SHIFT:
-		if event.location == KEY_LOCATION_RIGHT:
-			return
-		if event.location == KEY_LOCATION_LEFT or event.location == KEY_LOCATION_UNSPECIFIED:
-			_left_shift_down = event.pressed
-
-
-func _unhandled_input(event: InputEvent) -> void:
-	if _is_speed_cheat_blocked():
-		return
-	if not event is InputEventKey or not event.pressed or event.echo:
-		return
-	if not _left_shift_down:
-		return
-	var speed: float = _SPEED_CHEAT_KEYS.get(event.keycode, -1.0)
-	if speed < 0.0:
-		return
-	Engine.time_scale = speed
-	get_viewport().set_input_as_handled()
-
-
 func show_weapon_select(title: String = "레벨 업! 무기 선택") -> bool:
 	if not %WeaponSelectMenu.present_random_choices(title, %Player.get_owned_weapons()):
 		_consume_pending_weapon_select()
 		return false
 
 	%WeaponSelectMenu.show()
+	%WeaponSelectMenu.on_menu_opened()
 	get_tree().paused = true
 	return true
 
 
 func on_weapon_chosen(weapon: WeaponData) -> void:
+	%WeaponSelectMenu.on_menu_closed()
 	%WeaponSelectMenu.hide()
 	get_tree().paused = false
 	%Player.add_weapon.call_deferred(weapon)
@@ -219,7 +184,7 @@ func _on_player_health_depleted():
 
 
 func _restart_game() -> void:
-	Engine.time_scale = 1.0
+	$SpeedCheat.reset_speed()
 	get_tree().paused = false
 	get_tree().reload_current_scene()
 

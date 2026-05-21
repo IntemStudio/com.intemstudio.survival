@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" uid="uid://c2qg1nuvfnd4q" path="res://world/trees/pine_tree.tscn" id="3_6h7ij"]
 [ext_resource type="Script" path="res://world/floor/checker_background.gd" id="6_checker_bg"]
 [ext_resource type="Script" path="res://game/pool/scene_pool.gd" id="7_scene_pool"]
+[ext_resource type="Script" path="res://game/speed_cheat.gd" id="8_speed_cheat"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_exp"]
 bg_color = Color(0.35, 0.85, 1, 1)
@@ -60,6 +61,9 @@ wait_time = 0.3
 [node name="ObjectPools" type="Node" parent="."]
 unique_name_in_owner = true
 script = ExtResource("7_scene_pool")
+
+[node name="SpeedCheat" type="Node" parent="."]
+script = ExtResource("8_speed_cheat")
 
 [node name="Player" parent="." unique_id=1174028023 instance=ExtResource("2_a7q7f")]
 unique_name_in_owner = true
@@ -274,6 +278,139 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 64
 text = "무기 선택"
 horizontal_alignment = 1
+
+[node name="AutoSelectRow" type="HBoxContainer" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="AutoSelectToggle" type="CheckButton" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/AutoSelectRow"]
+process_mode = 3
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "자동 무기 선택"
+
+[node name="AutoSelectCountdownLabel" type="Label" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/AutoSelectRow"]
+process_mode = 3
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+theme_override_colors/font_color = Color(0.85, 0.9, 1, 1)
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="AutoPriorityPanel" type="VBoxContainer" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 6
+alignment = 1
+
+[node name="AutoPriorityTitle" type="Label" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/AutoPriorityPanel"]
+process_mode = 3
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "자동 선택 우선순위 (위일수록 먼저)"
+horizontal_alignment = 1
+
+[node name="PrioritySlot0" type="HBoxContainer" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/AutoPriorityPanel"]
+process_mode = 3
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="RankLabel" type="Label" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/AutoPriorityPanel/PrioritySlot0"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+custom_minimum_size = Vector2(28, 0)
+text = "1."
+horizontal_alignment = 2
+
+[node name="TypeLabel" type="Label" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/AutoPriorityPanel/PrioritySlot0"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+custom_minimum_size = Vector2(72, 0)
+text = "원거리"
+
+[node name="UpButton" type="Button" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/AutoPriorityPanel/PrioritySlot0"]
+process_mode = 3
+custom_minimum_size = Vector2(44, 32)
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+disabled = true
+text = "▲"
+
+[node name="DownButton" type="Button" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/AutoPriorityPanel/PrioritySlot0"]
+process_mode = 3
+custom_minimum_size = Vector2(44, 32)
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "▼"
+
+[node name="PrioritySlot1" type="HBoxContainer" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/AutoPriorityPanel"]
+process_mode = 3
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="RankLabel" type="Label" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/AutoPriorityPanel/PrioritySlot1"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+custom_minimum_size = Vector2(28, 0)
+text = "2."
+horizontal_alignment = 2
+
+[node name="TypeLabel" type="Label" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/AutoPriorityPanel/PrioritySlot1"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+custom_minimum_size = Vector2(72, 0)
+text = "마법"
+
+[node name="UpButton" type="Button" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/AutoPriorityPanel/PrioritySlot1"]
+process_mode = 3
+custom_minimum_size = Vector2(44, 32)
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "▲"
+
+[node name="DownButton" type="Button" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/AutoPriorityPanel/PrioritySlot1"]
+process_mode = 3
+custom_minimum_size = Vector2(44, 32)
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "▼"
+
+[node name="PrioritySlot2" type="HBoxContainer" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/AutoPriorityPanel"]
+process_mode = 3
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="RankLabel" type="Label" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/AutoPriorityPanel/PrioritySlot2"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+custom_minimum_size = Vector2(28, 0)
+text = "3."
+horizontal_alignment = 2
+
+[node name="TypeLabel" type="Label" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/AutoPriorityPanel/PrioritySlot2"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+custom_minimum_size = Vector2(72, 0)
+text = "근접"
+
+[node name="UpButton" type="Button" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/AutoPriorityPanel/PrioritySlot2"]
+process_mode = 3
+custom_minimum_size = Vector2(44, 32)
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "▲"
+
+[node name="DownButton" type="Button" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/AutoPriorityPanel/PrioritySlot2"]
+process_mode = 3
+custom_minimum_size = Vector2(44, 32)
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+disabled = true
+text = "▼"
 
 [node name="ContentHBox" type="HBoxContainer" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer"]
 layout_mode = 2

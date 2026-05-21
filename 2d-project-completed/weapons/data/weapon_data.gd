@@ -73,9 +73,9 @@ func build_select_tooltip_bbcode() -> String:
 	var lines: PackedStringArray = []
 	var hand_tag := ""
 	if hand == "One-Handed":
-		hand_tag = " [1손]"
+		hand_tag = " [한손 무기]"
 	elif hand == "Two-Handed":
-		hand_tag = " [2손]"
+		hand_tag = " [양손 무기]"
 	lines.append("[color=#ffdd55]%s%s[/color]" % [get_display_name_localized(), hand_tag])
 	lines.append("%s / %s" % [_weapon_type_ko(), weapon_subtype])
 	if not damage_element.is_empty():

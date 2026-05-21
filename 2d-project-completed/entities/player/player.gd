@@ -4,6 +4,9 @@ signal health_depleted
 signal leveled_up(new_level: int)
 
 const GUN_SCENE := preload("res://weapons/core/gun.tscn")
+const DASH_SPEED := 1400.0
+const DASH_DURATION := 0.18
+const DASH_COOLDOWN := 0.5
 
 @export var pickup_range := 150.0
 @export var base_exp_to_level := 5
@@ -15,12 +18,17 @@ var experience := 0
 var _owned_weapons: Array[WeaponData] = []
 var _damage_float_accumulator := 0.0
 var _damage_float_timer := 0.0
+var _last_move_direction := Vector2.RIGHT
+var _dash_direction := Vector2.ZERO
+var _dash_time_remaining := 0.0
+var _dash_cooldown_remaining := 0.0
 
 
 func _ready() -> void:
 	var pickup_shape := %PickupRange.get_node("CollisionShape2D").shape as CircleShape2D
 	pickup_shape.radius = pickup_range
 	%PickupRange.area_entered.connect(_on_pickup_range_area_entered)
+	%DashCooldownBar.visible = false
 	_update_experience_hud()
 
 
@@ -62,7 +70,7 @@ func get_exp_to_level() -> int:
 
 # 체력 회복 아이템 등에서 호출합니다.
 func heal_health(amount: float) -> void:
-	var max_hp := %HealthBar.max_value
+	var max_hp: float = %HealthBar.max_value
 	health = minf(health + amount, max_hp)
 	%HealthBar.value = health
 
@@ -89,6 +97,18 @@ func _update_experience_hud() -> void:
 	hud_root.get_node("ExpLabel").text = "%d / %d" % [experience, exp_to_level]
 
 
+# 대시 쿨다운 중에만 발밑 게이지를 표시합니다.
+func _update_dash_cooldown_gauge() -> void:
+	var bar := %DashCooldownBar
+	if _dash_cooldown_remaining <= 0.0:
+		bar.visible = false
+		return
+
+	bar.visible = true
+	bar.max_value = DASH_COOLDOWN
+	bar.value = DASH_COOLDOWN - _dash_cooldown_remaining
+
+
 func _on_pickup_range_area_entered(area: Area2D) -> void:
 	if area.has_method("collect"):
 		area.collect(self)
@@ -96,14 +116,35 @@ func _on_pickup_range_area_entered(area: Area2D) -> void:
 		area.start_magnet(self)
 
 
-func _physics_process(delta):
-	const SPEED = 600.0
-	var direction = Input.get_vector("move_left", "move_right", "move_up", "move_down")
-	velocity = direction * SPEED
+func _physics_process(delta: float) -> void:
+	const SPEED := 600.0
+	var direction := Input.get_vector("move_left", "move_right", "move_up", "move_down")
+	if direction.length_squared() > 0.01:
+		_last_move_direction = direction.normalized()
+
+	_dash_cooldown_remaining = maxf(_dash_cooldown_remaining - delta, 0.0)
+	_update_dash_cooldown_gauge()
+
+	if _dash_time_remaining > 0.0:
+		_dash_time_remaining -= delta
+		velocity = _dash_direction * DASH_SPEED
+	elif Input.is_action_just_pressed("dash") and _dash_cooldown_remaining <= 0.0:
+		var dash_dir := direction
+		if dash_dir.length_squared() < 0.01:
+			dash_dir = _last_move_direction
+		if dash_dir.length_squared() > 0.01:
+			_dash_direction = dash_dir.normalized()
+			_dash_time_remaining = DASH_DURATION
+			_dash_cooldown_remaining = DASH_COOLDOWN
+			velocity = _dash_direction * DASH_SPEED
+		else:
+			velocity = direction * SPEED
+	else:
+		velocity = direction * SPEED
 
 	move_and_slide()
-	
-	if velocity.length() > 0.0:
+
+	if velocity.length_squared() > 0.0:
 		%HappyBoo.play_walk_animation()
 	else:
 		%HappyBoo.play_idle_animation()
