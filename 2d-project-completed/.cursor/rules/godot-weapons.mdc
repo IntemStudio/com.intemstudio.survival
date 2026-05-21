@@ -12,6 +12,7 @@ alwaysApply: false
 2. Register it in the correct catalog (`ranged_weapon_catalog.gd`, `melee_weapon_catalog.gd`, or `magic_weapon_catalog.gd`) so `WeaponSelectMenu` can offer it.
 3. Ensure `weapon_id` (or unique `resource_path`) is unique — duplicate keys break `Player.has_weapon` / menu filtering.
 4. Verify `weapons/core/gun.gd` already handles the weapon’s `weapon_type` / `weapon_subtype` / `magic_attack_style` / `ranged_attack_style`; if not, extend `gun.gd` and the required projectile/melee scene in the same change.
+5. If the weapon spawns a new projectile scene, add `pool_reset` / `pool_on_acquire` and end with `PoolUtil.release_node` (spawn via `gun.gd` `_spawn_from_pool`).
 
 Skipping step 2 makes the weapon invisible in level-up selection.
 

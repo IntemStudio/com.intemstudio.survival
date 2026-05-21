@@ -81,7 +81,7 @@ func build_select_tooltip_bbcode() -> String:
 	if not damage_element.is_empty():
 		lines.append("[color=#c9a87a]피해 속성: %s[/color]" % _damage_element_ko())
 	lines.append("데미지: %d-%d" % [min_damage, max_damage])
-	lines.append("공격 속도: %.2g APS" % attacks_per_second)
+	lines.append("공격 속도: %.2f APS" % attacks_per_second)
 	if has_burst():
 		lines.append("연사: %d발" % burst_count)
 	if hit_count > 1:

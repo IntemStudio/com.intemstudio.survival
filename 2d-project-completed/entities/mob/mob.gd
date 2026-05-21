@@ -21,6 +21,9 @@ var _target_pulse := 0.0
 var _is_dying := false
 
 const TARGET_INDICATOR_BASE_SCALE := Vector2(2.4, 2.4)
+const EXP_ORB_SCENE := preload("res://effects/exp_orb/exp_orb.tscn")
+const MOB_COLLISION_LAYER := 2
+const MOB_COLLISION_MASK := 3
 
 @onready var player: Node2D = get_node("/root/Game/Player")
 @onready var _target_indicator: Sprite2D = %TargetIndicator
@@ -31,16 +34,40 @@ func initialize_spawn_health(hp_multiplier: float) -> void:
 	var scaled := maxi(1, roundi(base_max_health * maxf(hp_multiplier, 0.01)))
 	max_health = scaled
 	health = scaled
+	_sync_health_bar()
 
 
-func _ready() -> void:
+func pool_reset() -> void:
+	if is_in_group("mobs"):
+		remove_from_group("mobs")
+	_poison_stacks.clear()
+	_nettles_timer = 0.0
+	_is_dying = false
+	_is_targeted = false
+	_target_pulse = 0.0
+	velocity = Vector2.ZERO
+	collision_layer = 0
+	collision_mask = 0
+	if is_node_ready():
+		_target_indicator.visible = false
+		_target_indicator.scale = TARGET_INDICATOR_BASE_SCALE
+
+
+func pool_on_acquire() -> void:
+	collision_layer = MOB_COLLISION_LAYER
+	collision_mask = MOB_COLLISION_MASK
 	speed = randf_range(speed_min, speed_max)
 	add_to_group("mobs")
-	health = mini(health, max_health)
-	%HealthBar.max_value = max_health
-	%HealthBar.value = health
 	%Slime.modulate = slime_tint
 	%Slime.play_walk()
+	set_physics_process(true)
+
+
+func _sync_health_bar() -> void:
+	if not is_node_ready():
+		return
+	%HealthBar.max_value = max_health
+	%HealthBar.value = health
 
 
 func set_targeted(active: bool) -> void:
@@ -201,9 +228,14 @@ func _die() -> void:
 	get_parent().add_child(smoke)
 	smoke.global_position = global_position
 
-	var exp_orb_scene = preload("res://effects/exp_orb/exp_orb.tscn")
-	var exp_orb = exp_orb_scene.instantiate()
-	get_parent().add_child(exp_orb)
+	var spawn_parent := get_parent()
+	var exp_orb: Node2D
+	var pool: Node = game.get_node_or_null("ObjectPools") if game else null
+	if pool and pool.has_method(&"acquire"):
+		exp_orb = pool.acquire(EXP_ORB_SCENE, spawn_parent) as Node2D
+	else:
+		exp_orb = EXP_ORB_SCENE.instantiate()
+		spawn_parent.add_child(exp_orb)
 	exp_orb.global_position = global_position
 
 	const MAGNET_DROP_CHANCE := 0.01
@@ -213,4 +245,11 @@ func _die() -> void:
 		get_parent().add_child(magnet)
 		magnet.global_position = global_position + Vector2(randf_range(-24.0, 24.0), randf_range(-24.0, 24.0))
 
-	queue_free()
+	const HEALTH_DROP_CHANCE := 0.01
+	if randf() < HEALTH_DROP_CHANCE:
+		var health_scene = preload("res://effects/health_pickup/health_pickup.tscn")
+		var health_pickup = health_scene.instantiate()
+		get_parent().add_child(health_pickup)
+		health_pickup.global_position = global_position + Vector2(randf_range(-24.0, 24.0), randf_range(-24.0, 24.0))
+
+	PoolUtil.release_node(self)

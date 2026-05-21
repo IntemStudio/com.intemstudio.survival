@@ -5,6 +5,16 @@ var _damage := 0
 var _travelled_distance := 0.0
 
 
+func pool_reset() -> void:
+	_weapon = null
+	_damage = 0
+	_travelled_distance = 0.0
+
+
+func pool_on_acquire() -> void:
+	pass
+
+
 func setup(weapon_data: WeaponData, spawn_transform: Transform2D) -> void:
 	_weapon = weapon_data
 	_damage = weapon_data.roll_damage()
@@ -25,7 +35,7 @@ func _physics_process(delta: float) -> void:
 	position += Vector2.RIGHT.rotated(rotation) * speed * delta
 	_travelled_distance += speed * delta
 	if _travelled_distance > max_range:
-		queue_free()
+		PoolUtil.release_node(self)
 
 
 func _on_body_entered(body: Node) -> void:
@@ -37,7 +47,11 @@ func _on_body_entered(body: Node) -> void:
 	else:
 		_hit_mob(body)
 
-	call_deferred("queue_free")
+	call_deferred(&"_return_to_pool")
+
+
+func _return_to_pool() -> void:
+	PoolUtil.release_node(self)
 
 
 func _hit_mob(body: Node) -> void:

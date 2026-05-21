@@ -9,6 +9,18 @@ var _angle := 0.0
 var _attack_timer := 0.0
 
 
+func pool_reset() -> void:
+	_weapon = null
+	_player = null
+	_orbit_radius = 100.0
+	_angle = 0.0
+	_attack_timer = 0.0
+
+
+func pool_on_acquire() -> void:
+	pass
+
+
 func setup(weapon_data: WeaponData, player: Node2D) -> void:
 	_weapon = weapon_data
 	_player = player
@@ -21,7 +33,7 @@ func setup(weapon_data: WeaponData, player: Node2D) -> void:
 
 func _physics_process(delta: float) -> void:
 	if not is_instance_valid(_player) or not _weapon:
-		queue_free()
+		PoolUtil.release_node(self)
 		return
 
 	_angle += ORBIT_SPEED * delta

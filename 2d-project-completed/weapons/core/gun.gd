@@ -193,9 +193,22 @@ func _get_player() -> Node2D:
 	return null
 
 
+func _get_scene_pool(game: Node) -> ScenePool:
+	return game.get_node_or_null("ObjectPools") as ScenePool
+
+
+func _spawn_from_pool(game: Node, scene: PackedScene) -> Node:
+	var pool := _get_scene_pool(game)
+	if pool:
+		return pool.acquire(scene, game)
+	var node := scene.instantiate()
+	game.add_child(node)
+	return node
+
+
 func _clear_magic_companion() -> void:
 	if is_instance_valid(_magic_companion):
-		_magic_companion.queue_free()
+		PoolUtil.release_node(_magic_companion)
 	_magic_companion = null
 
 
@@ -205,8 +218,7 @@ func _spawn_orbit_companion() -> void:
 	if not player or not game or not weapon:
 		return
 
-	var orb: Area2D = KING_BIBLE_ORB_SCENE.instantiate()
-	game.add_child(orb)
+	var orb: Area2D = _spawn_from_pool(game, KING_BIBLE_ORB_SCENE) as Area2D
 	orb.setup(weapon, player)
 	_magic_companion = orb
 
@@ -220,8 +232,7 @@ func _shoot_magic() -> void:
 		return
 
 	_refresh_current_target()
-	var bolt: Area2D = MAGIC_BOLT_SCENE.instantiate()
-	game.add_child(bolt)
+	var bolt: Area2D = _spawn_from_pool(game, MAGIC_BOLT_SCENE) as Area2D
 	bolt.setup(weapon, _get_spawn_transform())
 
 
@@ -236,8 +247,7 @@ func _melee_attack() -> void:
 		return
 
 	var direction := _shooting_point.global_position.direction_to(target.global_position)
-	var swipe: Area2D = MELEE_SWIPE_SCENE.instantiate()
-	game.add_child(swipe)
+	var swipe: Area2D = _spawn_from_pool(game, MELEE_SWIPE_SCENE) as Area2D
 	swipe.global_position = _shooting_point.global_position
 	swipe.setup(weapon, direction)
 
@@ -247,8 +257,7 @@ func _shoot_bullet() -> void:
 	if not game:
 		return
 
-	var new_bullet: Area2D = BULLET_SCENE.instantiate()
-	game.add_child(new_bullet)
+	var new_bullet: Area2D = _spawn_from_pool(game, BULLET_SCENE) as Area2D
 	if new_bullet.has_method("setup"):
 		new_bullet.setup(weapon, _get_spawn_transform())
 	else:
@@ -266,13 +275,11 @@ func _shoot_throwing() -> void:
 
 	var projectile: Node
 	if weapon.uses_arc_throw and weapon.projectile_scene:
-		projectile = weapon.projectile_scene.instantiate()
-		game.add_child(projectile)
+		projectile = _spawn_from_pool(game, weapon.projectile_scene)
 		projectile.global_position = _shooting_point.global_position
 		projectile.setup_weapon(player, _get_throw_aim_position(), weapon)
 	elif weapon.projectile_scene:
-		projectile = weapon.projectile_scene.instantiate()
-		game.add_child(projectile)
+		projectile = _spawn_from_pool(game, weapon.projectile_scene)
 		projectile.global_position = _shooting_point.global_position
 		if projectile.has_method("setup_weapon"):
 			projectile.setup_weapon(player, _get_shoot_direction(), weapon)
@@ -285,8 +292,7 @@ func _shoot_throwing() -> void:
 				weapon.throw_speed
 			)
 	else:
-		projectile = THROWING_PROJECTILE_SCENE.instantiate()
-		game.add_child(projectile)
+		projectile = _spawn_from_pool(game, THROWING_PROJECTILE_SCENE)
 		projectile.global_position = _shooting_point.global_position
 		projectile.setup_weapon(player, _get_shoot_direction(), weapon)
 

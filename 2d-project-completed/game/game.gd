@@ -11,9 +11,20 @@ var _last_spawn_density := -1.0
 var kill_count := 0
 var _game_started := false
 var _pending_weapon_selects := 0
+var _left_shift_down := false
+
+const _SPEED_CHEAT_KEYS := {
+	KEY_0: 0.1,
+	KEY_1: 1.0,
+	KEY_2: 2.0,
+	KEY_3: 3.0,
+	KEY_4: 4.0,
+	KEY_5: 5.0,
+}
 
 
 func _ready() -> void:
+	Engine.time_scale = 1.0
 	if not balance_table:
 		balance_table = DEFAULT_BALANCE_TABLE
 	_update_kill_count_hud()
@@ -25,6 +36,36 @@ func _ready() -> void:
 
 func is_weapon_select_open() -> bool:
 	return %WeaponSelectMenu.visible
+
+
+func is_pause_menu_open() -> bool:
+	return %PauseMenu.visible
+
+
+func _is_speed_cheat_blocked() -> bool:
+	return is_weapon_select_open() or is_pause_menu_open() or is_game_over()
+
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.keycode == KEY_SHIFT:
+		if event.location == KEY_LOCATION_RIGHT:
+			return
+		if event.location == KEY_LOCATION_LEFT or event.location == KEY_LOCATION_UNSPECIFIED:
+			_left_shift_down = event.pressed
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if _is_speed_cheat_blocked():
+		return
+	if not event is InputEventKey or not event.pressed or event.echo:
+		return
+	if not _left_shift_down:
+		return
+	var speed: float = _SPEED_CHEAT_KEYS.get(event.keycode, -1.0)
+	if speed < 0.0:
+		return
+	Engine.time_scale = speed
+	get_viewport().set_input_as_handled()
 
 
 func show_weapon_select(title: String = "레벨 업! 무기 선택") -> bool:
@@ -137,15 +178,18 @@ func spawn_mob():
 	%PathFollow2D.progress_ratio = randf()
 	var phase := _query_balance_phase()
 	var mob_scene := MobSpawnSelector.pick_scene(phase)
-	var new_mob: Mob = mob_scene.instantiate() as Mob
+	var pool: ScenePool = $ObjectPools as ScenePool
+	var new_mob: Mob
+	if pool:
+		new_mob = pool.acquire(mob_scene, self) as Mob
+	else:
+		new_mob = mob_scene.instantiate() as Mob
+		add_child(new_mob)
 	if not new_mob:
 		push_error("Game.spawn_mob: spawn scene must instantiate a Mob.")
 		return
 	new_mob.global_position = %PathFollow2D.global_position
-
 	new_mob.initialize_spawn_health(phase.hp_multiplier)
-
-	add_child(new_mob)
 
 
 func _on_timer_timeout():
@@ -175,6 +219,7 @@ func _on_player_health_depleted():
 
 
 func _restart_game() -> void:
+	Engine.time_scale = 1.0
 	get_tree().paused = false
 	get_tree().reload_current_scene()
 

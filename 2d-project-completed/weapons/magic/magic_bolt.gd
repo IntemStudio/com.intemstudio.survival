@@ -6,6 +6,17 @@ var _travelled_distance := 0.0
 var _homing_strength := 0.0
 
 
+func pool_reset() -> void:
+	_weapon = null
+	_damage = 0
+	_travelled_distance = 0.0
+	_homing_strength = 0.0
+
+
+func pool_on_acquire() -> void:
+	pass
+
+
 func setup(weapon_data: WeaponData, spawn_transform: Transform2D) -> void:
 	_weapon = weapon_data
 	_damage = weapon_data.roll_damage()
@@ -19,7 +30,7 @@ func setup(weapon_data: WeaponData, spawn_transform: Transform2D) -> void:
 
 func _physics_process(delta: float) -> void:
 	if not _weapon:
-		queue_free()
+		PoolUtil.release_node(self)
 		return
 
 	if _homing_strength > 0.0:
@@ -29,7 +40,7 @@ func _physics_process(delta: float) -> void:
 	position += Vector2.RIGHT.rotated(rotation) * speed * delta
 	_travelled_distance += speed * delta
 	if _travelled_distance >= _weapon.get_projectile_range():
-		queue_free()
+		PoolUtil.release_node(self)
 
 
 func _apply_homing(delta: float) -> void:
@@ -58,7 +69,11 @@ func _on_body_entered(body: Node) -> void:
 	if not body.is_in_group("mobs"):
 		return
 	_apply_hit(body)
-	call_deferred("queue_free")
+	call_deferred(&"_return_to_pool")
+
+
+func _return_to_pool() -> void:
+	PoolUtil.release_node(self)
 
 
 func _apply_hit(body: Node) -> void:

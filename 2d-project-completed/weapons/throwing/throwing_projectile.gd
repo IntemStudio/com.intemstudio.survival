@@ -8,6 +8,19 @@ var _returning := false
 var _hit_counts: Dictionary = {}
 
 
+func pool_reset() -> void:
+	_thrower = null
+	_weapon = null
+	_direction = Vector2.RIGHT
+	_travelled = 0.0
+	_returning = false
+	_hit_counts.clear()
+
+
+func pool_on_acquire() -> void:
+	pass
+
+
 func setup_weapon(thrower: Node2D, direction: Vector2, weapon_data: WeaponData) -> void:
 	_thrower = thrower
 	_weapon = weapon_data
@@ -19,7 +32,7 @@ func setup_weapon(thrower: Node2D, direction: Vector2, weapon_data: WeaponData) 
 
 func _physics_process(delta: float) -> void:
 	if not is_instance_valid(_thrower) or not _weapon:
-		queue_free()
+		PoolUtil.release_node(self)
 		return
 
 	var speed := _weapon.throw_speed
@@ -29,7 +42,7 @@ func _physics_process(delta: float) -> void:
 	if _returning:
 		move_dir = global_position.direction_to(_thrower.global_position)
 		if global_position.distance_to(_thrower.global_position) < 36.0:
-			queue_free()
+			PoolUtil.release_node(self)
 			return
 	else:
 		move_dir = _direction
@@ -38,7 +51,7 @@ func _physics_process(delta: float) -> void:
 			if _weapon.returns_to_owner:
 				_returning = true
 			else:
-				queue_free()
+				PoolUtil.release_node(self)
 				return
 
 	global_position += move_dir * speed * delta
@@ -60,7 +73,11 @@ func _on_body_entered(body: Node2D) -> void:
 	_hit_counts[mob_id] = hits_done + 1
 
 	if _weapon.hit_count <= 1 and not _weapon.returns_to_owner:
-		call_deferred("queue_free")
+		call_deferred(&"_return_to_pool")
+
+
+func _return_to_pool() -> void:
+	PoolUtil.release_node(self)
 
 
 func _deal_damage(body: Node) -> void:

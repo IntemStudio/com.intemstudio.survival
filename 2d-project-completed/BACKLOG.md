@@ -20,7 +20,9 @@
 | 무기 | Ranged·Melee·Magic 카탈로그 + `gun.gd` (탄환·근접·마법·투척·부메랑·연금·궤도 등) |
 | 무기 선택 UI | 3택1 버튼 + 호버/포커스 시 `WeaponData.build_select_tooltip_bbcode()` 설명 패널 (`DetailPanel`) |
 | 상태이상 | 독(연금), 쐐기(nettles), 피격·독 데미지 플로팅 텍스트 |
-| 기타 | 경험치 구슬·자석, 몹 분리, 나무 장애물 충돌, 처치 수·시간 HUD |
+| 오브젝트 풀 | `ScenePool` + `PoolUtil` — 발사체, 경험치 오브, 몹 7종 (`Game/ObjectPools`, prewarm) |
+| 픽업·경험치 | 오브(`ScenePool`, `exp_orbs` 그룹, 픽업 범위 자석·수집); 자석 아이템 1% 드랍·전장 오브 일괄 자석·주황 2× 크기 |
+| 기타 | 몹 분리, 나무 장애물 충돌, 처치 수·시간 HUD |
 
 ---
 
@@ -85,6 +87,7 @@
 
 ## 기술 부채·구조
 
+- [ ] **오브젝트 풀 확장** — `FloatingDamageText`(우선), `smoke_explosion`, `poison_explosion`, `magnet_pickup`(저빈도·선택); `concoction`은 `gun` 풀 spawn만 되고 `pool_reset`/`PoolUtil.release` 미완.
 - [ ] **`/root/Game` 하드코딩** — Autoload 없음. `mob.gd`, `gun.gd`, `player.gd`, `exp_orb.gd` 등 경로 일괄 의존. 리네임·씬 분리 시 grep 필수.
 - [ ] **HUD 노드 경로** — `player.gd`가 `/root/Game/HUD/HUDRoot/...` 문자열로 직접 접근. `%` 또는 시그널로 완화 검토.
 - [ ] **카탈로그 vs `.tres`** — `revolver.tres` 등 개별 리소스와 카탈로그 중복 가능성. 단일 소스(카탈로그만 또는 리소스만) 정리.
@@ -111,10 +114,12 @@
 
 ## 작업할 때 체크 (항목 추가·완료 시)
 
-1. **몹 추가** → `mob_*.tscn` + `mob_spawn_selector.gd` + `default_balance_table.tres` (`.mdc` 필수)
-2. **무기 추가** → 카탈로그 + `gun.gd` 타입 처리 + `weapon_id` 고유 + 선택 UI 풀. 툴팁에 새 스탯·특수 규칙이 보이면 `weapon_data.gd`의 `build_select_tooltip_bbcode()`도 같이 갱신
-3. **이 항목 완료** → 위 목록에서 해당 줄 삭제 또는 “완료(날짜)” 한 줄로 축약
-4. **기각** → 이유 한 줄 남기고 삭제하거나 “기각” 섹션으로 이동(선택)
+1. **몹 추가** → `mob_*.tscn` + `mob_spawn_selector.gd` + `default_balance_table.tres` + `ScenePool.MOB_SCENES` (`.mdc` 필수)
+2. **무기 추가** → 카탈로그 + `gun.gd` 타입 처리 + `weapon_id` 고유 + 선택 UI 풀. 새 투사체는 `pool_reset`/`PoolUtil.release`. 툴팁에 새 스탯·특수 규칙이 보이면 `weapon_data.gd`의 `build_select_tooltip_bbcode()`도 같이 갱신
+3. **풀 대상 이펙트 추가** → `ScenePool.acquire` + `pool_reset`/`pool_on_acquire` + `PoolUtil.release_node`, prewarm 수치
+4. **자석·픽업 변경** → `mob.gd` 드랍 확률·`magnet_pickup`·`exp_orb`·`player.gd` `collect`/`start_magnet` 분기; `AGENTS.md` 픽업 섹션 동기화
+5. **이 항목 완료** → 위 목록에서 해당 줄 삭제 또는 “완료(날짜)” 한 줄로 축약
+6. **기각** → 이유 한 줄 남기고 삭제하거나 “기각” 섹션으로 이동(선택)
 
 ---
 

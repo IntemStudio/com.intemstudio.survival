@@ -11,6 +11,21 @@ var _travelled := 0.0
 var _returning := false
 
 
+func pool_reset() -> void:
+	_thrower = null
+	_weapon = null
+	_direction = Vector2.RIGHT
+	_travelled = 0.0
+	_returning = false
+	damage = 0
+	speed = 700.0
+	max_range = 600.0
+
+
+func pool_on_acquire() -> void:
+	pass
+
+
 func setup(thrower: Node2D, direction: Vector2, dmg: int, range_dist: float, move_speed: float) -> void:
 	_thrower = thrower
 	_direction = direction.normalized()
@@ -35,14 +50,14 @@ func setup_weapon(thrower: Node2D, direction: Vector2, weapon_data: WeaponData) 
 
 func _physics_process(delta: float) -> void:
 	if not is_instance_valid(_thrower):
-		queue_free()
+		PoolUtil.release_node(self)
 		return
 
 	var move_dir: Vector2
 	if _returning:
 		move_dir = global_position.direction_to(_thrower.global_position)
 		if global_position.distance_to(_thrower.global_position) < 36.0:
-			queue_free()
+			PoolUtil.release_node(self)
 			return
 	else:
 		move_dir = _direction

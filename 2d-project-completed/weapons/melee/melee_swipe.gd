@@ -4,9 +4,22 @@ const HIT_INTERVAL := 0.07
 
 var _weapon: WeaponData
 var _hit_mobs: Dictionary = {}
+var _setup_generation := 0
+
+
+func pool_reset() -> void:
+	_setup_generation += 1
+	_weapon = null
+	_hit_mobs.clear()
+
+
+func pool_on_acquire() -> void:
+	pass
 
 
 func setup(weapon_data: WeaponData, direction: Vector2) -> void:
+	_setup_generation += 1
+	var generation := _setup_generation
 	_weapon = weapon_data
 	rotation = direction.angle()
 
@@ -22,10 +35,24 @@ func setup(weapon_data: WeaponData, direction: Vector2) -> void:
 	_pulse_damage()
 	if _weapon.hit_count > 1:
 		for hit_index in range(1, _weapon.hit_count):
-			get_tree().create_timer(HIT_INTERVAL * hit_index).timeout.connect(_pulse_damage)
+			get_tree().create_timer(HIT_INTERVAL * hit_index).timeout.connect(
+				_on_hit_timer.bind(generation, hit_index)
+			)
 
 	var lifetime := 0.1 + HIT_INTERVAL * maxi(_weapon.hit_count - 1, 0)
-	get_tree().create_timer(lifetime).timeout.connect(queue_free)
+	get_tree().create_timer(lifetime).timeout.connect(_on_lifetime_expired.bind(generation))
+
+
+func _on_hit_timer(generation: int, _hit_index: int) -> void:
+	if generation != _setup_generation:
+		return
+	_pulse_damage()
+
+
+func _on_lifetime_expired(generation: int) -> void:
+	if generation != _setup_generation:
+		return
+	PoolUtil.release_node(self)
 
 
 func _pulse_damage() -> void:

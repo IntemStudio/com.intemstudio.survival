@@ -8,6 +8,7 @@
 [ext_resource type="PackedScene" uid="uid://dsw8raqgacxsc" path="res://entities/player/player.tscn" id="2_a7q7f"]
 [ext_resource type="PackedScene" uid="uid://c2qg1nuvfnd4q" path="res://world/trees/pine_tree.tscn" id="3_6h7ij"]
 [ext_resource type="Script" path="res://world/floor/checker_background.gd" id="6_checker_bg"]
+[ext_resource type="Script" path="res://game/pool/scene_pool.gd" id="7_scene_pool"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_exp"]
 bg_color = Color(0.35, 0.85, 1, 1)
@@ -55,6 +56,10 @@ balance_table = ExtResource("4_balance")
 
 [node name="Timer" type="Timer" parent="." unique_id=173639759]
 wait_time = 0.3
+
+[node name="ObjectPools" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("7_scene_pool")
 
 [node name="Player" parent="." unique_id=1174028023 instance=ExtResource("2_a7q7f")]
 unique_name_in_owner = true

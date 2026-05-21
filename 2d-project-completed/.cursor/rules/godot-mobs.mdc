@@ -12,6 +12,7 @@ alwaysApply: false
 2. Add a `PackedScene` constant and branch in `game/balance/mob_spawn_selector.gd` (`MobSpawnSelector.pick_scene`).
 3. Update `game/balance/default_balance_table.tres` (or the active `BalanceTable`) so spawn ratios / flags can select the new mob.
 4. Keep `collision_layer = 2` and `collision_mask = 3` unless you also update all weapon hit masks.
+5. Append the scene to `ScenePool.MOB_SCENES` in `game/pool/scene_pool.gd` for prewarm.
 
 If you skip step 2 or 3, the mob will never spawn in play.
 
@@ -19,7 +20,8 @@ If you skip step 2 or 3, the mob will never spawn in play.
 
 - Do not duplicate AI, damage, poison, or death logic in new `.gd` files under `entities/mob/`.
 - Do not spawn mobs without going through `Game.spawn_mob()` → `MobSpawnSelector.pick_scene` → `initialize_spawn_health(hp_multiplier)`.
-- Do not remove `add_to_group("mobs")` from `mob.gd`.
+- Do not `queue_free()` mobs at death; use `PoolUtil.release_node(self)` in `_die()` after kill/exp-orb logic.
+- Do not remove `add_to_group("mobs")` from `mob.gd` `pool_on_acquire` (not `_ready`).
 
 ## Must (variant scenes)
 
@@ -33,4 +35,6 @@ If you skip step 2 or 3, the mob will never spawn in play.
 
 ## Death and HUD
 
-- Do not bypass `_request_die()` / `_die()` for kill counting, smoke, or exp orb drops.
+- Do not bypass `_request_die()` / `_die()` for kill counting, smoke, exp orb drops, or magnet drops.
+- Exp orbs must spawn via `ScenePool.acquire(EXP_ORB_SCENE, parent)` when `ObjectPools` exists.
+- Magnet / health pickups: independent `MAGNET_DROP_CHANCE` / `HEALTH_DROP_CHANCE` (default 0.01 each) via `instantiate` (not pooled); offset spawn so pickups do not fully overlap the exp orb.

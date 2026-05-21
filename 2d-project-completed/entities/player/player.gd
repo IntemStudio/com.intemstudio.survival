@@ -60,6 +60,13 @@ func get_exp_to_level() -> int:
 	return base_exp_to_level * level
 
 
+# 체력 회복 아이템 등에서 호출합니다.
+func heal_health(amount: float) -> void:
+	var max_hp := %HealthBar.max_value
+	health = minf(health + amount, max_hp)
+	%HealthBar.value = health
+
+
 func gain_experience(amount: int) -> void:
 	experience += amount
 	while experience >= get_exp_to_level():

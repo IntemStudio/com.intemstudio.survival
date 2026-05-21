@@ -18,7 +18,7 @@ Godot 4.x GDScript survivors-like game. Main scene: `res://survivors_game.tscn`.
 ## Must (scene contract)
 
 - Spawn position must come from `%PathFollow2D` under `Player/Path2D` in the main scene.
-- `Game.spawn_mob()` must instantiate a node that is a `Mob` and call `initialize_spawn_health()` before `add_child`.
+- `Game.spawn_mob()` must acquire a `Mob` via `ScenePool` (or instantiate fallback), set spawn position, then call `initialize_spawn_health()`.
 - On mob death, kills must still reach `Game.register_kill()` via the existing `mob.gd` `_die()` path.
 
 ## When changing cross-scene paths

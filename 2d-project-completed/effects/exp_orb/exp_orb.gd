@@ -11,9 +11,21 @@ var _magnet_target: Node2D = null
 var _magnet_time := 0.0
 
 
-func _ready() -> void:
+func pool_reset() -> void:
+	if is_in_group("exp_orbs"):
+		remove_from_group("exp_orbs")
+	_magnet_target = null
+	_magnet_time = 0.0
+
+
+func pool_on_acquire() -> void:
 	add_to_group("exp_orbs")
-	await get_tree().physics_frame
+	call_deferred(&"_try_auto_magnet")
+
+
+func _try_auto_magnet() -> void:
+	if not is_inside_tree() or not get_meta(&"_pooled_active", false):
+		return
 	var player := get_node_or_null("/root/Game/Player")
 	if player and global_position.distance_to(player.global_position) <= player.pickup_range:
 		start_magnet(player)
@@ -44,4 +56,4 @@ func _physics_process(delta: float) -> void:
 	if global_position.distance_to(_magnet_target.global_position) < collect_distance:
 		if _magnet_target.has_method("gain_experience"):
 			_magnet_target.gain_experience(experience_value)
-		queue_free()
+		PoolUtil.release_node(self)

@@ -1,6 +1,6 @@
 [gd_scene load_steps=5 format=3 uid="uid://c8mobspeca01"]
 
-[ext_resource type="Script" path="res://entities/mob/mob.gd" id="1_mob"]
+[ext_resource type="Script" uid="uid://ojg88pe48jk5" path="res://entities/mob/mob.gd" id="1_mob"]
 [ext_resource type="PackedScene" uid="uid://ogik4s70pgwl" path="res://characters/slime/slime.tscn" id="2_slime"]
 [ext_resource type="Texture2D" uid="uid://dn80eu1qs371v" path="res://art/shared/fx/circle.png" id="3_ring"]
 
