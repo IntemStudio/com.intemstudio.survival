@@ -45,12 +45,15 @@ const PROJECTILE_RANGE_BY_TYPE := {
 @export var magic_attack_style := "Projectile"
 @export var damage_element := ""
 @export var projectile_speed := 900.0
+@export var melee_projectile_speed := 1000.0
 @export var homing_strength := 0.0
 @export var applies_nettles := false
 @export var nettles_duration := 8.0
 @export var explosion_radius := 0.0
 @export var ranged_attack_style := "Bullet"
 @export var uses_arc_throw := false
+## Projectile = 탄·비행체, AreaZone = 짧은 고정 히트존(연금 착지 등)
+@export var attack_delivery := "Projectile"
 
 
 func get_unique_key() -> String:
@@ -87,6 +90,8 @@ func build_select_tooltip_bbcode() -> String:
 	if hit_count > 1:
 		lines.append("타격 횟수: %d회" % hit_count)
 	lines.append("사거리: %s (%d)" % [_range_type_ko(), int(_get_attack_range())])
+	if is_area_zone_attack() and aoe_radius > 0.0:
+		lines.append("영역 반경: %d" % int(aoe_radius))
 	if is_explosion_ranged() and explosion_radius > 0.0:
 		lines.append("폭발 반경: %d" % int(explosion_radius))
 	if damage_element == "poison":
@@ -95,6 +100,10 @@ func build_select_tooltip_bbcode() -> String:
 		lines.append("쐐기: %.1f초" % nettles_duration)
 	if returns_to_owner:
 		lines.append("투척 후 복귀")
+	if is_melee():
+		lines.append("공격 방식: 관통 탄")
+	if is_area_zone_attack():
+		lines.append("공격 방식: 영역")
 	if is_orbit_magic():
 		lines.append("공격 방식: 궤도")
 	if homing_strength > 0.0:
@@ -216,6 +225,10 @@ func is_throwing() -> bool:
 	return weapon_subtype == "Throwing"
 
 
+func is_area_zone_attack() -> bool:
+	return attack_delivery == "AreaZone"
+
+
 func is_explosion_ranged() -> bool:
 	return is_ranged() and ranged_attack_style == "Explosion"
 
@@ -230,6 +243,12 @@ func get_burst_cooldown() -> float:
 
 func get_melee_range() -> float:
 	return MELEE_RANGE_BY_TYPE.get(range_type, MELEE_RANGE_BY_TYPE["Medium"])
+
+
+func get_melee_projectile_speed() -> float:
+	if melee_projectile_speed > 0.0:
+		return melee_projectile_speed
+	return 1000.0
 
 
 func get_projectile_range() -> float:

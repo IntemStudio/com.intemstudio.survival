@@ -3,7 +3,7 @@ extends Area2D
 @export var weapon: WeaponData = preload("res://weapons/data/revolver.tres")
 
 const BULLET_SCENE := preload("res://weapons/core/bullet_2d.tscn")
-const MELEE_SWIPE_SCENE := preload("res://weapons/melee/melee_swipe.tscn")
+const MELEE_PROJECTILE_SCENE := preload("res://weapons/melee/melee_projectile.tscn")
 const MAGIC_BOLT_SCENE := preload("res://weapons/magic/magic_bolt.tscn")
 const KING_BIBLE_ORB_SCENE := preload("res://weapons/magic/king_bible_orb.tscn")
 const THROWING_PROJECTILE_SCENE := preload("res://weapons/throwing/throwing_projectile.tscn")
@@ -174,7 +174,7 @@ func shoot() -> void:
 		return
 
 	if weapon.is_melee():
-		_melee_attack()
+		_shoot_melee_projectile()
 	elif weapon.is_magic():
 		_shoot_magic()
 	elif weapon.is_throwing():
@@ -258,20 +258,14 @@ func _shoot_magic() -> void:
 	bolt.setup(weapon, _get_spawn_transform())
 
 
-func _melee_attack() -> void:
-	_refresh_current_target()
-	var target := _get_current_target()
-	if not is_instance_valid(target):
-		return
-
+func _shoot_melee_projectile() -> void:
 	var game := get_node_or_null("/root/Game")
 	if not game:
 		return
 
-	var direction := _shooting_point.global_position.direction_to(target.global_position)
-	var swipe: Area2D = _spawn_from_pool(game, MELEE_SWIPE_SCENE) as Area2D
-	swipe.global_position = _shooting_point.global_position
-	swipe.setup(weapon, direction)
+	_refresh_current_target()
+	var projectile: Area2D = _spawn_from_pool(game, MELEE_PROJECTILE_SCENE) as Area2D
+	projectile.setup(weapon, _get_spawn_transform())
 
 
 func _shoot_bullet() -> void:

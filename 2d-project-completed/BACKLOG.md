@@ -18,7 +18,7 @@
 | 밸런스 (VS형 A·B·C) | `default_balance_table.tres` VS 키프레임(11분 피크·16~20 호흡·25분 보스)·`balance_pace_multiplier` · `default_balance_timeline.tres`(9·11·25·28분 이벤트) · 30분 `die_from_stage_clear()` 클리어 |
 | 몹 | basic / fast / elite / special_a·b / boss — 공용 `mob.gd`; **ranged** — 8분+ 스폰(VS형 A); **dummy** — 테스트 전용 |
 | 테스트 아레나 | `test_arena.tscn` + `test_arena.gd` — F6 실행, 몹 8종 Spawn, 무기 타입·등급 필터+Equip(리볼버 시작), 플레이어 3초 리스폰, 몹 리스폰 옵션, `health_depleted` 1회 emit |
-| 무기 | Ranged·Melee·Magic 카탈로그 + `gun.gd` (탄환·근접·마법·투척·부메랑·연금·궤도 등); **F**로 자동 공격 ON/OFF, HUD `%AutoAttackLabel` |
+| 무기 | Ranged·Melee·Magic 카탈로그 + `gun.gd` — **근접 관통 탄**(`melee_projectile`), **영역 존**(`area_damage_zone`/연금 착지), 탄환·마법·투척·궤도; **F** 자동 공격 HUD |
 | 무기 선택 UI | 3택1 버튼 + 호버/포커스 시 `WeaponData.build_select_tooltip_bbcode()` 설명 패널 (`DetailPanel`) |
 | 상태이상 | 독(연금), 쐐기(nettles), 피격·독 데미지 플로팅 텍스트 |
 | 피격 연출 | `HitFlash` — 몹 `%Slime`·플레이어 `HappyBoo/Colorizer` modulate 깜박임; 몹은 무기/독 피해 + `play_hurt()` 애니 병행 |
@@ -27,6 +27,9 @@
 | 플레이어 피격 | `%HurtBox` 접촉 DPS; 원거리 `apply_mob_projectile_damage`(무기 통계 제외); 플로팅 최소 1; 접촉·투사체 시 `HitFlash` |
 | 무기 피해 통계 | `WeaponDamageTracker` + `mob.apply_weapon_damage`/독 틱 → 게임오버 `%WeaponDamageList` |
 | 기타 | 몹 분리, 나무 장애물 충돌, 처치 수·시간 HUD |
+
+---
+
 
 ---
 

@@ -11,13 +11,15 @@ alwaysApply: false
 1. Define stats on `WeaponData` (`weapons/data/weapon_data.gd`) via `.tres` or a catalog entry in `weapons/catalogs/`.
 2. Register it in the correct catalog (`ranged_weapon_catalog.gd`, `melee_weapon_catalog.gd`, or `magic_weapon_catalog.gd`) so `WeaponSelectMenu` can offer it.
 3. Ensure `weapon_id` (or unique `resource_path`) is unique — duplicate keys break `Player.has_weapon` / menu filtering.
-4. Verify `weapons/core/gun.gd` already handles the weapon’s `weapon_type` / `weapon_subtype` / `magic_attack_style` / `ranged_attack_style`; if not, extend `gun.gd` and the required projectile/melee scene in the same change.
-5. If the weapon spawns a new projectile scene, add `pool_reset` / `pool_on_acquire` and end with `PoolUtil.release_node` (spawn via `gun.gd` `_spawn_from_pool`).
+4. Verify `weapons/core/gun.gd` already handles the weapon’s `weapon_type` / `weapon_subtype` / `magic_attack_style` / `ranged_attack_style` / `attack_delivery`; if not, extend `gun.gd` and the required projectile scene in the same change.
+5. **Melee** (`weapon_type == "Melee"`): `melee_projectile.tscn` — short-range pierce via `get_melee_range()` / `get_melee_projectile_speed()`. **Area** (`attack_delivery == "AreaZone"`): `area_damage_zone.tscn` only (e.g. alchemical concoction landing via `concoction.gd`); use `setup_circle` / `setup_rectangle` on `AreaDamageZone`.
+6. If the weapon spawns a new projectile scene, add `pool_reset` / `pool_on_acquire` and end with `PoolUtil.release_node` (spawn via `gun.gd` `_spawn_from_pool`).
 
 Skipping step 2 makes the weapon invisible in level-up selection.
 
 ## Must not
 
+- Do not reintroduce `melee_swipe` or spawn static melee hitboxes from `gun.gd` for catalog Melee weapons.
 - Do not equip weapons by instancing `gun.tscn` outside `Player.add_weapon()`.
 - Do not add duplicate weapons to `_owned_weapons` (respect `get_unique_key()`).
 - Do not break `Gun.equip_weapon` → `arrange_slot` orbit layout on `%Weapons`.

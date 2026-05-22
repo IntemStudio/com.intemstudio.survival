@@ -2,7 +2,8 @@ class_name ScenePool
 extends Node
 
 const BULLET_SCENE := preload("res://weapons/core/bullet_2d.tscn")
-const MELEE_SWIPE_SCENE := preload("res://weapons/melee/melee_swipe.tscn")
+const MELEE_PROJECTILE_SCENE := preload("res://weapons/melee/melee_projectile.tscn")
+const AREA_DAMAGE_ZONE_SCENE := preload("res://weapons/area/area_damage_zone.tscn")
 const MAGIC_BOLT_SCENE := preload("res://weapons/magic/magic_bolt.tscn")
 const THROWING_PROJECTILE_SCENE := preload("res://weapons/throwing/throwing_projectile.tscn")
 const BOOMERANG_SCENE := preload("res://weapons/boomerang/boomerang.tscn")
@@ -14,7 +15,8 @@ const MOB_ATTACK_MARK_SCENE := preload("res://entities/mob/mob_attack_mark.tscn"
 @export_range(1, 1000, 1) var default_max_per_scene: int = 200
 @export_range(0, 200, 1) var prewarm_bullets: int = 40
 @export_range(0, 200, 1) var prewarm_magic_bolts: int = 24
-@export_range(0, 200, 1) var prewarm_melee_swipes: int = 16
+@export_range(0, 200, 1) var prewarm_melee_projectiles: int = 24
+@export_range(0, 200, 1) var prewarm_area_damage_zones: int = 12
 @export_range(0, 200, 1) var prewarm_throwing: int = 24
 @export_range(0, 200, 1) var prewarm_boomerangs: int = 12
 @export_range(0, 20, 1) var prewarm_king_bible_orbs: int = 2
@@ -30,7 +32,8 @@ var _source_scenes: Dictionary = {}
 func _ready() -> void:
 	_prewarm_scene(BULLET_SCENE, prewarm_bullets)
 	_prewarm_scene(MAGIC_BOLT_SCENE, prewarm_magic_bolts)
-	_prewarm_scene(MELEE_SWIPE_SCENE, prewarm_melee_swipes)
+	_prewarm_scene(MELEE_PROJECTILE_SCENE, prewarm_melee_projectiles)
+	_prewarm_scene(AREA_DAMAGE_ZONE_SCENE, prewarm_area_damage_zones)
 	_prewarm_scene(THROWING_PROJECTILE_SCENE, prewarm_throwing)
 	_prewarm_scene(BOOMERANG_SCENE, prewarm_boomerangs)
 	_prewarm_scene(KING_BIBLE_ORB_SCENE, prewarm_king_bible_orbs)

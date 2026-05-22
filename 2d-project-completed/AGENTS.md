@@ -35,7 +35,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | `game/test_arena.gd` | 테스트 아레나 오케스트레이션(스폰·무기 Equip·플레이어/몹 리스폰) |
 | `entities/player/` | 이동, 대시·쿨다운 게이지, 경험치, 무기 컨테이너, 피격, **자동 공격 토글(F)** |
 | `entities/mob/` | 공용 `mob.gd` + 변종 `.tscn`(플레이 **7종** + 테스트 전용 `mob_dummy`); ranged 전용 `mob_projectile`·`mob_attack_mark` |
-| `weapons/` | `WeaponData`, catalog, `gun`, 투사체·근접·마법 등 |
+| `weapons/` | `WeaponData`, catalog, `gun`, `melee_projectile`·`area_damage_zone`·탄환·마법 등 |
 | `ui/` | 무기 선택(3택1 + 설명 + 자동 선택·우선순위), 일시정지 |
 | `effects/exp_orb/` | 경험치 오브 (`exp_orbs` 그룹, `ScenePool` 적용) |
 | `effects/magnet_pickup/` | 자석 아이템 (1% 드랍, 풀 미적용) |
@@ -139,6 +139,24 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 **왜 `apply_weapon_damage` 한곳:** 탄환·근접·마법·연금·독 등 대부분이 이미 이 API를 탐. 새 무기도 `health -=` 대신 이 경로를 쓰면 통계·플로팅 텍스트가 같이 맞춰짐.
 
 **튜닝·확장 시:** 게임오버에 처치 수·생존 시간·레벨을 붙일 때는 `game.gd` `_on_player_health_depleted` / `_populate_game_over_weapon_damage` 근처에서 HUD 값을 읽어 라벨만 추가하면 됨.
+
+---
+
+## 무기 공격 전달 방식
+
+`WeaponData.attack_delivery`와 `weapon_type`으로 `gun.shoot()` 분기가 정해집니다. 피해는 항상 `mob.apply_weapon_damage` / `apply_poison` 경유.
+
+| 구분 | 조건 | 씬·코드 | 비고 |
+|------|------|---------|------|
+| **근접 관통 탄** | `weapon_type == "Melee"` | `melee_projectile.tscn`, `gun._shoot_melee_projectile()` | 사거리 `get_melee_range()`, 속도 `get_melee_projectile_speed()`. 타겟 없어도 발사. `hit_count` > 1이면 충돌 후 0.07s 연타 |
+| **영역 존** | `attack_delivery == "AreaZone"` | `area_damage_zone.tscn`, `setup_circle` / `setup_rectangle` | 연금: `concoction` 포물선 착지 → 존 스폰 + 독. 짧은 overlap 펄스 후 풀 반환 |
+| **원거리 탄** | `Ranged`, `Bullet` | `bullet_2d.tscn` | 1몹 1타 후 소멸 |
+| **투척·연금 비행** | `Throwing` + `projectile_scene` | `concoction` 등 | 영역 무기도 비행 껍데기는 유지, **피해는 착지 존** |
+| **마법** | `Magic` | `magic_bolt`, `king_bible_orb` | 궤도는 `Orbit` |
+
+**삭제됨:** `melee_swipe` — 근접은 발사체만, 영역은 `AreaDamageZone`만 사용.
+
+**튜닝·확장 시:** 새 영역 무기는 `attack_delivery = "AreaZone"` + `aoe_radius`(원형) 또는 `setup_rectangle`. 새 근접은 카탈로그 `Melee`만으로 `melee_projectile` 자동.
 
 ---
 
@@ -336,7 +354,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | `ScenePool.acquire(scene, parent)` | 꺼내기 → `pool_reset` → 부모 재부착 → 활성화 → `pool_on_acquire`(마지막). 위치·`setup`·HP는 호출자가 `acquire` 반환 후 설정 |
 | `PoolUtil.release_node(node)` | 반환(풀 미등록이면 `queue_free`) |
 
-**이미 풀 적용:** 발사체(`gun.gd` 경유), 경험치 오브(`mob.gd` `_die`), 몹 7종+더미 8프리팹 prewarm(`game.gd` `spawn_mob` + `scene_pool` 목록), 몹 투사체·공격 예고 마크(`mob.gd` 원거리 텔레그래프).
+**이미 풀 적용:** 발사체(`gun.gd` — 총알·`melee_projectile`·마법 등), **영역 존**(`area_damage_zone`, 연금 착지), 경험치 오브(`mob.gd` `_die`), 몹 7종+더미 prewarm, 몹 투사체·공격 예고 마크.
 
 **풀링 노드 계약:** 스크립트에 `pool_reset()` / `pool_on_acquire()` 구현. **매 스폰 설정은 `_ready`가 아니라** `pool_on_acquire` 또는 호출자 설정(`initialize_spawn_health` 등). 수명 종료는 `queue_free` 대신 `PoolUtil.release_node(self)`. 그룹 `exp_orbs`는 `pool_on_acquire`에서 추가, `pool_reset`에서 제거.
 
@@ -360,6 +378,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | 테스트 아레나 | `test_arena.tscn`, `game/test_arena.gd`, `MobSpawnSelector`, `scene_pool.gd` prewarm, `player.gd` (`clear_weapons`, `reset_health_depleted_state`) |
 | 원거리 몹 | `mob.gd`, `mob_ranged.tscn`, `mob_projectile.*`, `mob_attack_mark.*`, `player.apply_mob_projectile_damage`, `mob_spawn_selector.gd`, `default_balance_table.tres` (`ranged_spawn_ratio`), `scene_pool.gd` prewarm |
 | 무기 추가 | `weapon_data.gd`, `weapons/catalogs/*`, `gun.gd`, `player.gd`, `ui/weapon_select_menu.gd` |
+| 근접·영역 전달 | `weapons/melee/melee_projectile.*`, `weapons/area/area_damage_zone.*`, `weapon_data.gd` (`attack_delivery`, `melee_projectile_speed`), `concoction.gd`, `scene_pool.gd` prewarm |
 | 무기 선택·자동 선택 UI | `ui/weapon_select_menu.gd`, `game/game.gd` (`on_menu_opened`/`closed`), `survivors_game.tscn` (`AutoSelectRow`, `AutoPriorityPanel`, `ContentHBox`), `weapon_data.gd` (`build_select_tooltip_bbcode`) |
 | 경험치·픽업 아이템 | `effects/exp_orb/exp_orb.gd`, `effects/magnet_pickup/`, `effects/health_pickup/`, `entities/player/player.gd` (`heal_health`), `entities/mob/mob.gd` (드랍 확률) |
 | 대시·쿨다운 UI | `entities/player/player.gd`, `entities/player/player.tscn` (`%DashCooldownBar`), `project.godot` (`dash` 입력) |

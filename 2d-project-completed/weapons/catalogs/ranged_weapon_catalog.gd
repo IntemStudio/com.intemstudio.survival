@@ -95,6 +95,7 @@ static func _create_weapon(entry: Dictionary) -> WeaponData:
 		"concoction":
 			weapon.projectile_scene = CONCOCTION_SCENE
 			weapon.throw_speed = 650.0
+			weapon.attack_delivery = "AreaZone"
 
 	return weapon
 

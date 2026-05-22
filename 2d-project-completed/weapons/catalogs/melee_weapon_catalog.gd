@@ -49,6 +49,7 @@ static func _create_weapon(entry: Dictionary) -> WeaponData:
 	weapon.display_name = entry["en"]
 	weapon.display_name_ko = entry["ko"]
 	weapon.weapon_type = "Melee"
+	weapon.attack_delivery = "Projectile"
 	weapon.weapon_subtype = entry["subtype"]
 	weapon.rarity = "Common"
 	weapon.hand = "Two-Handed" if entry["hand"] == 2 else "One-Handed"

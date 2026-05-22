@@ -2,6 +2,7 @@ extends Area2D
 
 const ARC_HEIGHT_RATIO := 0.4
 const POISON_EXPLOSION_SCENE := preload("res://weapons/concoction/poison_explosion.tscn")
+const AREA_DAMAGE_ZONE_SCENE := preload("res://weapons/area/area_damage_zone.tscn")
 
 var _thrower: Node2D
 var _weapon: WeaponData
@@ -67,14 +68,25 @@ func _explode_at(impact_position: Vector2) -> void:
 
 	var radius := _weapon.aoe_radius
 	_spawn_explosion_visual(impact_position, radius)
-
-	for mob in _get_mobs_in_radius(impact_position, radius):
-		if mob.has_method("apply_poison"):
-			mob.apply_poison(_weapon)
-		if mob.has_method("apply_weapon_damage"):
-			mob.apply_weapon_damage(_weapon.roll_damage(), _weapon)
-
+	_spawn_area_damage_zone(impact_position, radius)
 	queue_free()
+
+
+func _spawn_area_damage_zone(impact_position: Vector2, radius: float) -> void:
+	var game := get_node_or_null("/root/Game")
+	if not game or not _weapon:
+		return
+
+	var zone: AreaDamageZone
+	var pool := game.get_node_or_null("ObjectPools")
+	if pool and pool.has_method("acquire"):
+		zone = pool.acquire(AREA_DAMAGE_ZONE_SCENE, game) as AreaDamageZone
+	else:
+		zone = AREA_DAMAGE_ZONE_SCENE.instantiate() as AreaDamageZone
+		game.add_child(zone)
+
+	zone.global_position = impact_position
+	zone.setup_circle(_weapon, radius, true)
 
 
 func _spawn_explosion_visual(impact_position: Vector2, radius: float) -> void:
@@ -86,57 +98,3 @@ func _spawn_explosion_visual(impact_position: Vector2, radius: float) -> void:
 	game.add_child(visual)
 	visual.global_position = impact_position
 	visual.setup(radius)
-
-
-func _get_mobs_in_radius(center: Vector2, radius: float) -> Array[Node]:
-	var space_state := get_world_2d().direct_space_state
-	if space_state:
-		var circle_shape := CircleShape2D.new()
-		circle_shape.radius = radius
-
-		var params := PhysicsShapeQueryParameters2D.new()
-		params.shape = circle_shape
-		params.transform = Transform2D(0.0, center)
-		params.collision_mask = 2
-		params.collide_with_areas = false
-		params.collide_with_bodies = true
-		if is_instance_valid(_thrower) and _thrower is CollisionObject2D:
-			params.exclude = [(_thrower as CollisionObject2D).get_rid()]
-
-		var hit_mobs: Array[Node] = []
-		for result in space_state.intersect_shape(params, 64):
-			var collider: Object = result.collider
-			if collider is Node and collider.is_in_group("mobs") and collider not in hit_mobs:
-				hit_mobs.append(collider)
-		return hit_mobs
-
-	return _get_mobs_in_radius_by_overlap(center, radius)
-
-
-func _get_mob_hit_center(mob: Node2D) -> Vector2:
-	var collision := mob.get_node_or_null("CollisionShape2D") as CollisionShape2D
-	if collision:
-		return collision.global_position
-	return mob.global_position
-
-
-func _get_mob_hit_radius(mob: Node2D) -> float:
-	var collision := mob.get_node_or_null("CollisionShape2D") as CollisionShape2D
-	if collision and collision.shape is CircleShape2D:
-		var circle := collision.shape as CircleShape2D
-		var shape_scale := collision.global_transform.get_scale()
-		return circle.radius * maxf(shape_scale.x, shape_scale.y)
-	return 0.0
-
-
-func _get_mobs_in_radius_by_overlap(center: Vector2, radius: float) -> Array[Node]:
-	var hit_mobs: Array[Node] = []
-	for mob in get_tree().get_nodes_in_group("mobs"):
-		if not is_instance_valid(mob) or mob is not Node2D:
-			continue
-		var mob_node := mob as Node2D
-		var mob_center := _get_mob_hit_center(mob_node)
-		var mob_radius := _get_mob_hit_radius(mob_node)
-		if mob_center.distance_to(center) <= radius + mob_radius:
-			hit_mobs.append(mob)
-	return hit_mobs
