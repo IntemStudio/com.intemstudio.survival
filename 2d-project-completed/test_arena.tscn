@@ -1,0 +1,50 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://game/test_arena.gd" id="1_test_arena"]
+[ext_resource type="Script" path="res://game/pool/scene_pool.gd" id="2_scene_pool"]
+[ext_resource type="PackedScene" uid="uid://dsw8raqgacxsc" path="res://entities/player/player.tscn" id="3_player"]
+[ext_resource type="Script" path="res://world/floor/checker_background.gd" id="4_checker_bg"]
+
+[node name="Game" type="Node2D"]
+y_sort_enabled = true
+script = ExtResource("1_test_arena")
+
+[node name="ObjectPools" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("2_scene_pool")
+prewarm_mob_projectiles = 32
+prewarm_mob_attack_marks = 20
+
+[node name="PlayerSpawnPoint" type="Marker2D" parent="."]
+unique_name_in_owner = true
+
+[node name="MobSpawnPoint" type="Marker2D" parent="."]
+unique_name_in_owner = true
+position = Vector2(280, 0)
+
+[node name="Player" parent="." instance=ExtResource("3_player")]
+unique_name_in_owner = true
+
+[node name="BackgroundLayer" type="CanvasLayer" parent="."]
+layer = -32
+
+[node name="ColorRect" type="ColorRect" parent="BackgroundLayer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.72, 0.76, 0.68, 1)
+script = ExtResource("4_checker_bg")
+
+[node name="TestUI" type="CanvasLayer" parent="."]
+layer = 10
+
+[node name="HintLabel" type="Label" parent="TestUI"]
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 720.0
+offset_bottom = 80.0
+theme_override_font_sizes/font_size = 18
+text = "Test Arena — Revolver equipped. R: respawn Basic mob (mob picker in PR2)."
