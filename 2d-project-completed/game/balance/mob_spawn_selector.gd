@@ -8,6 +8,7 @@ const MOB_ELITE_SCENE: PackedScene = preload("res://entities/mob/mob_elite.tscn"
 const MOB_BOSS_SCENE: PackedScene = preload("res://entities/mob/mob_boss.tscn")
 const MOB_SPECIAL_A_SCENE: PackedScene = preload("res://entities/mob/mob_special_a.tscn")
 const MOB_SPECIAL_B_SCENE: PackedScene = preload("res://entities/mob/mob_special_b.tscn")
+const MOB_DUMMY_SCENE: PackedScene = preload("res://entities/mob/mob_dummy.tscn")
 
 
 # 밸런스 페이즈 비율로 스폰할 몹 프리팹을 고릅니다. (행동은 동일, 프리팹만 구분)

@@ -46,6 +46,7 @@ func _ready() -> void:
 		MobSpawnSelector.MOB_BOSS_SCENE,
 		MobSpawnSelector.MOB_SPECIAL_A_SCENE,
 		MobSpawnSelector.MOB_SPECIAL_B_SCENE,
+		MobSpawnSelector.MOB_DUMMY_SCENE,
 	]:
 		_prewarm_scene(mob_scene, prewarm_mobs_per_type)
 

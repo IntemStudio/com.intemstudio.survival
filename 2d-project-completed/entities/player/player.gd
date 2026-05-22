@@ -23,6 +23,7 @@ var _dash_direction := Vector2.ZERO
 var _dash_time_remaining := 0.0
 var _dash_cooldown_remaining := 0.0
 var auto_attack_enabled := true
+var _health_depleted_emitted := false
 
 
 func _ready() -> void:
@@ -69,6 +70,13 @@ func has_weapon(weapon_data: WeaponData) -> bool:
 	return false
 
 
+# 테스트 아레나 등에서 무기 슬롯을 비울 때 사용합니다.
+func clear_weapons() -> void:
+	for gun in %Weapons.get_children():
+		gun.free()
+	_owned_weapons.clear()
+
+
 func add_weapon(weapon_data: WeaponData) -> void:
 	if has_weapon(weapon_data):
 		return
@@ -93,15 +101,19 @@ func get_exp_to_level() -> int:
 	return base_exp_to_level * level
 
 
+# 사망 시그널 중복 방지 상태를 초기화합니다(테스트 아레나 리스폰 등).
+func reset_health_depleted_state() -> void:
+	_health_depleted_emitted = false
+
+
 # 몹 원거리 투사체 1발 피해 (접촉 DPS와 별도).
 func apply_mob_projectile_damage(amount: int) -> void:
-	if amount <= 0:
+	if amount <= 0 or _health_depleted_emitted:
 		return
 	health -= float(amount)
 	%HealthBar.value = health
 	FloatingDamageText.spawn_player_damage(global_position, amount)
-	if health <= 0.0:
-		health_depleted.emit()
+	_try_emit_health_depleted()
 
 
 # 체력 회복 아이템 등에서 호출합니다.
@@ -109,6 +121,8 @@ func heal_health(amount: float) -> void:
 	var max_hp: float = %HealthBar.max_value
 	health = minf(health + amount, max_hp)
 	%HealthBar.value = health
+	if health > 0.0:
+		_health_depleted_emitted = false
 
 
 func gain_experience(amount: int) -> void:
@@ -216,15 +230,15 @@ func _physics_process(delta: float) -> void:
 		%HappyBoo.play_idle_animation()
 	
 	# Taking damage
-	const DAMAGE_RATE = 6.0
-	var overlapping_mobs = %HurtBox.get_overlapping_bodies()
-	if overlapping_mobs:
-		var damage_this_frame: float = DAMAGE_RATE * overlapping_mobs.size() * delta
-		health -= damage_this_frame
-		%HealthBar.value = health
-		_damage_float_accumulator += damage_this_frame
-		if health <= 0.0:
-			health_depleted.emit()
+	if not _health_depleted_emitted:
+		const DAMAGE_RATE = 6.0
+		var overlapping_mobs = %HurtBox.get_overlapping_bodies()
+		if overlapping_mobs:
+			var damage_this_frame: float = DAMAGE_RATE * overlapping_mobs.size() * delta
+			health -= damage_this_frame
+			%HealthBar.value = health
+			_damage_float_accumulator += damage_this_frame
+			_try_emit_health_depleted()
 
 	_damage_float_timer -= delta
 	if _damage_float_accumulator > 0.0 and _damage_float_timer <= 0.0:
@@ -234,3 +248,10 @@ func _physics_process(delta: float) -> void:
 		)
 		_damage_float_accumulator = 0.0
 		_damage_float_timer = DAMAGE_FLOAT_INTERVAL
+
+
+func _try_emit_health_depleted() -> void:
+	if health > 0.0 or _health_depleted_emitted:
+		return
+	_health_depleted_emitted = true
+	health_depleted.emit()

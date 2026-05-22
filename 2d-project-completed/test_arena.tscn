@@ -8,6 +8,7 @@
 [node name="Game" type="Node2D"]
 y_sort_enabled = true
 script = ExtResource("1_test_arena")
+mob_respawn_delay = 2.0
 
 [node name="ObjectPools" type="Node" parent="."]
 unique_name_in_owner = true
@@ -44,7 +45,102 @@ layer = 10
 [node name="HintLabel" type="Label" parent="TestUI"]
 offset_left = 16.0
 offset_top = 16.0
-offset_right = 720.0
-offset_bottom = 80.0
-theme_override_font_sizes/font_size = 18
-text = "Test Arena — Revolver equipped. R: respawn Basic mob (mob picker in PR2)."
+offset_right = 760.0
+offset_bottom = 56.0
+theme_override_font_sizes/font_size = 17
+text = "Test Arena (F6) — Mob / Weapon panels below. No tabs needed."
+
+[node name="StatusLabel" type="Label" parent="TestUI"]
+unique_name_in_owner = true
+offset_left = 16.0
+offset_top = 60.0
+offset_right = 760.0
+offset_bottom = 88.0
+theme_override_colors/font_color = Color(0.75, 0.15, 0.12, 1)
+theme_override_font_sizes/font_size = 16
+
+[node name="MobSectionLabel" type="Label" parent="TestUI"]
+offset_left = 16.0
+offset_top = 96.0
+offset_right = 200.0
+offset_bottom = 120.0
+theme_override_font_sizes/font_size = 15
+text = "몹"
+
+[node name="SpawnPanel" type="PanelContainer" parent="TestUI"]
+offset_left = 16.0
+offset_top = 124.0
+offset_right = 560.0
+offset_bottom = 176.0
+
+[node name="SpawnRow" type="HBoxContainer" parent="TestUI/SpawnPanel"]
+theme_override_constants/separation = 12
+
+[node name="MobTypeOption" type="OptionButton" parent="TestUI/SpawnPanel/SpawnRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(220, 0)
+size_flags_horizontal = 3
+
+[node name="SpawnMobButton" type="Button" parent="TestUI/SpawnPanel/SpawnRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 36)
+text = "Spawn"
+
+[node name="OptionsPanel" type="PanelContainer" parent="TestUI"]
+offset_left = 16.0
+offset_top = 184.0
+offset_right = 560.0
+offset_bottom = 228.0
+
+[node name="OptionsRow" type="HBoxContainer" parent="TestUI/OptionsPanel"]
+theme_override_constants/separation = 16
+
+[node name="MobRespawnCheck" type="CheckButton" parent="TestUI/OptionsPanel/OptionsRow"]
+unique_name_in_owner = true
+text = "Mob respawn (2s delay)"
+
+[node name="WeaponSectionLabel" type="Label" parent="TestUI"]
+offset_left = 16.0
+offset_top = 236.0
+offset_right = 200.0
+offset_bottom = 260.0
+theme_override_font_sizes/font_size = 15
+text = "무기"
+
+[node name="WeaponPanel" type="PanelContainer" parent="TestUI"]
+offset_left = 16.0
+offset_top = 264.0
+offset_right = 560.0
+offset_bottom = 388.0
+
+[node name="WeaponVBox" type="VBoxContainer" parent="TestUI/WeaponPanel"]
+theme_override_constants/separation = 8
+
+[node name="WeaponFilterRow" type="HBoxContainer" parent="TestUI/WeaponPanel/WeaponVBox"]
+theme_override_constants/separation = 12
+
+[node name="WeaponTypeFilter" type="OptionButton" parent="TestUI/WeaponPanel/WeaponVBox/WeaponFilterRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 0)
+
+[node name="WeaponRarityFilter" type="OptionButton" parent="TestUI/WeaponPanel/WeaponVBox/WeaponFilterRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 0)
+
+[node name="WeaponFilterHint" type="Label" parent="TestUI/WeaponPanel/WeaponVBox/WeaponFilterRow"]
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 14
+text = "타입 · 등급 필터 → 무기 목록"
+
+[node name="WeaponRow" type="HBoxContainer" parent="TestUI/WeaponPanel/WeaponVBox"]
+theme_override_constants/separation = 12
+
+[node name="WeaponOption" type="OptionButton" parent="TestUI/WeaponPanel/WeaponVBox/WeaponRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 0)
+size_flags_horizontal = 3
+
+[node name="EquipWeaponButton" type="Button" parent="TestUI/WeaponPanel/WeaponVBox/WeaponRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 36)
+text = "Equip"

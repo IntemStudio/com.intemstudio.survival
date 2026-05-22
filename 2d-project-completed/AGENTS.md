@@ -31,8 +31,10 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | `game/weapon_damage_tracker.gd` | `WeaponDamageTracker` — 무기 `get_unique_key()`별 누적 피해, 게임오버 행 목록 생성 |
 | `game/pool/` | `ScenePool` (`scene_pool.gd`), `PoolUtil` — 공통 `acquire` / `release` |
 | `game/balance/` | `BalanceTable`, phase, `MobSpawnSelector`, `default_balance_table.tres` |
+| `test_arena.tscn` | **테스트 전용** 씬: `Game` + `game/test_arena.gd` — 몹/무기 수동 스폰, 리스폰 (`run/main_scene` 아님, **F6**) |
+| `game/test_arena.gd` | 테스트 아레나 오케스트레이션(스폰·무기 Equip·플레이어/몹 리스폰) |
 | `entities/player/` | 이동, 대시·쿨다운 게이지, 경험치, 무기 컨테이너, 피격, **자동 공격 토글(F)** |
-| `entities/mob/` | 공용 `mob.gd` + 변종 `.tscn`; ranged 전용 `mob_projectile`·`mob_attack_mark` |
+| `entities/mob/` | 공용 `mob.gd` + 변종 `.tscn`(플레이 **7종** + 테스트 전용 `mob_dummy`); ranged 전용 `mob_projectile`·`mob_attack_mark` |
 | `weapons/` | `WeaponData`, catalog, `gun`, 투사체·근접·마법 등 |
 | `ui/` | 무기 선택(3택1 + 설명 + 자동 선택·우선순위), 일시정지 |
 | `effects/exp_orb/` | 경험치 오브 (`exp_orbs` 그룹, `ScenePool` 적용) |
@@ -51,7 +53,52 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 4. 타이머마다: `%PathFollow2D` 위치에 `spawn_mob` (`ScenePool`으로 몹 acquire) → `initialize_spawn_health`로 HP
 5. `leveled_up` → 무기 선택 대기열; 메뉴가 열려 있으면 스폰 시계 정지. 선택 UI는 `WeaponSelectMenu.present_random_choices` → 버튼 라벨 + `WeaponData.build_select_tooltip_bbcode()` 상세
 6. `health_depleted` → `_populate_game_over_weapon_damage()` → `%GameOver` 표시, `paused` (재시작 시 씬 리로드로 집계 초기화)
-7. 몹 `_die()` → 처치 등록 → 연기 VFX → **경험치 오브**(`ScenePool.acquire`) → 각 **1%** **자석**·**체력**(`instantiate`) → 몹 `PoolUtil.release_node`
+7. 몹 `_die()` → `died.emit()` → `Game.register_kill()`(있을 때) → 연기 VFX → **경험치 오브**(`ScenePool.acquire`) → 각 **1%** **자석**·**체력**(`instantiate`) → 몹 `PoolUtil.release_node`
+
+---
+
+## 테스트 아레나 (`test_arena.tscn`)
+
+밸런스·레벨업·게임오버 없이 **몹·무기·피해**만 빠르게 검증하는 씬입니다. 메인 루프와 **씬·스크립트가 분리**되어 있고, `project.godot`의 `run/main_scene`은 `survivors_game.tscn` 그대로입니다.
+
+| 항목 | 내용 |
+|------|------|
+| 실행 | Godot에서 `test_arena.tscn` 연 뒤 **F6**(현재 씬 실행). F5는 메인 게임 |
+| 루트 계약 | 노드 이름 **`Game`**, 자식 **`Player`**, **`ObjectPools`** — `mob.gd`의 `/root/Game/Player`·풀 경로와 동일해야 함 |
+| 오케스트레이션 | `game/test_arena.gd` (`game.gd` 대체). `is_weapon_select_open` / `is_pause_menu_open` / `is_game_over` 스텁으로 `player.gd` F키·입력 차단과 호환 |
+
+### UI (탭 없음 — `TestUI` 세로 패널)
+
+| 블록 | 동작 |
+|------|------|
+| **몹** | `%MobTypeOption` + **Spawn** → `spawn_test_mob` (`ScenePool` + `initialize_spawn_health(1.0)`). 한 번에 1마리(교체 시 이전 몹 `PoolUtil.release_node`) |
+| | `%MobRespawnCheck` — 처치 후 `register_kill()` → `mob_respawn_delay`(기본 2초) 뒤 `_last_mob_scene` 재스폰. **Spawn·수동 교체 시** `_mob_respawn_token`으로 대기 콜백 취소 |
+| **무기** | 시작 `revolver.tres` Equip. `%WeaponTypeFilter`(전체/원거리/마법/근접) + `%WeaponRarityFilter`(전체/커먼/…) + `%WeaponOption` + **Equip** → `Player.clear_weapons()` 후 `add_weapon` |
+| | 필터 결과 0개 → `%StatusLabel` `"조건에 맞는 무기가 없습니다."` |
+| **플레이어** | `health_depleted` → 3초 후 스폰 지점·최대 HP·이전 자동공격 복구. `player.reset_health_depleted_state()` 호출 |
+
+### 몹 목록 (UI 8종)
+
+`MobSpawnSelector` 상수와 동일 + **`MOB_DUMMY_SCENE`** (`mob_dummy.tscn`).
+
+| UI 라벨 | 비고 |
+|---------|------|
+| Basic ~ Special B | 메인과 동일 7변종 |
+| **Dummy (static)** | `movement_enabled`·`combat_enabled` = false — 이동·원거리 공격 없음. **메인 `pick_scene`·밸런스 스폰에는 미포함**(테스트·풀 prewarm만) |
+
+**더미 주의:** 접촉 DPS(`%HurtBox`)는 그대로 — 완전 무피해 허수아비가 필요하면 `mob_kind`/collision 별도 정책 필요.
+
+### `mob.gd` export (변종·더미 공용)
+
+- `movement_enabled` — false면 추적·몹 분리 이동 없음, 슬라임 `play_idle()`
+- `combat_enabled` — false면 원거리 텔레그래프/발사 없음
+
+### 플레이어 (`player.gd` 연동)
+
+- `health_depleted` — `_health_depleted_emitted`로 **1회만** emit(접촉·투사체 공통). 회복·`reset_health_depleted_state()` 시 해제
+- `clear_weapons()` — 테스트 Equip 전 `gun.free()` + `_owned_weapons` 비움
+
+**튜닝·확장 시:** 메인에 더미를 넣지 않으려면 `pick_scene`·`default_balance_table.tres`는 건드리지 말 것. 새 테스트 전용 변종은 `MOB_OPTIONS`·`MobSpawnSelector` 상수·`scene_pool` prewarm 목록만 추가해도 됨.
 
 ---
 
@@ -222,7 +269,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 - phase는 **분(minute)** 키프레임; `BalanceTable`이 키 사이 float를 **선형 보간**
 - `boss_spawn_enabled`, `special_mob_count`는 보간 후 **계단(step)** 적용
 - 스폰 비율 합이 1 초과 시 **정규화** 가능
-- 몹 **행동**은 대부분 동일(`mob.gd`); **ranged**만 export로 투사체. 변종은 프리팹 수치 + `MobSpawnSelector` 가중치
+- 몹 **행동**은 대부분 동일(`mob.gd`); **ranged**만 export로 투사체. 변종은 프리팹 수치 + `MobSpawnSelector` 가중치. **테스트 더미**는 `movement_enabled`/`combat_enabled`로 이동·공격 off
 
 밸런스 전용 규칙 파일(`godot-balance.mdc`)은 `game/balance/**` 작업이 잦아질 때 추가.
 
@@ -245,7 +292,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | `ScenePool.acquire(scene, parent)` | 꺼내기 → `pool_reset` → 부모 재부착 → 활성화 → `pool_on_acquire`(마지막). 위치·`setup`·HP는 호출자가 `acquire` 반환 후 설정 |
 | `PoolUtil.release_node(node)` | 반환(풀 미등록이면 `queue_free`) |
 
-**이미 풀 적용:** 발사체(`gun.gd` 경유), 경험치 오브(`mob.gd` `_die`), 몹 7종(`game.gd` `spawn_mob`), 몹 투사체·공격 예고 마크(`mob.gd` 원거리 텔레그래프).
+**이미 풀 적용:** 발사체(`gun.gd` 경유), 경험치 오브(`mob.gd` `_die`), 몹 7종+더미 8프리팹 prewarm(`game.gd` `spawn_mob` + `scene_pool` 목록), 몹 투사체·공격 예고 마크(`mob.gd` 원거리 텔레그래프).
 
 **풀링 노드 계약:** 스크립트에 `pool_reset()` / `pool_on_acquire()` 구현. **매 스폰 설정은 `_ready`가 아니라** `pool_on_acquire` 또는 호출자 설정(`initialize_spawn_health` 등). 수명 종료는 `queue_free` 대신 `PoolUtil.release_node(self)`. 그룹 `exp_orbs`는 `pool_on_acquire`에서 추가, `pool_reset`에서 제거.
 
@@ -265,7 +312,8 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | 스폰·시간·UI | `game/game.gd`, `survivors_game.tscn` |
 | 무기별 피해·게임오버 통계 | `game/weapon_damage_tracker.gd`, `game/game.gd` (`register_weapon_damage`, `_populate_game_over_weapon_damage`), `entities/mob/mob.gd` (`apply_weapon_damage`, `apply_poison`), `survivors_game.tscn` (`%WeaponDamageList`) |
 | 난이도 곡선 | `default_balance_table.tres`, `balance_table.gd` |
-| 몹 타입 추가 | `mob.gd`, `mob_spawn_selector.gd`, `mob_*.tscn`, balance `.tres` |
+| 몹 타입 추가 | `mob.gd`, `mob_spawn_selector.gd`, `mob_*.tscn`, balance `.tres` (메인 스폰 시). 테스트 전용만이면 `MOB_DUMMY`처럼 상수+prewarm+`test_arena` `MOB_OPTIONS` |
+| 테스트 아레나 | `test_arena.tscn`, `game/test_arena.gd`, `MobSpawnSelector`, `scene_pool.gd` prewarm, `player.gd` (`clear_weapons`, `reset_health_depleted_state`) |
 | 원거리 몹 | `mob.gd`, `mob_ranged.tscn`, `mob_projectile.*`, `mob_attack_mark.*`, `player.apply_mob_projectile_damage`, `mob_spawn_selector.gd`, `default_balance_table.tres` (`ranged_spawn_ratio`), `scene_pool.gd` prewarm |
 | 무기 추가 | `weapon_data.gd`, `weapons/catalogs/*`, `gun.gd`, `player.gd`, `ui/weapon_select_menu.gd` |
 | 무기 선택·자동 선택 UI | `ui/weapon_select_menu.gd`, `game/game.gd` (`on_menu_opened`/`closed`), `survivors_game.tscn` (`AutoSelectRow`, `AutoPriorityPanel`, `ContentHBox`), `weapon_data.gd` (`build_select_tooltip_bbcode`) |
@@ -287,7 +335,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | `godot-mobs.mdc` | `entities/mob/**`, `game/balance/mob_spawn_selector.gd` |
 | `godot-weapons.mdc` | `weapons/**`, `entities/player/**`, `game/game.gd`, `ui/weapon_select_menu*` |
 
-**몹 추가 시 (한 줄):** 새 `mob_*.tscn`만으로는 스폰되지 않음 → 반드시 `mob_spawn_selector.gd` + `default_balance_table.tres`를 같은 변경에 포함. (`godot-mobs.mdc`)
+**몹 추가 시 (한 줄):** 새 `mob_*.tscn`만으로는 스폰되지 않음 → 메인 플레이에 넣을 때는 `mob_spawn_selector.gd` `pick_scene` + `default_balance_table.tres`를 같은 변경에 포함. **테스트 전용**(`mob_dummy` 등)은 `MOB_*_SCENE` 상수 + `scene_pool` prewarm + `test_arena.gd` `MOB_OPTIONS`만으로도 됨. (`godot-mobs.mdc`)
 
 **무기 추가 시 (한 줄):** catalog·`gun.gd` 처리·`weapon_id` 고유성·선택 UI 풀을 같이 맞출 것. (`godot-weapons.mdc`)
 

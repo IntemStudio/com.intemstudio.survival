@@ -16,11 +16,12 @@
 | 게임 루프 | 시작 무기 선택 → 스폰 타이머 → 시간 경과 HUD → 레벨업 무기 3택1 → 사망 시 게임오버(무기별 누적 피해·합계)·재시작 |
 | 일시정지 | Esc, 무기 선택·게임오버 중 일시정지 차단 |
 | 밸런스 | `BalanceTable` 분 키프레임, HP 배수·스폰 밀도·몹 비율 보간, 보스/특수 몹 계단형 플래그 |
-| 몹 | basic / fast / elite / special_a·b / boss — 공용 `mob.gd`; **ranged** — 5분+ 스폰, `attack_distance` 360, 범위 링, 예고 마크 0.5초 후 투사체(풀), 접촉 DPS 병행 |
+| 몹 | basic / fast / elite / special_a·b / boss — 공용 `mob.gd`; **ranged** — 5분+ 스폰; **dummy** — 이동·공격 off, 테스트 전용(`mob_dummy.tscn`, 메인 스폰 없음) |
+| 테스트 아레나 | `test_arena.tscn` + `test_arena.gd` — F6 실행, 몹 8종 Spawn, 무기 타입·등급 필터+Equip(리볼버 시작), 플레이어 3초 리스폰, 몹 리스폰 옵션, `health_depleted` 1회 emit |
 | 무기 | Ranged·Melee·Magic 카탈로그 + `gun.gd` (탄환·근접·마법·투척·부메랑·연금·궤도 등); **F**로 자동 공격 ON/OFF, HUD `%AutoAttackLabel` |
 | 무기 선택 UI | 3택1 버튼 + 호버/포커스 시 `WeaponData.build_select_tooltip_bbcode()` 설명 패널 (`DetailPanel`) |
 | 상태이상 | 독(연금), 쐐기(nettles), 피격·독 데미지 플로팅 텍스트 |
-| 오브젝트 풀 | `ScenePool` + `PoolUtil` — 무기 발사체, 경험치 오브, 몹 7종, **몹 투사체·공격 예고 마크** (`prewarm_mob_projectiles` 32, `prewarm_mob_attack_marks` 20) |
+| 오브젝트 풀 | `ScenePool` + `PoolUtil` — 무기 발사체, 경험치 오브, 몹 7종+더미 prewarm, **몹 투사체·공격 예고 마크** (`prewarm_mob_projectiles` 32, `prewarm_mob_attack_marks` 20) |
 | 픽업·경험치 | 오브(`ScenePool`, `exp_orbs` 그룹, 픽업 범위 자석·수집); 자석 아이템 1% 드랍·전장 오브 일괄 자석·주황 2× 크기 |
 | 플레이어 피격 | `%HurtBox` 접촉 DPS; 원거리 `apply_mob_projectile_damage`(무기 통계 제외); 플로팅 최소 1 |
 | 무기 피해 통계 | `WeaponDamageTracker` + `mob.apply_weapon_damage`/독 틱 → 게임오버 `%WeaponDamageList` |
@@ -38,7 +39,7 @@
 - [ ] **`BalancePhase.threat`** — 키프레임·보간만 되고, 스폰·피해·플레이어 데미지 등 어디에도 미반영.
 - [ ] **`mob_kind`** — 씬 export만 있고, AI·보상·UI 분기에 미사용.
 - [ ] **레이피어 “En Garde”** — 카탈로그 `effect` 문구만 있고, 전투 시작 버프 미구현.
-- [ ] **무기 `rarity`** — 항상 Common, 드롭 가중치·UI 표시·성장과 무관.
+- [ ] **무기 `rarity`** — 카탈로그는 대부분 Common. 메인 선택 UI에는 등급 미표시; **테스트 아레나**에만 등급 필터 UI 있음. 드롭 가중치·성장 연동 없음.
 
 ---
 
@@ -124,10 +125,11 @@
 4c. **자동 공격 토글·HUD 변경** → `player.gd` (`auto_attack_enabled`, `toggle_auto_attack`), `gun.gd` (`refresh_auto_attack`, `_is_auto_attack_enabled`), `king_bible_orb.gd`, `survivors_game.tscn` `%AutoAttackLabel`, `project.godot` `toggle_auto_attack`; `AGENTS.md` 자동 공격 토글 섹션 동기화
 4d. **무기 피해 집계·게임오버 표시 변경** → `mob.gd` `apply_weapon_damage`/`apply_poison`, `game/weapon_damage_tracker.gd`, `game.gd` `register_weapon_damage`·`_populate_game_over_weapon_damage`, `survivors_game.tscn` `%WeaponDamageList`; `AGENTS.md` 무기별 피해 집계·게임오버 섹션 동기화
 4e. **원거리 몹·투사체·예고 마크** → `mob.gd` export·`mob_ranged.tscn`·`mob_projectile.*`·`mob_attack_mark.*`·`player.apply_mob_projectile_damage`·`scene_pool` prewarm·`ranged_spawn_ratio`; `AGENTS.md` 원거리 몹 섹션
+4f. **테스트 아레나·더미 몹** → `test_arena.tscn`·`test_arena.gd`·`mob_dummy.tscn`·`mob.gd` `movement_enabled`/`combat_enabled`·`MobSpawnSelector.MOB_DUMMY_SCENE`·`scene_pool` prewarm·`player.gd` `clear_weapons`/`reset_health_depleted_state`; `AGENTS.md` 테스트 아레나 섹션
 5. **접촉 피해·피격 UX 변경** → `player.gd`/`player.tscn` `HurtBox`, `mob.gd` `attack_distance`, 몹 충돌 shape, `DAMAGE_RATE`·플로팅 간격; `AGENTS.md` 접촉 피해 섹션 동기화
 6. **이 항목 완료** → 위 목록에서 해당 줄 삭제 또는 “완료(날짜)” 한 줄로 축약
 7. **기각** → 이유 한 줄 남기고 삭제하거나 “기각” 섹션으로 이동(선택)
 
 ---
 
-*마지막 갱신: 코드베이스 기준 2026-05-21 (원거리 몹·예고 마크 풀·범위 360, F키 자동 공격, 무기 피해 게임오버). 구현이 바뀌면 이 문서도 함께 맞춥니다.*
+*마지막 갱신: 코드베이스 기준 2026-05-22 (테스트 아레나 F6, 더미 몹, 무기 타입·등급 필터, 플레이어/몹 리스폰, `health_depleted` 1회, `died` 시그널). 구현이 바뀌면 이 문서도 함께 맞춥니다.*

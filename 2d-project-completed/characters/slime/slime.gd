@@ -5,6 +5,10 @@ func play_walk():
 	%AnimationPlayer.play("walk")
 
 
+func play_idle():
+	%AnimationPlayer.stop(true)
+
+
 func play_hurt():
 	%AnimationPlayer.play("hurt")
 	%AnimationPlayer.queue("walk")

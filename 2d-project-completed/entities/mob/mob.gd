@@ -4,6 +4,8 @@ class_name Mob
 signal died
 
 @export var attack_distance := 85.0
+@export var movement_enabled := true
+@export var combat_enabled := true
 @export var base_max_health := 200
 @export var mob_kind: StringName = &"basic"
 @export var speed_min := 160.0
@@ -78,8 +80,11 @@ func pool_on_acquire() -> void:
 	speed = randf_range(speed_min, speed_max)
 	add_to_group("mobs")
 	%Slime.modulate = slime_tint
-	%Slime.play_walk()
-	if ranged_attack_enabled:
+	if movement_enabled:
+		%Slime.play_walk()
+	elif %Slime.has_method(&"play_idle"):
+		%Slime.play_idle()
+	if ranged_attack_enabled and combat_enabled:
 		_ranged_cooldown_remaining = randf_range(0.0, ranged_cooldown * 0.5)
 		_sync_attack_range_ring()
 	else:
@@ -132,25 +137,30 @@ func _process(delta: float) -> void:
 
 
 func _physics_process(delta: float) -> void:
-	if ranged_attack_enabled and _ranged_cooldown_remaining > 0.0:
+	if ranged_attack_enabled and combat_enabled and _ranged_cooldown_remaining > 0.0:
 		_ranged_cooldown_remaining = maxf(_ranged_cooldown_remaining - delta, 0.0)
 
-	var offset: Vector2 = player.global_position - global_position
-	var distance: float = offset.length()
+	if movement_enabled:
+		var offset: Vector2 = player.global_position - global_position
+		var distance: float = offset.length()
 
-	if distance > attack_distance:
-		velocity = offset / distance * speed
+		if distance > attack_distance:
+			velocity = offset / distance * speed
+		else:
+			velocity = Vector2.ZERO
+			if (
+				ranged_attack_enabled
+				and combat_enabled
+				and not _ranged_windup_active
+				and _ranged_cooldown_remaining <= 0.0
+				and offset.length_squared() > 0.01
+			):
+				_begin_ranged_telegraph(offset)
 	else:
 		velocity = Vector2.ZERO
-		if (
-			ranged_attack_enabled
-			and not _ranged_windup_active
-			and _ranged_cooldown_remaining <= 0.0
-			and offset.length_squared() > 0.01
-		):
-			_begin_ranged_telegraph(offset)
 
-	_apply_mob_separation()
+	if movement_enabled:
+		_apply_mob_separation()
 	_process_poison(delta)
 	_process_nettles(delta)
 	move_and_slide()
@@ -373,6 +383,8 @@ func _request_die() -> void:
 func _die() -> void:
 	if not is_inside_tree():
 		return
+
+	died.emit()
 
 	var game := get_node_or_null("/root/Game")
 	if game and game.has_method("register_kill"):
