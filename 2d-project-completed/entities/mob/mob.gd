@@ -30,6 +30,7 @@ var _nettles_timer := 0.0
 var _is_targeted := false
 var _target_pulse := 0.0
 var _is_dying := false
+var _stage_clear_death := false
 var _ranged_cooldown_remaining := 0.0
 var _ranged_windup_active := false
 var _pending_ranged_direction := Vector2.RIGHT
@@ -61,6 +62,7 @@ func pool_reset() -> void:
 	_poison_stacks.clear()
 	_nettles_timer = 0.0
 	_is_dying = false
+	_stage_clear_death = false
 	_is_targeted = false
 	_target_pulse = 0.0
 	_ranged_cooldown_remaining = 0.0
@@ -380,6 +382,15 @@ func _register_weapon_damage(weapon: WeaponData, amount: int) -> void:
 		game.register_weapon_damage(weapon, amount)
 
 
+# 30분 클리어 시 전장 정리용 — 드랍·처치 집계 없이 사망 처리합니다.
+func die_from_stage_clear() -> void:
+	if _is_dying:
+		return
+	_stage_clear_death = true
+	health = 0
+	_request_die()
+
+
 func _request_die() -> void:
 	if _is_dying:
 		return
@@ -396,14 +407,18 @@ func _die() -> void:
 
 	died.emit()
 
-	var game := get_node_or_null("/root/Game")
-	if game and game.has_method("register_kill"):
-		game.register_kill()
+	if _stage_clear_death:
+		PoolUtil.release_node(self)
+		return
 
 	var smoke_scene = preload("res://effects/smoke_explosion/smoke_explosion.tscn")
 	var smoke = smoke_scene.instantiate()
 	get_parent().add_child(smoke)
 	smoke.global_position = global_position
+
+	var game := get_node_or_null("/root/Game")
+	if game and game.has_method("register_kill"):
+		game.register_kill()
 
 	var spawn_parent := get_parent()
 	var exp_orb: Node2D

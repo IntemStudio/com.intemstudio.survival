@@ -13,10 +13,10 @@
 
 | 영역 | 구현 요약 |
 |------|-----------|
-| 게임 루프 | 시작 무기 선택 → 스폰 타이머 → 시간 경과 HUD → 레벨업 무기 3택1 → 사망 시 게임오버(무기별 누적 피해·합계)·재시작 |
-| 일시정지 | Esc, 무기 선택·게임오버 중 일시정지 차단 |
-| 밸런스 | `BalanceTable` 분 키프레임, HP 배수·스폰 밀도·몹 비율 보간, 보스/특수 몹 계단형 플래그 |
-| 몹 | basic / fast / elite / special_a·b / boss — 공용 `mob.gd`; **ranged** — 5분+ 스폰; **dummy** — 이동·공격 off, 테스트 전용(`mob_dummy.tscn`, 메인 스폰 없음) |
+| 게임 루프 | 시작 무기 선택 → 스폰 타이머 → 레벨업 3택1 → **30분 클리어** 또는 패배 게임오버(무기별 피해·합계)·재시작 |
+| 일시정지 | Esc, 무기 선택·게임오버·클리어 중 일시정지 차단 |
+| 밸런스 (VS형 A·B·C) | `default_balance_table.tres` VS 키프레임(11분 피크·16~20 호흡·25분 보스)·`balance_pace_multiplier` · `default_balance_timeline.tres`(9·11·25·28분 이벤트) · 30분 `die_from_stage_clear()` 클리어 |
+| 몹 | basic / fast / elite / special_a·b / boss — 공용 `mob.gd`; **ranged** — 8분+ 스폰(VS형 A); **dummy** — 테스트 전용 |
 | 테스트 아레나 | `test_arena.tscn` + `test_arena.gd` — F6 실행, 몹 8종 Spawn, 무기 타입·등급 필터+Equip(리볼버 시작), 플레이어 3초 리스폰, 몹 리스폰 옵션, `health_depleted` 1회 emit |
 | 무기 | Ranged·Melee·Magic 카탈로그 + `gun.gd` (탄환·근접·마법·투척·부메랑·연금·궤도 등); **F**로 자동 공격 ON/OFF, HUD `%AutoAttackLabel` |
 | 무기 선택 UI | 3택1 버튼 + 호버/포커스 시 `WeaponData.build_select_tooltip_bbcode()` 설명 패널 (`DetailPanel`) |
@@ -53,18 +53,22 @@
 - [ ] **경험치 보상 스케일** — `exp_orb` 기본값 1 고정. 몹 종류·페이즈·엘리트/보스별 차등 없음.
 - [ ] **캐릭터 선택** — HappyBoo 고정. 시작 전 캐릭터·스탯 프리셋 없음.
 - [ ] **메타 진행** — 런 간 영구 해금·통화·업그레이드 없음(의도적 미구현일 수 있음).
-- [ ] **보스/특수 등장 연출** — 18분 보스 플래그 등은 수치만; 경고 UI·BGM·스폰 이펙트 없음.
+- [ ] **보스/특수 등장 연출** — 25분 보스 플래그 등은 수치만; 경고 UI·BGM·스폰 이펙트 없음.
 
 ---
 
 ## 밸런스·디자인
 
+**VS형 Epic (A·B·C)** — 구현 완료. 상세·체크리스트: [`Docs/Plan_Balance_VS_Curve_Alignment.md`](Docs/Plan_Balance_VS_Curve_Alignment.md) · 요약: [`AGENTS.md`](AGENTS.md) 밸런스 모델.
+
+- [ ] **VS D — 몹 HP × 플레이어 레벨** — `initialize_spawn_health`에 `player.level` 계수(예: `1 + (L-1)*0.05`). VS “빌드 강하면 적도 단단” 체감. Plan §단계 D.
+- [ ] **VS E — 하이퍼 모드 (25분)** — 25분부터 전역 배율(스폰·HP 등)·`BalanceNoticeBanner` “HYPER” 표시. B 보스 이벤트와 연동. Plan §단계 E.
+- [ ] **VS F — 플레이테스트·튜닝** — 11분 피크·16~24 호흡·25분 보스·30분 클리어 체감 검증; 키프레임·`density_mult`·이벤트 수치 조정. (선택) `.cursor/rules/godot-balance.mdc`.
+- [ ] **VS Q2 — 31~40분 구간** — plateau 유지 vs 클리어 후 하드 모드 확장. Plan §9.
 - [ ] **접촉 피해 거리·히트박스 정렬** — `attack_distance`(중심 간 85)에서 몹이 멈춰도 `HurtBox`(84×54)와 몹 원형 충돌(r≈67)이 겹쳐 정지 상태 DPS가 남음. 의도 유지 시 수치 문서화, 완화 시 `attack_distance`↑ / HurtBox 축소 / 접촉 시에만 피해 / i-frame 중 선택. (`AGENTS.md` 접촉 피해 섹션)
 - [ ] **`threat` 활용 설계** — 예: 플레이어 접촉 데미지 배수, 스폰 밀도와 분리한 “압박도” 지표로 쓸지 결정 후 연결.
-- [ ] **플레이테스트 기반 키프레임 조정** — `default_balance_table.tres`의 `design_intent`는 문서용; 0~20분 체감 곡선 검증·튜닝.
 - [ ] **동시 생존 몹 상한 UX** — `max_alive_mobs` 도달 시 스폰 스킵만 함. HUD·디버그 표시 없음.
 - [ ] **난이도 프리셋** — Easy/Normal/Hard용 `BalanceTable` 리소스 분리.
-- [ ] **`.cursor/rules/godot-balance.mdc`** — `AGENTS.md`에 언급된 밸런스 전용 규칙 파일 미작성(작업 잦을 때 추가).
 
 ---
 

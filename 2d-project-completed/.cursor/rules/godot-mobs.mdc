@@ -35,7 +35,7 @@ If you skip step 2 or 3, the mob will never spawn in play.
 - Optional child nodes: `AttackRangeRing` (visual), telegraph uses pooled `mob_attack_mark` (not a permanent scene child).
 - Ranged attack flow lives in `mob.gd`: windup mark → `ranged_telegraph_delay` → `mob_projectile`; cancel mark on `pool_reset` / `_request_die`.
 - Player hit uses `player.apply_mob_projectile_damage`, not `Mob.apply_weapon_damage`.
-- Spawn requires `ranged_spawn_ratio` in active `BalanceTable` (default table: from minute 5).
+- Spawn requires `ranged_spawn_ratio` in active `BalanceTable` (default table: from minute 8, VS형 A).
 
 ## When editing balance-driven spawn
 

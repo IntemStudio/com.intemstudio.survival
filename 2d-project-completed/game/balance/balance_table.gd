@@ -3,6 +3,8 @@ class_name BalanceTable
 
 ## 분 단위 키프레임을 선형 보간해 현재 구간 밸런스를 반환합니다.
 
+## 1.0=기본. 1.5·2.0이면 같은 표를 더 빨리 진행(40분 키프레임→실시간 약 27분·20분).
+@export_range(0.25, 4.0, 0.05) var balance_pace_multiplier: float = 1.0
 @export var phases: Array[BalancePhase] = []
 
 var _sorted_phases_cache: Array[BalancePhase] = []
@@ -15,7 +17,7 @@ func get_phase_for_time(elapsed_seconds: float) -> BalancePhase:
 		return BalancePhase.new()
 
 	var sorted: Array[BalancePhase] = _get_sorted_phases()
-	var minutes: float = maxf(elapsed_seconds, 0.0) / 60.0
+	var minutes: float = _elapsed_to_curve_minutes(elapsed_seconds)
 
 	if minutes <= sorted[0].minute:
 		return _finalize_phase(sorted[0].duplicate_phase(), sorted, minutes)
@@ -46,7 +48,7 @@ func get_active_keyframe_for_time(elapsed_seconds: float) -> BalancePhase:
 	if sorted.is_empty():
 		return BalancePhase.new()
 
-	var minutes: float = maxf(elapsed_seconds, 0.0) / 60.0
+	var minutes: float = _elapsed_to_curve_minutes(elapsed_seconds)
 	var active: BalancePhase = sorted[0]
 	for phase in sorted:
 		if minutes + 0.0001 >= phase.minute:
@@ -69,7 +71,7 @@ func get_keyframe_segment_for_time(elapsed_seconds: float) -> Dictionary:
 	if sorted.is_empty():
 		return empty_result
 
-	var minutes: float = maxf(elapsed_seconds, 0.0) / 60.0
+	var minutes: float = _elapsed_to_curve_minutes(elapsed_seconds)
 	var active_index := 0
 	for index in range(sorted.size()):
 		if minutes + 0.0001 >= sorted[index].minute:
@@ -95,6 +97,15 @@ func get_keyframe_segment_for_time(elapsed_seconds: float) -> Dictionary:
 		"progress": progress,
 		"is_final": is_final,
 	}
+
+
+# 실시간(초)을 표 축(분)으로 변환합니다. balance_pace_multiplier로 상승 속도를 조절합니다.
+func get_curve_minutes(elapsed_seconds: float) -> float:
+	return _elapsed_to_curve_minutes(elapsed_seconds)
+
+
+func _elapsed_to_curve_minutes(elapsed_seconds: float) -> float:
+	return maxf(elapsed_seconds, 0.0) / 60.0 * balance_pace_multiplier
 
 
 func _get_sorted_phases() -> Array[BalancePhase]:

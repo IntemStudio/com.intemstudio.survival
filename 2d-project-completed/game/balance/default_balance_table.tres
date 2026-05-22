@@ -9,165 +9,187 @@ minute = 0.0
 hp_multiplier = 1.0
 spawn_density = 1.0
 threat = 1.0
-design_intent = "초반 적응 구간 — 기본 몬스터만"
-
-[sub_resource type="Resource" id="BalancePhase_1"]
-script = ExtResource("2_phase")
-minute = 1.0
-hp_multiplier = 1.08
-spawn_density = 1.0
-threat = 1.05
-design_intent = "아주 약한 압박 시작"
-
-[sub_resource type="Resource" id="BalancePhase_2"]
-script = ExtResource("2_phase")
-minute = 2.0
-hp_multiplier = 1.16
-spawn_density = 1.0
-threat = 1.1
-fast_spawn_ratio = 0.1
-design_intent = "이동/포지셔닝 체크 — 빠른 몹 10%"
-
-[sub_resource type="Resource" id="BalancePhase_3"]
-script = ExtResource("2_phase")
-minute = 3.0
-hp_multiplier = 1.25
-spawn_density = 1.05
-threat = 1.15
-fast_spawn_ratio = 0.15
-design_intent = "첫 체감 난이도 상승"
+design_intent = "VS 0~8 — 적응, 기본 몬스터"
 
 [sub_resource type="Resource" id="BalancePhase_4"]
 script = ExtResource("2_phase")
 minute = 4.0
-hp_multiplier = 1.35
-spawn_density = 1.1
-threat = 1.2
-fast_spawn_ratio = 0.2
-design_intent = "장비 빌드가 분기"
+hp_multiplier = 1.12
+spawn_density = 1.05
+threat = 1.08
+design_intent = "완만 상승"
 
 [sub_resource type="Resource" id="BalancePhase_5"]
 script = ExtResource("2_phase")
 minute = 5.0
-hp_multiplier = 1.48
-spawn_density = 1.15
-threat = 1.25
-fast_spawn_ratio = 0.2
-ranged_spawn_ratio = 0.1
-design_intent = "거리 압박 추가"
-
-[sub_resource type="Resource" id="BalancePhase_6"]
-script = ExtResource("2_phase")
-minute = 6.0
-hp_multiplier = 1.62
-spawn_density = 1.2
-threat = 1.3
-fast_spawn_ratio = 0.2
-ranged_spawn_ratio = 0.15
-design_intent = "회피/처리 우선순위 필요"
-
-[sub_resource type="Resource" id="BalancePhase_7"]
-script = ExtResource("2_phase")
-minute = 7.0
-hp_multiplier = 1.78
-spawn_density = 1.28
-threat = 1.38
-fast_spawn_ratio = 0.2
-ranged_spawn_ratio = 0.2
-elite_spawn_ratio = 0.03
-design_intent = "엘리트 첫 등장 구간"
+hp_multiplier = 1.18
+spawn_density = 1.08
+threat = 1.12
+fast_spawn_ratio = 0.08
+design_intent = "fast 지연 등장"
 
 [sub_resource type="Resource" id="BalancePhase_8"]
 script = ExtResource("2_phase")
 minute = 8.0
-hp_multiplier = 1.95
-spawn_density = 1.35
-threat = 1.45
-fast_spawn_ratio = 0.2
-ranged_spawn_ratio = 0.25
-elite_spawn_ratio = 0.05
-design_intent = "딜 체크 시작"
+hp_multiplier = 1.35
+spawn_density = 1.12
+threat = 1.2
+fast_spawn_ratio = 0.12
+ranged_spawn_ratio = 0.08
+design_intent = "0~8분 구간 종료"
 
 [sub_resource type="Resource" id="BalancePhase_9"]
 script = ExtResource("2_phase")
 minute = 9.0
-hp_multiplier = 2.15
-spawn_density = 1.42
-threat = 1.55
-fast_spawn_ratio = 0.2
-ranged_spawn_ratio = 0.3
-elite_spawn_ratio = 0.07
-design_intent = "생존기 중요"
+hp_multiplier = 1.42
+spawn_density = 1.25
+threat = 1.35
+fast_spawn_ratio = 0.12
+ranged_spawn_ratio = 0.1
+elite_spawn_ratio = 0.05
+design_intent = "9분 압박 스파이크(표)"
 
-[sub_resource type="Resource" id="BalancePhase_10"]
+[sub_resource type="Resource" id="BalancePhase_11"]
 script = ExtResource("2_phase")
-minute = 10.0
-hp_multiplier = 2.38
-spawn_density = 1.5
-threat = 1.7
-fast_spawn_ratio = 0.2
-ranged_spawn_ratio = 0.3
-elite_spawn_ratio = 0.07
+minute = 11.0
+hp_multiplier = 1.55
+spawn_density = 1.75
+threat = 1.6
+fast_spawn_ratio = 0.15
+ranged_spawn_ratio = 0.15
+elite_spawn_ratio = 0.06
+special_spawn_ratio = 0.04
+special_mob_count = 1
+design_intent = "1차 커트라인 — 물량 급증"
+
+[sub_resource type="Resource" id="BalancePhase_14"]
+script = ExtResource("2_phase")
+minute = 14.0
+hp_multiplier = 1.75
+spawn_density = 1.55
+threat = 1.5
+fast_spawn_ratio = 0.18
+ranged_spawn_ratio = 0.2
+elite_spawn_ratio = 0.08
 special_spawn_ratio = 0.06
 special_mob_count = 1
-design_intent = "중간 보스 준비 — 특수 몹 1종"
+design_intent = "11분 피크 후 완만 하강"
 
-[sub_resource type="Resource" id="BalancePhase_12"]
+[sub_resource type="Resource" id="BalancePhase_16"]
 script = ExtResource("2_phase")
-minute = 12.0
-hp_multiplier = 2.75
-spawn_density = 1.62
-threat = 1.85
-fast_spawn_ratio = 0.2
-ranged_spawn_ratio = 0.3
-elite_spawn_ratio = 0.1
-special_spawn_ratio = 0.1
+minute = 16.0
+hp_multiplier = 1.9
+spawn_density = 1.35
+threat = 1.45
+fast_spawn_ratio = 0.18
+ranged_spawn_ratio = 0.22
+elite_spawn_ratio = 0.08
+special_spawn_ratio = 0.08
 special_mob_count = 2
-design_intent = "전투 리듬 전환"
-
-[sub_resource type="Resource" id="BalancePhase_15"]
-script = ExtResource("2_phase")
-minute = 15.0
-hp_multiplier = 3.3
-spawn_density = 1.8
-threat = 2.05
-fast_spawn_ratio = 0.25
-ranged_spawn_ratio = 0.3
-elite_spawn_ratio = 0.12
-special_spawn_ratio = 0.1
-special_mob_count = 2
-design_intent = "하드 구간 진입 — 고위험·밀도 증가"
-
-[sub_resource type="Resource" id="BalancePhase_18"]
-script = ExtResource("2_phase")
-minute = 18.0
-hp_multiplier = 3.95
-spawn_density = 2.0
-threat = 2.3
-fast_spawn_ratio = 0.25
-ranged_spawn_ratio = 0.3
-elite_spawn_ratio = 0.15
-special_spawn_ratio = 0.1
-special_mob_count = 2
-boss_spawn_ratio = 0.06
-boss_spawn_enabled = true
-design_intent = "최종 압박 — 보스 등장"
+design_intent = "호흡 — 스폰 밀도↓"
 
 [sub_resource type="Resource" id="BalancePhase_20"]
 script = ExtResource("2_phase")
 minute = 20.0
-hp_multiplier = 4.6
-spawn_density = 2.2
-threat = 2.6
-fast_spawn_ratio = 0.25
-ranged_spawn_ratio = 0.3
-elite_spawn_ratio = 0.15
+hp_multiplier = 2.1
+spawn_density = 1.25
+threat = 1.5
+fast_spawn_ratio = 0.2
+ranged_spawn_ratio = 0.25
+elite_spawn_ratio = 0.1
+special_spawn_ratio = 0.08
+special_mob_count = 2
+design_intent = "호흡 유지"
+
+[sub_resource type="Resource" id="BalancePhase_24"]
+script = ExtResource("2_phase")
+minute = 24.0
+hp_multiplier = 2.35
+spawn_density = 1.3
+threat = 1.65
+fast_spawn_ratio = 0.2
+ranged_spawn_ratio = 0.28
+elite_spawn_ratio = 0.12
 special_spawn_ratio = 0.1
 special_mob_count = 2
-boss_spawn_ratio = 0.14
+boss_spawn_ratio = 0.04
+design_intent = "25분 보스 전 ramp"
+
+[sub_resource type="Resource" id="BalancePhase_25"]
+script = ExtResource("2_phase")
+minute = 25.0
+hp_multiplier = 2.5
+spawn_density = 1.85
+threat = 1.85
+fast_spawn_ratio = 0.22
+ranged_spawn_ratio = 0.3
+elite_spawn_ratio = 0.12
+special_spawn_ratio = 0.1
+special_mob_count = 2
+boss_spawn_ratio = 0.12
 boss_spawn_enabled = true
-design_intent = "엔드게임 — 보스 반복·특수 패턴 강화"
+design_intent = "맵 보스 — VS 25분"
+
+[sub_resource type="Resource" id="BalancePhase_28"]
+script = ExtResource("2_phase")
+minute = 28.0
+hp_multiplier = 2.75
+spawn_density = 2.0
+threat = 2.0
+fast_spawn_ratio = 0.22
+ranged_spawn_ratio = 0.35
+elite_spawn_ratio = 0.14
+special_spawn_ratio = 0.1
+special_mob_count = 2
+boss_spawn_ratio = 0.18
+boss_spawn_enabled = true
+design_intent = "2차 스파이크 — 후반 포위"
+
+[sub_resource type="Resource" id="BalancePhase_30"]
+script = ExtResource("2_phase")
+minute = 30.0
+hp_multiplier = 2.9
+spawn_density = 2.1
+threat = 2.1
+fast_spawn_ratio = 0.22
+ranged_spawn_ratio = 0.35
+elite_spawn_ratio = 0.14
+special_spawn_ratio = 0.1
+special_mob_count = 2
+boss_spawn_ratio = 0.2
+boss_spawn_enabled = true
+design_intent = "30분 클리어 직전 — 표 상한"
+
+[sub_resource type="Resource" id="BalancePhase_35"]
+script = ExtResource("2_phase")
+minute = 35.0
+hp_multiplier = 2.9
+spawn_density = 2.1
+threat = 2.1
+fast_spawn_ratio = 0.22
+ranged_spawn_ratio = 0.35
+elite_spawn_ratio = 0.14
+special_spawn_ratio = 0.1
+special_mob_count = 2
+boss_spawn_ratio = 0.2
+boss_spawn_enabled = true
+design_intent = "클리어 후 plateau (31~40)"
+
+[sub_resource type="Resource" id="BalancePhase_40"]
+script = ExtResource("2_phase")
+minute = 40.0
+hp_multiplier = 2.9
+spawn_density = 2.1
+threat = 2.1
+fast_spawn_ratio = 0.22
+ranged_spawn_ratio = 0.35
+elite_spawn_ratio = 0.14
+special_spawn_ratio = 0.1
+special_mob_count = 2
+boss_spawn_ratio = 0.2
+boss_spawn_enabled = true
+design_intent = "표 확장 상한 (30분과 동일)"
 
 [resource]
 script = ExtResource("1_table")
-phases = [SubResource("BalancePhase_0"), SubResource("BalancePhase_1"), SubResource("BalancePhase_2"), SubResource("BalancePhase_3"), SubResource("BalancePhase_4"), SubResource("BalancePhase_5"), SubResource("BalancePhase_6"), SubResource("BalancePhase_7"), SubResource("BalancePhase_8"), SubResource("BalancePhase_9"), SubResource("BalancePhase_10"), SubResource("BalancePhase_12"), SubResource("BalancePhase_15"), SubResource("BalancePhase_18"), SubResource("BalancePhase_20")]
+phases = [SubResource("BalancePhase_0"), SubResource("BalancePhase_4"), SubResource("BalancePhase_5"), SubResource("BalancePhase_8"), SubResource("BalancePhase_9"), SubResource("BalancePhase_11"), SubResource("BalancePhase_14"), SubResource("BalancePhase_16"), SubResource("BalancePhase_20"), SubResource("BalancePhase_24"), SubResource("BalancePhase_25"), SubResource("BalancePhase_28"), SubResource("BalancePhase_30"), SubResource("BalancePhase_35"), SubResource("BalancePhase_40")]

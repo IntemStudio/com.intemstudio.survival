@@ -30,7 +30,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | `game/game.gd` | 스폰 타이머, 밸런스 시계, 처치 HUD, 일시정지/게임오버, 무기 선택, 무기별 피해 집계·게임오버 표시 |
 | `game/weapon_damage_tracker.gd` | `WeaponDamageTracker` — 무기 `get_unique_key()`별 누적 피해, 게임오버 행 목록 생성 |
 | `game/pool/` | `ScenePool` (`scene_pool.gd`), `PoolUtil` — 공통 `acquire` / `release` |
-| `game/balance/` | `BalanceTable`, phase, `MobSpawnSelector`, `default_balance_table.tres` |
+| `game/balance/` | `BalanceTable`, `BalanceTimeline`, phase, `MobSpawnSelector`, `default_balance_table.tres`, `default_balance_timeline.tres` |
 | `test_arena.tscn` | **테스트 전용** 씬: `Game` + `game/test_arena.gd` — 몹/무기 수동 스폰, 리스폰 (`run/main_scene` 아님, **F6**) |
 | `game/test_arena.gd` | 테스트 아레나 오케스트레이션(스폰·무기 Equip·플레이어/몹 리스폰) |
 | `entities/player/` | 이동, 대시·쿨다운 게이지, 경험치, 무기 컨테이너, 피격, **자동 공격 토글(F)** |
@@ -53,8 +53,10 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 3. `on_weapon_chosen` → `Player.add_weapon` → `_ensure_game_started` → 스폰 `Timer` 시작
 4. 타이머마다: `%PathFollow2D` 위치에 `spawn_mob` (`ScenePool`으로 몹 acquire) → `initialize_spawn_health`로 HP
 5. `leveled_up` → 무기 선택 대기열; 메뉴가 열려 있으면 스폰 시계 정지. 선택 UI는 `WeaponSelectMenu.present_random_choices` → 버튼 라벨 + `WeaponData.build_select_tooltip_bbcode()` 상세
-6. `health_depleted` → `_populate_game_over_weapon_damage()` → `%GameOver` 표시, `paused` (재시작 시 씬 리로드로 집계 초기화)
-7. 몹 `_die()` → `died.emit()` → `Game.register_kill()`(있을 때) → 연기 VFX → **경험치 오브**(`ScenePool.acquire`) → 각 **1%** **자석**·**체력**(`instantiate`) → 몹 `PoolUtil.release_node`
+6. `health_depleted` → `%GameOverTitle` `"Game Over"` · 무기별 피해 · `paused`
+7. 표 축 **30분** → 클리어: `Timer` 정지 · `mobs` → `die_from_stage_clear()`(연기만, 드랍·처치 없음) · `%GameOverTitle` `"클리어!"` · `paused` (실시간 = `1800 / balance_pace_multiplier`초)
+8. `_process`(시계 가동 중): `BalanceTimeline` 9·11·25·28분 1회 발동 · 밀도 버스트 시 `spawn_density × density_mult`
+9. 몹 일반 `_die()` → `register_kill` → 연기 → 오브(`ScenePool`) → 1% 자석·체력 → `PoolUtil.release_node`
 
 ---
 
@@ -245,7 +247,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 ### 스폰
 
 - `MobSpawnSelector.pick_scene` — `phase.ranged_spawn_ratio` 구간에서 `MOB_RANGED_SCENE` (fast 다음 우선순위).
-- `default_balance_table.tres` — **생존 5분부터** `ranged_spawn_ratio` > 0 (0~4분은 0). 9분 이후 최대 약 **30%** (보스·특수·fast·elite와 경쟁).
+- `default_balance_table.tres` — **8분부터** `ranged_spawn_ratio` > 0 (VS형 A). **25분부터** `boss_spawn_enabled`. **11분** `spawn_density` 피크(1.75), **16~20분** 호흡(밀도 1.35→1.25).
 
 ### 전투 루프
 
@@ -291,12 +293,29 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 
 ## 밸런스 모델 (왜 이렇게 동작하는지)
 
-- phase는 **분(minute)** 키프레임; `BalanceTable`이 키 사이 float를 **선형 보간**
-- `boss_spawn_enabled`, `special_mob_count`는 보간 후 **계단(step)** 적용
-- 스폰 비율 합이 1 초과 시 **정규화** 가능
-- 몹 **행동**은 대부분 동일(`mob.gd`); **ranged**만 export로 투사체. 변종은 프리팹 수치 + `MobSpawnSelector` 가중치. **테스트 더미**는 `movement_enabled`/`combat_enabled`로 이동·공격 off
+### 공통
 
-밸런스 전용 규칙 파일(`godot-balance.mdc`)은 `game/balance/**` 작업이 잦아질 때 추가.
+- phase는 **분(minute)** 키프레임; `BalanceTable.get_phase_for_time(elapsed)`가 키 사이 **선형 보간**
+- 곡선 축(분) = `BalanceTable.get_curve_minutes(elapsed_seconds)` (`balance_table.gd` — 타임라인·`game.gd` 공용)
+- `boss_spawn_enabled`, `special_mob_count`는 보간 후 **계단(step)** (`_finalize_phase`)
+- 스폰 비율 합 > 1 시 `_normalize_spawn_ratios`
+- 스폰: `Game.spawn_mob(forced_scene?, ignore_alive_cap?)` → `ScenePool` → `initialize_spawn_health(phase.hp_multiplier)`
+
+### VS형 곡선 (구현됨 — Plan A·B·C)
+
+| 단계 | 리소스·코드 | 요약 |
+|------|-------------|------|
+| **A** | `default_balance_table.tres` | 0·4·5·8·9·11·14·16·20·24·25·28·30분 키프레임. **11분** `spawn_density` 1.75. **16~20** 밀도 dip(1.35→1.25). **25분** `boss_spawn_enabled`. 35·40 = 30분 plateau |
+| **B** | `default_balance_timeline.tres`, `game.gd`, `balance_notice_banner.gd` | 표 축 **9** elite 1 · **11** 밀도×1.4 45초 · **25** 보스 1 · **28** 밀도×1.35 40초. 강제 스폰은 `ignore_alive_cap`. 이벤트 키 `event_id`. 밀도 버스트 겹침 시 `max(배율·잔여시간)` |
+| **C** | `game.gd`, `mob.gd`, `%GameOverTitle` | 표 **30분** 클리어 · `die_from_stage_clear()` · 드랍·처치·연기 없음 |
+
+- **`balance_pace_multiplier`** (`BalanceTable`, 기본 1.0): 2.0이면 30분 키프레임 ≈ 실시간 **15분**에 도달
+- **미구현 (BACKLOG):** D 플레이어 레벨↔몹 HP · E 25분 하이퍼 · F 플레이테스트 튜닝 — [`Docs/Plan_Balance_VS_Curve_Alignment.md`](Docs/Plan_Balance_VS_Curve_Alignment.md)
+
+### 몹·원거리
+
+- 변종: 프리팹 + `MobSpawnSelector`. **ranged** 8분+ (`ranged_spawn_ratio` > 0). 행동은 `mob.gd` 공용
+- **테스트 더미:** `movement_enabled`/`combat_enabled` off, 메인 스폰·타임라인 없음
 
 ---
 
@@ -336,7 +355,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | 오브젝트 풀 | `game/pool/scene_pool.gd`, `pool_util.gd`, `survivors_game.tscn` (`ObjectPools`) |
 | 스폰·시간·UI | `game/game.gd`, `survivors_game.tscn` |
 | 무기별 피해·게임오버 통계 | `game/weapon_damage_tracker.gd`, `game/game.gd` (`register_weapon_damage`, `_populate_game_over_weapon_damage`), `entities/mob/mob.gd` (`apply_weapon_damage`, `apply_poison`), `survivors_game.tscn` (`%WeaponDamageList`) |
-| 난이도 곡선 | `default_balance_table.tres`, `balance_table.gd` |
+| 난이도 곡선·타임라인·클리어 | `default_balance_table.tres`, `default_balance_timeline.tres`, `balance_table.gd`, `balance_timeline*.gd`, `game.gd` (`_trigger_stage_clear`, `_tick_balance_timeline`) |
 | 몹 타입 추가 | `mob.gd`, `mob_spawn_selector.gd`, `mob_*.tscn`, balance `.tres` (메인 스폰 시). 테스트 전용만이면 `MOB_DUMMY`처럼 상수+prewarm+`test_arena` `MOB_OPTIONS` |
 | 테스트 아레나 | `test_arena.tscn`, `game/test_arena.gd`, `MobSpawnSelector`, `scene_pool.gd` prewarm, `player.gd` (`clear_weapons`, `reset_health_depleted_state`) |
 | 원거리 몹 | `mob.gd`, `mob_ranged.tscn`, `mob_projectile.*`, `mob_attack_mark.*`, `player.apply_mob_projectile_damage`, `mob_spawn_selector.gd`, `default_balance_table.tres` (`ranged_spawn_ratio`), `scene_pool.gd` prewarm |

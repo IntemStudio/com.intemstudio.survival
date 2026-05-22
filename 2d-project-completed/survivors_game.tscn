@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://dsgxioo8wstff" path="res://game/game.gd" id="1_qclsr"]
 [ext_resource type="Resource" path="res://game/balance/default_balance_table.tres" id="4_balance"]
+[ext_resource type="Resource" path="res://game/balance/default_balance_timeline.tres" id="9_timeline"]
 [ext_resource type="Script" path="res://ui/pause_menu.gd" id="2_pause"]
 [ext_resource type="Script" path="res://ui/weapon_select_menu.gd" id="3_weapon_select"]
 [ext_resource type="Script" path="res://ui/balance_notice_banner.gd" id="5_balance_notice"]
@@ -54,6 +55,7 @@ point_count = 5
 y_sort_enabled = true
 script = ExtResource("1_qclsr")
 balance_table = ExtResource("4_balance")
+balance_timeline = ExtResource("9_timeline")
 
 [node name="Timer" type="Timer" parent="." unique_id=173639759]
 wait_time = 0.3
@@ -601,7 +603,8 @@ layout_mode = 2
 theme_override_constants/separation = 40
 alignment = 1
 
-[node name="Label" type="Label" parent="GameOver/MenuOverlay/CenterContainer/VBoxContainer" unique_id=970741770]
+[node name="GameOverTitle" type="Label" parent="GameOver/MenuOverlay/CenterContainer/VBoxContainer" unique_id=970741770]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 124
 text = "Game Over"

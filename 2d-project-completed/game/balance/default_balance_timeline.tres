@@ -1,0 +1,42 @@
+[gd_resource type="Resource" script_class="BalanceTimeline" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://game/balance/balance_timeline.gd" id="1_timeline"]
+[ext_resource type="Script" path="res://game/balance/balance_timeline_event.gd" id="2_event"]
+[ext_resource type="PackedScene" path="res://entities/mob/mob_elite.tscn" id="3_elite"]
+[ext_resource type="PackedScene" path="res://entities/mob/mob_boss.tscn" id="4_boss"]
+
+[sub_resource type="Resource" id="TimelineEvent_9"]
+script = ExtResource("2_event")
+event_id = "spike_9_elite"
+at_minute = 9.0
+banner_message = "⚠ 강한 적 출현!"
+forced_spawn_count = 1
+forced_mob_scene = ExtResource("3_elite")
+
+[sub_resource type="Resource" id="TimelineEvent_11"]
+script = ExtResource("2_event")
+event_id = "cutline_11_density"
+at_minute = 11.0
+banner_message = "⚠ 웨이브 급증!"
+density_mult = 1.4
+density_duration_seconds = 45.0
+
+[sub_resource type="Resource" id="TimelineEvent_25"]
+script = ExtResource("2_event")
+event_id = "boss_25"
+at_minute = 25.0
+banner_message = "⚠ 보스 등장!"
+forced_spawn_count = 1
+forced_mob_scene = ExtResource("4_boss")
+
+[sub_resource type="Resource" id="TimelineEvent_28"]
+script = ExtResource("2_event")
+event_id = "surge_28_density"
+at_minute = 28.0
+banner_message = "⚠ 최종 포위!"
+density_mult = 1.35
+density_duration_seconds = 40.0
+
+[resource]
+script = ExtResource("1_timeline")
+events = [SubResource("TimelineEvent_9"), SubResource("TimelineEvent_11"), SubResource("TimelineEvent_25"), SubResource("TimelineEvent_28")]
