@@ -4,6 +4,9 @@ extends VBoxContainer
 
 @onready var _slider: HSlider = %TreeDensitySlider
 @onready var _value_label: Label = %TreeDensityValueLabel
+@onready var _tree_title: Label = get_node_or_null("../TreeDensityTitle") as Label
+@onready var _sparse_label: Label = get_node_or_null("TreeDensitySliderRow/SparseLabel") as Label
+@onready var _dense_label: Label = get_node_or_null("TreeDensitySliderRow/DenseLabel") as Label
 
 
 func _on_slider_value_changed(value: float) -> void:
@@ -21,11 +24,25 @@ func _on_slider_value_changed(value: float) -> void:
 
 
 func _ready() -> void:
+	add_to_group(UiLocale.GROUP_REFRESH)
 	_slider.min_value = 0.0
 	_slider.max_value = 100.0
 	_slider.step = 1.0
 	_slider.value_changed.connect(_on_slider_value_changed)
 	sync_from_arena()
+	refresh_locale()
+
+
+func refresh_locale() -> void:
+	if _tree_title:
+		_tree_title.text = UiLocale.t(&"settings.tree_density")
+	if _sparse_label:
+		_sparse_label.text = UiLocale.t(&"tree.sparse")
+	if _dense_label:
+		_dense_label.text = UiLocale.t(&"tree.dense")
+	if _get_map_arena():
+		var arena := _get_map_arena()
+		_update_value_label(arena.tree_min_spacing, arena.get_tree_density_normalized())
 
 
 # MapArena 현재 밀도로 슬라이더·라벨을 맞춥니다.
@@ -51,7 +68,7 @@ func _apply_density(density: float) -> void:
 
 func _update_value_label(spacing: float, density: float) -> void:
 	var percent := int(round(density * 100.0))
-	_value_label.text = "밀도 %d%% · 간격 %.0f" % [percent, spacing]
+	_value_label.text = UiLocale.t(&"tree.density_value") % [percent, spacing]
 
 
 func _get_map_arena() -> MapArena:

@@ -8,11 +8,6 @@ const MAX_REROLLS_PER_RUN := 3
 const MAX_DISCARDS_PER_RUN := 3
 const AUTO_SELECT_DELAY_SEC := 3.0
 const DEFAULT_AUTO_PRIORITY_ORDER: Array[String] = ["Ranged", "Magic", "Melee"]
-const WEAPON_TYPE_LABELS_KO := {
-	"Ranged": "원거리",
-	"Magic": "마법",
-	"Melee": "근접",
-}
 
 const WEAPON_TYPE_BUTTON_COLORS := {
 	"Melee": Color(0.55, 0.24, 0.2, 1),
@@ -36,6 +31,8 @@ var _auto_select_target_index := -1
 var _auto_priority_order: Array[String] = DEFAULT_AUTO_PRIORITY_ORDER.duplicate()
 var _gauge_tracks: Array[ColorRect] = []
 var _gauge_fills: Array[ColorRect] = []
+var _menu_title_key: StringName = &"weapon_select.title"
+var _detail_hover_index := -1
 
 @onready var _choice_rows: Array[HBoxContainer] = [
 	$MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/ChoicesVBox/ChoiceRow0,
@@ -84,9 +81,16 @@ var _gauge_fills: Array[ColorRect] = []
 @onready var _reroll_button: Button = (
 	$MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/ChoicesVBox/RerollButton
 )
+@onready var _auto_priority_title: Label = (
+	$MenuOverlay/CenterContainer/VBoxContainer/AutoPriorityPanel/AutoPriorityTitle
+)
+@onready var _discarded_title_label: Label = (
+	$MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/RightColumnVBox/DiscardedPanel/MarginContainer/VBoxContainer/DiscardedTitleLabel
+)
 
 
 func _ready() -> void:
+	add_to_group(UiLocale.GROUP_REFRESH)
 	_button_styles_by_type = _build_button_styles_by_type()
 	_setup_auto_gauge_fills()
 	for i in _buttons.size():
@@ -98,8 +102,29 @@ func _ready() -> void:
 		_priority_up_buttons[i].pressed.connect(_on_priority_up_pressed.bind(i))
 		_priority_down_buttons[i].pressed.connect(_on_priority_down_pressed.bind(i))
 	_refresh_auto_priority_ui()
+	refresh_locale()
 	set_process(false)
 	hide()
+
+
+func refresh_locale() -> void:
+	if not is_node_ready():
+		return
+	_title_label.text = UiLocale.t(_menu_title_key)
+	_auto_select_toggle.text = UiLocale.t(&"weapon_select.auto_toggle")
+	_auto_priority_title.text = UiLocale.t(&"weapon_select.auto_priority_title")
+	_discarded_title_label.text = UiLocale.t(&"weapon_select.discarded_title")
+	_update_reroll_button_state()
+	_update_discarded_list_ui()
+	_refresh_auto_priority_ui()
+	if _current_choices.is_empty():
+		_detail_label.text = UiLocale.t(&"weapon_select.detail_hint")
+	else:
+		_update_button_labels()
+	if _auto_select_active:
+		var remaining := maxf(AUTO_SELECT_DELAY_SEC - _auto_select_elapsed, 0.0)
+		var ratio := clampf(_auto_select_elapsed / AUTO_SELECT_DELAY_SEC, 0.0, 1.0)
+		_update_auto_select_ui(ratio, remaining)
 
 
 func on_menu_opened() -> void:
@@ -129,11 +154,13 @@ func _get_all_weapons() -> Array[WeaponData]:
 	return pool
 
 
-func present_random_choices(title: String = "무기 선택", owned_weapons: Array[WeaponData] = []) -> bool:
+func present_random_choices(title_key: StringName = &"weapon_select.title", owned_weapons: Array[WeaponData] = []) -> bool:
 	_cancel_auto_select()
+	_menu_title_key = title_key
 	_owned_weapons = owned_weapons.duplicate()
 	_current_choices = _pick_random_weapons(CHOICE_COUNT, _owned_weapons)
-	_title_label.text = title
+	_title_label.text = UiLocale.t(_menu_title_key)
+	_detail_hover_index = -1
 	_update_button_labels()
 	_update_reroll_button_state()
 	_update_discarded_list_ui()
@@ -218,7 +245,7 @@ func _is_weapon_discarded(weapon: WeaponData) -> bool:
 
 
 func _update_reroll_button_state() -> void:
-	_reroll_button.text = "리롤 (%d회 남음)" % _rerolls_remaining
+	_reroll_button.text = UiLocale.t(&"weapon_select.reroll_remaining") % _rerolls_remaining
 	_reroll_button.disabled = (
 		_rerolls_remaining <= 0
 		or _build_selectable_weapon_pool(_owned_weapons).is_empty()
@@ -234,12 +261,12 @@ func _update_discard_buttons_state() -> void:
 		var discard_button := _discard_buttons[i]
 		discard_button.visible = show_discard and has_choice
 		if show_discard:
-			discard_button.text = "버리기"
+			discard_button.text = UiLocale.t(&"weapon_select.discard")
 
 
 func _update_discarded_list_ui() -> void:
 	if _discarded_weapons.is_empty():
-		_discarded_list_label.text = "(없음)"
+		_discarded_list_label.text = UiLocale.t(&"weapon_select.discarded_none")
 		return
 	var lines: PackedStringArray = []
 	for weapon in _discarded_weapons:
@@ -268,7 +295,12 @@ func _update_button_labels() -> void:
 			button.visible = false
 			button.disabled = true
 	_update_discard_buttons_state()
-	_show_weapon_detail(0)
+	if _detail_hover_index >= 0 and _detail_hover_index < _current_choices.size():
+		_show_weapon_detail(_detail_hover_index)
+	elif not _current_choices.is_empty():
+		_show_weapon_detail(0)
+	else:
+		_detail_label.text = UiLocale.t(&"weapon_select.detail_hint")
 
 
 func _setup_auto_gauge_fills() -> void:
@@ -340,7 +372,7 @@ func _pick_auto_select_index() -> int:
 func _refresh_auto_priority_ui() -> void:
 	for i in _priority_type_labels.size():
 		var weapon_type: String = _auto_priority_order[i]
-		var label: String = WEAPON_TYPE_LABELS_KO.get(weapon_type, weapon_type)
+		var label: String = UiLocale.weapon_type_label(weapon_type)
 		var type_color: Color = WEAPON_TYPE_BUTTON_COLORS.get(weapon_type, CHOICE_FONT_COLOR)
 		_priority_type_labels[i].text = label
 		_priority_type_labels[i].add_theme_color_override("font_color", type_color)
@@ -371,7 +403,7 @@ func _on_priority_down_pressed(slot_index: int) -> void:
 
 
 func _update_auto_select_ui(fill_ratio: float, remaining_sec: float) -> void:
-	_auto_select_countdown_label.text = "자동 선택까지 %.1f초" % remaining_sec
+	_auto_select_countdown_label.text = UiLocale.t(&"weapon_select.auto_countdown") % remaining_sec
 	_update_auto_gauge_fills(fill_ratio)
 	_refresh_choice_button_styles()
 
@@ -526,12 +558,13 @@ func _apply_choice_button_style(button: Button, weapon: WeaponData) -> void:
 
 
 func _on_choice_hovered(index: int) -> void:
+	_detail_hover_index = index
 	_show_weapon_detail(index)
 
 
 func _show_weapon_detail(index: int) -> void:
 	if index < 0 or index >= _current_choices.size():
-		_detail_label.text = ""
+		_detail_label.text = UiLocale.t(&"weapon_select.detail_hint")
 		return
 	_detail_label.text = _current_choices[index].build_select_tooltip_bbcode()
 

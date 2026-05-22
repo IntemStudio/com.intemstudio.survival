@@ -1,7 +1,7 @@
 class_name UiViewportLayout
 extends Control
 
-## FHD(1920×1080) 기준 Control 트리를 현재 뷰포트(HD/FHD)에 맞게 균일 스케일·정렬. AGENTS.md 「디스플레이·카메라·UI」 참고.
+## FHD(1920×1080) 기준 Control 트리를 현재 뷰포트(HD/FHD)에 맞게 균일 스케일·정렬. Docs/AGENTS_Display_UI.md 참고.
 
 enum AlignMode {
 	TOP_LEFT,

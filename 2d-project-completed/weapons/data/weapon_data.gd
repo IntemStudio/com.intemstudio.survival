@@ -69,10 +69,18 @@ func get_select_label() -> String:
 
 
 func get_display_name_localized() -> String:
+	if UiLocale.get_locale() == UiLocale.LOCALE_EN and not display_name.is_empty():
+		return display_name
 	return display_name_ko if not display_name_ko.is_empty() else display_name
 
 
 func build_select_tooltip_bbcode() -> String:
+	if UiLocale.get_locale() == UiLocale.LOCALE_EN:
+		return _build_select_tooltip_bbcode_en()
+	return _build_select_tooltip_bbcode_ko()
+
+
+func _build_select_tooltip_bbcode_ko() -> String:
 	var lines: PackedStringArray = []
 	var hand_tag := ""
 	if hand == "One-Handed":
@@ -112,6 +120,48 @@ func build_select_tooltip_bbcode() -> String:
 	if not effect_ko.is_empty():
 		lines.append("")
 		lines.append(effect_ko)
+	return "\n".join(lines)
+
+
+func _build_select_tooltip_bbcode_en() -> String:
+	var lines: PackedStringArray = []
+	var hand_tag := ""
+	if hand == "One-Handed":
+		hand_tag = " [One-Handed]"
+	elif hand == "Two-Handed":
+		hand_tag = " [Two-Handed]"
+	lines.append("[color=#ffdd55]%s%s[/color]" % [get_display_name_localized(), hand_tag])
+	lines.append("%s / %s" % [UiLocale.weapon_type_label(weapon_type), weapon_subtype])
+	if not damage_element.is_empty():
+		lines.append("[color=#c9a87a]Damage type: %s[/color]" % _damage_element_en())
+	lines.append("Damage: %d-%d" % [min_damage, max_damage])
+	lines.append("Attack speed: %.2f APS" % attacks_per_second)
+	if has_burst():
+		lines.append("Burst: %d shots" % burst_count)
+	if hit_count > 1:
+		lines.append("Hits: %d" % hit_count)
+	lines.append("Range: %s (%d)" % [_range_type_en(), int(_get_attack_range())])
+	if is_area_zone_attack() and aoe_radius > 0.0:
+		lines.append("Area radius: %d" % int(aoe_radius))
+	if is_explosion_ranged() and explosion_radius > 0.0:
+		lines.append("Explosion radius: %d" % int(explosion_radius))
+	if damage_element == "poison":
+		lines.append("Poison: %d-%d (%.1fs)" % [poison_damage_min, poison_damage_max, poison_duration])
+	if applies_nettles:
+		lines.append("Nettles: %.1fs" % nettles_duration)
+	if returns_to_owner:
+		lines.append("Returns to owner")
+	if is_melee():
+		lines.append("Delivery: piercing projectile")
+	if is_area_zone_attack():
+		lines.append("Delivery: area zone")
+	if is_orbit_magic():
+		lines.append("Delivery: orbit")
+	if homing_strength > 0.0:
+		lines.append("Homing")
+	if not effect.is_empty():
+		lines.append("")
+		lines.append("Effect: %s" % effect)
 	return "\n".join(lines)
 
 
@@ -167,6 +217,14 @@ func _range_type_ko() -> String:
 			return "극원거리"
 		_:
 			return range_type
+
+
+func _damage_element_en() -> String:
+	return damage_element
+
+
+func _range_type_en() -> String:
+	return range_type
 
 
 func _get_attack_range() -> float:

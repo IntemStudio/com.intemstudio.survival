@@ -72,6 +72,10 @@ Settings/Use_Shift_instead_of_Alt=false
 Settings/Surface_Placement_Collision_Mask=4294967295
 Settings/Show_Tooltips=true
 
+[audio]
+
+buses/default_bus_layout="res://default_bus_layout.tres"
+
 [application]
 
 config/name="Your First 2D Game With Godot 4 (GDQuest)"

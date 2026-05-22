@@ -4,7 +4,11 @@
 [ext_resource type="Resource" path="res://game/balance/default_balance_table.tres" id="4_balance"]
 [ext_resource type="Resource" path="res://game/balance/default_balance_timeline.tres" id="9_timeline"]
 [ext_resource type="Script" path="res://ui/pause_menu.gd" id="2_pause"]
-[ext_resource type="Script" path="res://ui/tree_density_settings.gd" id="11_tree_density"]
+[ext_resource type="Script" path="res://ui/settings/tree_density_settings.gd" id="11_tree_density"]
+[ext_resource type="Script" path="res://ui/settings/video_display_settings.gd" id="13_video_display"]
+[ext_resource type="Script" path="res://ui/settings/audio_settings_ui.gd" id="14_audio_settings"]
+[ext_resource type="Script" path="res://ui/settings/gameplay_settings_ui.gd" id="15_gameplay_settings"]
+[ext_resource type="Script" path="res://ui/settings/locale_settings_ui.gd" id="16_locale_settings"]
 [ext_resource type="Script" path="res://ui/weapon_select_menu.gd" id="3_weapon_select"]
 [ext_resource type="Script" path="res://ui/balance_notice_banner.gd" id="5_balance_notice"]
 [ext_resource type="PackedScene" uid="uid://dsw8raqgacxsc" path="res://entities/player/player.tscn" id="2_a7q7f"]
@@ -58,6 +62,22 @@ corner_radius_top_left = 6
 corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 12.0
+content_margin_bottom = 10.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_settings_panel"]
+bg_color = Color(0.11, 0.12, 0.15, 0.94)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.28, 0.32, 0.4, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
 content_margin_left = 12.0
 content_margin_top = 10.0
 content_margin_right = 12.0
@@ -634,7 +654,8 @@ layout_mode = 2
 theme_override_constants/separation = 40
 alignment = 1
 
-[node name="Label" type="Label" parent="PauseMenu/MenuOverlay/CenterContainer/PauseMainContent"]
+[node name="PauseTitleLabel" type="Label" parent="PauseMenu/MenuOverlay/CenterContainer/PauseMainContent"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 96
 text = "일시정지"
@@ -708,6 +729,16 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 0
 
+[node name="SettingsDim" type="ColorRect" parent="PauseMenu/MenuOverlay/SettingsPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.68)
+
 [node name="SettingsCenter" type="CenterContainer" parent="PauseMenu/MenuOverlay/SettingsPanel"]
 layout_mode = 1
 anchors_preset = 15
@@ -723,25 +754,307 @@ theme_override_constants/separation = 24
 alignment = 1
 
 [node name="SettingsTitle" type="Label" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox"]
+unique_name_in_owner = true
 layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.94, 0.98, 1)
 theme_override_font_sizes/font_size = 72
 text = "설정"
 horizontal_alignment = 1
+
+[node name="LanguageSettingsGui" type="PanelContainer" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(480, 0)
+mouse_filter = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_settings_panel")
+
+[node name="LocaleSettings" type="VBoxContainer" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/LanguageSettingsGui"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+script = ExtResource("16_locale_settings")
+
+[node name="LanguageTitle" type="Label" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/LanguageSettingsGui/LocaleSettings"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.94, 0.98, 1)
+theme_override_font_sizes/font_size = 22
+text = "언어"
+horizontal_alignment = 1
+
+[node name="LanguageRow" type="HBoxContainer" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/LanguageSettingsGui/LocaleSettings"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="LanguageRowLabel" type="Label" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/LanguageSettingsGui/LocaleSettings/LanguageRow"]
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.84, 0.9, 1)
+theme_override_font_sizes/font_size = 18
+text = "언어"
+
+[node name="LanguageOption" type="OptionButton" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/LanguageSettingsGui/LocaleSettings/LanguageRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 18
+
+[node name="VideoDisplayGui" type="PanelContainer" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(480, 0)
+mouse_filter = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_settings_panel")
+
+[node name="VideoDisplaySettings" type="VBoxContainer" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/VideoDisplayGui"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+script = ExtResource("13_video_display")
+
+[node name="VideoDisplayTitle" type="Label" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/VideoDisplayGui/VideoDisplaySettings"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.94, 0.98, 1)
+theme_override_font_sizes/font_size = 22
+text = "화면 / 비디오"
+horizontal_alignment = 1
+
+[node name="ResolutionRow" type="HBoxContainer" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/VideoDisplayGui/VideoDisplaySettings"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="ResolutionLabel" type="Label" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/VideoDisplayGui/VideoDisplaySettings/ResolutionRow"]
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.84, 0.9, 1)
+theme_override_font_sizes/font_size = 18
+text = "해상도"
+
+[node name="ResolutionOption" type="OptionButton" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/VideoDisplayGui/VideoDisplaySettings/ResolutionRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 18
+
+[node name="WindowModeRow" type="HBoxContainer" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/VideoDisplayGui/VideoDisplaySettings"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="WindowModeLabel" type="Label" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/VideoDisplayGui/VideoDisplaySettings/WindowModeRow"]
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.84, 0.9, 1)
+theme_override_font_sizes/font_size = 18
+text = "화면 모드"
+
+[node name="WindowModeOption" type="OptionButton" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/VideoDisplayGui/VideoDisplaySettings/WindowModeRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 18
+
+[node name="VSyncRow" type="HBoxContainer" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/VideoDisplayGui/VideoDisplaySettings"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="VSyncLabel" type="Label" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/VideoDisplayGui/VideoDisplaySettings/VSyncRow"]
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.84, 0.9, 1)
+theme_override_font_sizes/font_size = 18
+text = "VSync"
+
+[node name="VSyncOption" type="OptionButton" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/VideoDisplayGui/VideoDisplaySettings/VSyncRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 18
+
+[node name="AudioSettingsGui" type="PanelContainer" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(480, 0)
+mouse_filter = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_settings_panel")
+
+[node name="AudioSettings" type="VBoxContainer" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/AudioSettingsGui"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+script = ExtResource("14_audio_settings")
+
+[node name="AudioSettingsTitle" type="Label" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/AudioSettingsGui/AudioSettings"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.94, 0.98, 1)
+theme_override_font_sizes/font_size = 22
+text = "오디오"
+horizontal_alignment = 1
+
+[node name="MasterVolumeRow" type="HBoxContainer" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/AudioSettingsGui/AudioSettings"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="MasterVolumeName" type="Label" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/AudioSettingsGui/AudioSettings/MasterVolumeRow"]
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.84, 0.9, 1)
+theme_override_font_sizes/font_size = 18
+text = "전체 (Master)"
+
+[node name="MasterVolumeSlider" type="HSlider" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/AudioSettingsGui/AudioSettings/MasterVolumeRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+value = 100.0
+
+[node name="MasterVolumeLabel" type="Label" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/AudioSettingsGui/AudioSettings/MasterVolumeRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(48, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.68, 0.72, 0.78, 1)
+theme_override_font_sizes/font_size = 17
+text = "100%"
+horizontal_alignment = 2
+
+[node name="BgmVolumeRow" type="HBoxContainer" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/AudioSettingsGui/AudioSettings"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="BgmVolumeName" type="Label" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/AudioSettingsGui/AudioSettings/BgmVolumeRow"]
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.84, 0.9, 1)
+theme_override_font_sizes/font_size = 18
+text = "BGM"
+
+[node name="BgmVolumeSlider" type="HSlider" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/AudioSettingsGui/AudioSettings/BgmVolumeRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+value = 100.0
+
+[node name="BgmVolumeLabel" type="Label" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/AudioSettingsGui/AudioSettings/BgmVolumeRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(48, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.68, 0.72, 0.78, 1)
+theme_override_font_sizes/font_size = 17
+text = "100%"
+horizontal_alignment = 2
+
+[node name="SfxVolumeRow" type="HBoxContainer" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/AudioSettingsGui/AudioSettings"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="SfxVolumeName" type="Label" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/AudioSettingsGui/AudioSettings/SfxVolumeRow"]
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.84, 0.9, 1)
+theme_override_font_sizes/font_size = 18
+text = "SFX"
+
+[node name="SfxVolumeSlider" type="HSlider" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/AudioSettingsGui/AudioSettings/SfxVolumeRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+value = 100.0
+
+[node name="SfxVolumeLabel" type="Label" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/AudioSettingsGui/AudioSettings/SfxVolumeRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(48, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.68, 0.72, 0.78, 1)
+theme_override_font_sizes/font_size = 17
+text = "100%"
+horizontal_alignment = 2
+
+[node name="GameplaySettingsGui" type="PanelContainer" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(480, 0)
+mouse_filter = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_settings_panel")
+
+[node name="GameplaySettings" type="VBoxContainer" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/GameplaySettingsGui"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+script = ExtResource("15_gameplay_settings")
+
+[node name="GameplaySettingsTitle" type="Label" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/GameplaySettingsGui/GameplaySettings"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.94, 0.98, 1)
+theme_override_font_sizes/font_size = 22
+text = "게임 플레이"
+horizontal_alignment = 1
+
+[node name="RangedRangeRow" type="HBoxContainer" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/GameplaySettingsGui/GameplaySettings"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="ShowRangedAttackRangeToggle" type="CheckButton" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/GameplaySettingsGui/GameplaySettings/RangedRangeRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.84, 0.9, 1)
+theme_override_font_sizes/font_size = 18
+text = "원거리 몬스터 공격 범위 표시"
+button_pressed = true
+
+[node name="FloatingDamageRow" type="HBoxContainer" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/GameplaySettingsGui/GameplaySettings"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="ShowFloatingDamageToggle" type="CheckButton" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/GameplaySettingsGui/GameplaySettings/FloatingDamageRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.84, 0.9, 1)
+theme_override_font_sizes/font_size = 18
+text = "플로팅 데미지 표시"
+button_pressed = true
+
+[node name="MobHealthBarRow" type="HBoxContainer" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/GameplaySettingsGui/GameplaySettings"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="ShowMobHealthBarToggle" type="CheckButton" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/GameplaySettingsGui/GameplaySettings/MobHealthBarRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.84, 0.9, 1)
+theme_override_font_sizes/font_size = 18
+text = "몬스터 체력 게이지 표시"
+button_pressed = true
 
 [node name="TreeDensityGui" type="PanelContainer" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox"]
 layout_mode = 2
 custom_minimum_size = Vector2(480, 0)
 mouse_filter = 0
-theme_override_styles/panel = SubResource("StyleBoxFlat_tree_density_gui")
+theme_override_styles/panel = SubResource("StyleBoxFlat_settings_panel")
 
 [node name="TreeDensitySettings" type="VBoxContainer" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/TreeDensityGui"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 6
 script = ExtResource("11_tree_density")
 
 [node name="TreeDensityTitle" type="Label" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/TreeDensityGui/TreeDensitySettings"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.1, 0.1, 0.1, 1)
+theme_override_colors/font_color = Color(0.92, 0.94, 0.98, 1)
 theme_override_font_sizes/font_size = 22
 text = "소나무 밀도"
 horizontal_alignment = 1
@@ -753,7 +1066,7 @@ alignment = 1
 
 [node name="SparseLabel" type="Label" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/TreeDensityGui/TreeDensitySettings/TreeDensitySliderRow"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.15, 0.15, 0.15, 1)
+theme_override_colors/font_color = Color(0.8, 0.84, 0.9, 1)
 theme_override_font_sizes/font_size = 18
 text = "적음"
 
@@ -766,14 +1079,14 @@ size_flags_vertical = 4
 
 [node name="DenseLabel" type="Label" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/TreeDensityGui/TreeDensitySettings/TreeDensitySliderRow"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.15, 0.15, 0.15, 1)
+theme_override_colors/font_color = Color(0.8, 0.84, 0.9, 1)
 theme_override_font_sizes/font_size = 18
 text = "많음"
 
 [node name="TreeDensityValueLabel" type="Label" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/TreeDensityGui/TreeDensitySettings"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.2, 0.2, 0.2, 1)
+theme_override_colors/font_color = Color(0.68, 0.72, 0.78, 1)
 theme_override_font_sizes/font_size = 17
 text = "밀도 50% · 간격 505"
 horizontal_alignment = 1
@@ -842,6 +1155,7 @@ theme_override_constants/separation = 8
 alignment = 1
 
 [node name="WeaponDamageTitle" type="Label" parent="GameOver/MenuOverlay/CenterContainer/VBoxContainer/WeaponDamagePanel"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
 text = "무기별 피해량"
@@ -864,14 +1178,16 @@ layout_mode = 2
 theme_override_constants/separation = 24
 alignment = 1
 
-[node name="RestartButton" type="Button" parent="GameOver/MenuOverlay/CenterContainer/VBoxContainer/Buttons"]
+[node name="GameOverRestartButton" type="Button" parent="GameOver/MenuOverlay/CenterContainer/VBoxContainer/Buttons"]
+unique_name_in_owner = true
 process_mode = 3
 custom_minimum_size = Vector2(220, 56)
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
 text = "다시시작"
 
-[node name="QuitButton" type="Button" parent="GameOver/MenuOverlay/CenterContainer/VBoxContainer/Buttons"]
+[node name="GameOverQuitButton" type="Button" parent="GameOver/MenuOverlay/CenterContainer/VBoxContainer/Buttons"]
+unique_name_in_owner = true
 process_mode = 3
 custom_minimum_size = Vector2(220, 56)
 layout_mode = 2
@@ -906,5 +1222,5 @@ script = ExtResource("6_checker_bg")
 [connection signal="pressed" from="PauseMenu/MenuOverlay/CenterContainer/PauseMainContent/Buttons/RestartButton" to="." method="_on_pause_restart_pressed"]
 [connection signal="pressed" from="PauseMenu/MenuOverlay/CenterContainer/PauseMainContent/Buttons/QuitButton" to="." method="_on_pause_quit_pressed"]
 [connection signal="pressed" from="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/SettingsBackButton" to="PauseMenu" method="_on_settings_back_pressed"]
-[connection signal="pressed" from="GameOver/MenuOverlay/CenterContainer/VBoxContainer/Buttons/RestartButton" to="." method="_on_restart_button_pressed"]
-[connection signal="pressed" from="GameOver/MenuOverlay/CenterContainer/VBoxContainer/Buttons/QuitButton" to="." method="_on_quit_button_pressed"]
+[connection signal="pressed" from="GameOver/MenuOverlay/CenterContainer/VBoxContainer/Buttons/GameOverRestartButton" to="." method="_on_restart_button_pressed"]
+[connection signal="pressed" from="GameOver/MenuOverlay/CenterContainer/VBoxContainer/Buttons/GameOverQuitButton" to="." method="_on_quit_button_pressed"]

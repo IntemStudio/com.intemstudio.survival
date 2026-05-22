@@ -29,6 +29,7 @@ var _hit_flash_base_modulate := Color.WHITE
 
 
 func _ready() -> void:
+	add_to_group(UiLocale.GROUP_REFRESH)
 	_hit_flash_target = %HappyBoo.get_node("Colorizer") as CanvasItem
 	_hit_flash_base_modulate = _hit_flash_target.modulate
 	_sync_collision_to_ground_shadow()
@@ -197,15 +198,19 @@ func _update_experience_hud() -> void:
 	hud_root.get_node("ExpLabel").text = "%d / %d" % [experience, exp_to_level]
 
 
+func refresh_locale() -> void:
+	_update_auto_attack_hud()
+
+
 func _update_auto_attack_hud() -> void:
 	var label := get_node_or_null("%AutoAttackLabel") as Label
 	if not label:
 		return
 	if auto_attack_enabled:
-		label.text = "자동 공격: ON (F)"
+		label.text = UiLocale.t(&"hud.auto_attack_on")
 		label.add_theme_color_override("font_color", Color(0.1, 0.45, 0.15))
 	else:
-		label.text = "자동 공격: OFF (F)"
+		label.text = UiLocale.t(&"hud.auto_attack_off")
 		label.add_theme_color_override("font_color", Color(0.55, 0.12, 0.12))
 
 

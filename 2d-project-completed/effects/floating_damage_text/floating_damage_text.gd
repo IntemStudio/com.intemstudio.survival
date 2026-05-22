@@ -26,7 +26,7 @@ static func spawn_magic_damage(world_position: Vector2, amount: int, color: Colo
 
 
 static func _spawn(world_position: Vector2, amount: int, color: Color) -> void:
-	if amount <= 0:
+	if amount <= 0 or not GameplaySettings.is_floating_damage_visible():
 		return
 
 	var game: Node = Engine.get_main_loop().root.get_node_or_null("Game")

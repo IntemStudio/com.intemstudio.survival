@@ -23,6 +23,11 @@ var _density_event_remaining := 0.0
 
 
 func _ready() -> void:
+	LocaleSettings.load_and_apply()
+	DisplaySettings.load_and_apply()
+	AudioSettings.load_and_apply()
+	GameplaySettings.load_and_apply()
+	add_to_group(UiLocale.GROUP_REFRESH)
 	if not balance_table:
 		balance_table = DEFAULT_BALANCE_TABLE
 	if not balance_timeline:
@@ -30,8 +35,9 @@ func _ready() -> void:
 	_update_kill_count_hud()
 	$Timer.stop()
 	%Player.leveled_up.connect(_on_player_leveled_up)
-	if not show_weapon_select("무기 선택"):
+	if not show_weapon_select(&"weapon_select.title"):
 		_ensure_game_started()
+	refresh_locale()
 
 
 func is_game_started() -> bool:
@@ -46,8 +52,8 @@ func is_pause_menu_open() -> bool:
 	return %PauseMenu.visible
 
 
-func show_weapon_select(title: String = "레벨 업! 무기 선택") -> bool:
-	if not %WeaponSelectMenu.present_random_choices(title, %Player.get_owned_weapons()):
+func show_weapon_select(title_key: StringName = &"weapon_select.level_up") -> bool:
+	if not %WeaponSelectMenu.present_random_choices(title_key, %Player.get_owned_weapons()):
 		_consume_pending_weapon_select()
 		return false
 
@@ -110,8 +116,21 @@ func format_damage_amount(amount: int) -> String:
 	return _format_damage(amount)
 
 
+func refresh_locale() -> void:
+	_update_kill_count_hud()
+	_update_time_hud()
+	%WeaponDamageTitle.text = UiLocale.t(&"gameover.weapon_damage")
+	%GameOverRestartButton.text = UiLocale.t(&"gameover.restart")
+	%GameOverQuitButton.text = UiLocale.t(&"pause.quit")
+	_refresh_game_over_title()
+
+
 func _update_kill_count_hud() -> void:
-	%KillCountLabel.text = "처치: %d" % kill_count
+	%KillCountLabel.text = UiLocale.t(&"hud.kills") % kill_count
+
+
+func _update_time_hud() -> void:
+	%TimeLabel.text = UiLocale.format_hud_time(_elapsed_seconds)
 
 
 func _process(delta: float) -> void:
@@ -121,7 +140,7 @@ func _process(delta: float) -> void:
 		_tick_balance_timeline()
 		_apply_spawn_interval_from_phase()
 		_try_trigger_stage_clear()
-	%TimeLabel.text = _format_time(_elapsed_seconds)
+	_update_time_hud()
 	_update_balance_phase_hud()
 
 
@@ -219,13 +238,6 @@ func _count_alive_mobs() -> int:
 	return get_tree().get_nodes_in_group("mobs").size()
 
 
-func _format_time(seconds: float) -> String:
-	var total := int(seconds)
-	var minutes := total / 60
-	var secs := total % 60
-	return "%02d:%02d" % [minutes, secs]
-
-
 func spawn_mob(forced_scene: PackedScene = null, ignore_alive_cap: bool = false) -> void:
 	if _run_cleared or _run_failed:
 		return
@@ -290,8 +302,8 @@ func _trigger_stage_clear() -> void:
 
 func _show_stage_clear() -> void:
 	_populate_game_over_weapon_damage()
-	%GameOverTitle.text = "클리어!"
 	%GameOver.show()
+	_refresh_game_over_title()
 	get_tree().paused = true
 
 
@@ -313,16 +325,25 @@ func _on_player_health_depleted():
 	_run_failed = true
 	$Timer.stop()
 	_populate_game_over_weapon_damage()
-	%GameOverTitle.text = "Game Over"
 	%GameOver.show()
+	_refresh_game_over_title()
 	get_tree().paused = true
+
+
+func _refresh_game_over_title() -> void:
+	if not %GameOver.visible:
+		return
+	if _run_cleared:
+		%GameOverTitle.text = UiLocale.t(&"gameover.clear")
+	elif _run_failed:
+		%GameOverTitle.text = UiLocale.t(&"gameover.fail")
 
 
 func _populate_game_over_weapon_damage() -> void:
 	populate_weapon_damage_list(
 		%WeaponDamageList,
 		get_weapon_damage_display_rows(),
-		"기록된 피해 없음",
+		UiLocale.t(&"gameover.no_damage"),
 		true
 	)
 

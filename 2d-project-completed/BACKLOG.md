@@ -3,7 +3,7 @@
 **용도:** 다음에 손댈 작업·아이디어를 모아 두는 살아 있는 목록입니다.  
 **규칙:** 여기 적혀 있다고 반드시 구현하지 않습니다. 개발 중 기각·완료·범위 변경 시 항목을 **삭제·수정**해도 됩니다.
 
-**관련 문서:** 구현 지도·제약은 [`AGENTS.md`](AGENTS.md), 에이전트 must는 [`.cursor/rules/`](.cursor/rules/) 참고.
+**관련 문서:** 진입 [`AGENTS.md`](AGENTS.md) · 도메인 상세 [`Docs/AGENTS_MapArena.md`](Docs/AGENTS_MapArena.md), [`Docs/AGENTS_Display_UI.md`](Docs/AGENTS_Display_UI.md) · 에이전트 must [`.cursor/rules/`](.cursor/rules/)
 
 ---
 
@@ -94,9 +94,10 @@
 - [ ] **무기 아이콘** — 카탈로그 대부분 `art/shared/pistol.png` 공용. 무기별 스프라이트·틴트 규칙 정리.
 - [ ] **무기 수 vs 품질** — 카탈로그 약 47종, 고유 비주얼·밸런스 검증은 소수에 집중된 상태. 우선순위 무기 목록을 두고 나머지는 보류/삭제 검토 가능.
 - [ ] **몹 비주얼 다양화** — Slime 변종만. ranged/special/boss 전용 실루엣·애니 없음.
-- [ ] **사운드** — `default_bus_layout.tres`만 있고, BGM·타격·레벨업·보스 SFX 미연결.
+- [ ] **사운드** — `default_bus_layout.tres`(Master·BGM·SFX)·일시정지 볼륨 UI·`user://audio_settings.cfg` 적용됨. BGM·타격·레벨업·보스 SFX **재생 노드**(`AudioStreamPlayer.bus = "BGM"`/`"SFX"`) 미연결.
+- [ ] **UI 다국어 2차** — `UiLocale` 1차: 일시정지·설정·HUD·게임오버·**무기 선택 UI**(제목·리롤·버리기·자동선택·툴팁 구조). 남음: 밸런스 공지·레벨/EXP·`WeaponData` 효과 문장 한→영 변환.
 - [ ] **프로젝트 표기** — `project.godot` 앱 이름이 GDQuest 튜토리얼명. 배포용 이름·아이콘 변경.
-- [ ] **맵·장식 (추가)** — Poisson 소나무·일시정지 설정 밀도·3×/1× 씬 분리는 구현됨(`AGENTS.md` §소나무). 남음: `pine_tree` 파괴, 카메라 클램프, 바닥 체커를 `arena_rect`에 맞춤, (선택) BFS 막힘 재시드
+- [ ] **맵·장식 (추가)** — Poisson 소나무·일시정지 설정 밀도·3×/1× 씬 분리는 구현됨([`Docs/AGENTS_MapArena.md`](Docs/AGENTS_MapArena.md) §소나무). 남음: `pine_tree` 파괴, 카메라 클램프, 바닥 체커를 `arena_rect`에 맞춤, (선택) BFS 막힘 재시드
 
 ---
 
@@ -137,12 +138,12 @@
 4b. **대시·게이지 변경** → `player.gd` 상수·`_update_dash_cooldown_gauge`·`player.tscn` `%DashCooldownBar`; `AGENTS.md` 플레이어 이동·대시 섹션 동기화
 4c. **자동 공격 토글·HUD 변경** → `player.gd` (`auto_attack_enabled`, `toggle_auto_attack`), `gun.gd` (`refresh_auto_attack`, `_is_auto_attack_enabled`), `king_bible_orb.gd`, `survivors_game.tscn` `%AutoAttackLabel`, `project.godot` `toggle_auto_attack`; `AGENTS.md` 자동 공격 토글 섹션 동기화
 4d. **무기 피해 집계·게임오버·일시정지 표시 변경** → `mob.gd` `apply_weapon_damage`/`apply_poison`, `weapon_damage_tracker.gd`, `game.gd` (`populate_weapon_damage_list`, `get_weapon_damage_display_rows`), `ui/pause_menu.gd`, `survivors_game.tscn` `%WeaponDamageList`·`%PauseOwnedWeaponsList`; `AGENTS.md` 무기별 피해 집계
-4k. **몹 스폰·플레이어 근처 금지** → `map_arena.gd` `get_random_spawn_position`·`mob_spawn_player_clear_extra`, `game.gd` `spawn_mob`; `godot-core.mdc`·`AGENTS.md` §MapArena 동기화
+4k. **몹 스폰·플레이어 근처 금지** → `map_arena.gd` `get_random_spawn_position`·`mob_spawn_player_clear_extra`, `game.gd` `spawn_mob`; `godot-core.mdc`·[`Docs/AGENTS_MapArena.md`](Docs/AGENTS_MapArena.md) 동기화
 4e. **원거리 몹·투사체·예고 마크** → `mob.gd` export·`mob_ranged.tscn`·`mob_projectile.*`·`mob_attack_mark.*`·`player.apply_mob_projectile_damage`·`scene_pool` prewarm·`ranged_spawn_ratio`; `AGENTS.md` 원거리 몹 섹션
 4f. **테스트 아레나·더미 몹** → `test_arena.tscn`·`test_arena.gd`·`mob_dummy.tscn`·`mob.gd` `movement_enabled`/`combat_enabled`·`MobSpawnSelector.MOB_DUMMY_SCENE`·`scene_pool` prewarm·`player.gd` `clear_weapons`/`reset_health_depleted_state`; `AGENTS.md` 테스트 아레나 섹션
 4g. **피격 깜박임 변경** → `effects/hit_flash/hit_flash.gd` (`FLASH_MULTIPLIER`, `BLINK_COUNT`, on/off 시간), `mob.gd` (`_play_hit_flash`, `pool_reset`·`HitFlash.cancel`), `player.gd` (`_play_hit_flash`, `Colorizer`); `AGENTS.md` 피격 깜박임 섹션 동기화
-4h. **맵 경계·스폰 영역 변경** → `map_arena.gd`, **`survivors_game.tscn` `%MapArena` 오버라이드(메인 3×)**, `test_arena.tscn`(1×·`spawn_trees`), `game.gd` `spawn_mob`; `AGENTS.md`·`godot-core.mdc`
-4j. **소나무 Poisson·밀도 UI 변경** → `poisson_sampler.gd`, `map_arena.gd`(`tree_spacing_dense`/`sparse`, `tree_min_spacing`, `get/set_tree_density_normalized`, 기본 밀도 50%), `ui/tree_density_settings.gd`, `survivors_game.tscn` `%PauseMenu` `%SettingsPanel`; `AGENTS.md` §소나무·§일시정지
+4h. **맵 경계·스폰 영역 변경** → `map_arena.gd`, **`survivors_game.tscn` `%MapArena` 오버라이드(메인 3×)**, `test_arena.tscn`(1×·`spawn_trees`), `game.gd` `spawn_mob`; [`Docs/AGENTS_MapArena.md`](Docs/AGENTS_MapArena.md)·`godot-core.mdc`
+4j. **소나무 Poisson·밀도 UI 변경** → `poisson_sampler.gd`, `map_arena.gd`(`tree_spacing_dense`/`sparse`, `tree_min_spacing`, `get/set_tree_density_normalized`, 기본 밀도 50%), `ui/settings/tree_density_settings.gd`, `survivors_game.tscn` `%PauseMenu` `%SettingsPanel`; [`Docs/AGENTS_MapArena.md`](Docs/AGENTS_MapArena.md) §소나무·`AGENTS.md` §일시정지
 4l. **일시정지·설정 UI 변경** → `ui/pause_menu.gd`, `survivors_game.tscn` (`%PauseMainContent`, `%SettingsPanel`, `SettingsButton`, `SettingsBackButton`); `AGENTS.md` §일시정지 메뉴
 4i. **무기 선택·리롤·버리기 UI 변경** → `ui/weapon_select_menu.gd` (`present_random_choices`, `reroll_choices`, `discard_weapon_at_index`, `_owned_weapons`, `_discarded_weapons`, `_build_selectable_weapon_pool`), `survivors_game.tscn` (`DiscardSlot0~2`, `RerollButton`, `RightColumnVBox/DiscardedPanel`, `AutoSelectRow`, `AutoPriorityPanel`); `AGENTS.md` 무기 선택 UI·`.cursor/rules/godot-weapons.mdc`
 5. **접촉 피해·충돌 정렬 변경** → `ground_shadow_footprint.gd`, `player.gd`/`player.tscn` (`GroundShadow`, `HurtBox`, `set_contact_damage_enabled`), `mob.gd` (`attack_distance`, `_get_contact_standoff_distance`, `_sync_body_collision_to_shadow`), `DAMAGE_RATE`·`HitFlash`; `AGENTS.md` 접촉 피해·피격 깜박임

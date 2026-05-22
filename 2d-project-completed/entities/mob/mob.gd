@@ -120,9 +120,23 @@ func _hide_health_bar() -> void:
 func _reveal_health_bar() -> void:
 	if not is_node_ready():
 		return
-	%HealthBar.visible = true
-	%HealthBar.max_value = max_health
-	%HealthBar.value = maxf(health, 0.0)
+	_sync_health_bar()
+	if GameplaySettings.is_mob_health_bar_visible():
+		%HealthBar.visible = true
+
+
+# 설정 변경 시 피해를 받은 몹의 체력바 표시를 갱신합니다.
+func refresh_health_bar_visibility() -> void:
+	if not is_node_ready():
+		return
+	if not GameplaySettings.is_mob_health_bar_visible():
+		%HealthBar.visible = false
+		return
+	if health < max_health and health > 0:
+		_sync_health_bar()
+		%HealthBar.visible = true
+	else:
+		%HealthBar.visible = false
 
 
 # 원거리 몹 전용 AttackRangeRing — attack_distance(중심 간 거리) 반경으로 맞춥니다.
@@ -141,9 +155,19 @@ func _sync_attack_range_ring() -> void:
 	_set_attack_range_ring_visible(true)
 
 
+# 설정·스폰 상태에 맞춰 원거리 공격 범위 링 표시를 갱신합니다.
+func refresh_attack_range_ring() -> void:
+	if ranged_attack_enabled and combat_enabled:
+		_sync_attack_range_ring()
+	else:
+		_set_attack_range_ring_visible(false)
+
+
 func _set_attack_range_ring_visible(visible_state: bool) -> void:
 	if _attack_range_ring:
-		_attack_range_ring.visible = visible_state
+		_attack_range_ring.visible = (
+			visible_state and GameplaySettings.is_ranged_attack_range_visible()
+		)
 
 
 func set_targeted(active: bool) -> void:

@@ -1,11 +1,42 @@
 # AGENTS — Godot 2D Survival
 
+## 목차
+
+- [문서·언어 정책](#문서언어-정책)
+- [프로젝트 개요](#프로젝트-개요)
+- [폴더 지도](#폴더-지도)
+- [고정 맵 경계 (`MapArena`)](#고정-맵-경계-maparena) · 상세 [`Docs/AGENTS_MapArena.md`](Docs/AGENTS_MapArena.md)
+- [런타임 흐름 (요약)](#런타임-흐름-요약)
+- [테스트 아레나](#테스트-아레나-test_arenatscn)
+- [무기 선택 UI](#무기-선택-ui-weaponselectmenu)
+- [무기별 피해 집계·게임오버](#무기별-피해-집계게임오버)
+- [일시정지 메뉴](#일시정지-메뉴-pausemenu)
+- [무기 공격 전달 방식](#무기-공격-전달-방식) · [조준 표시](#조준-표시-gun--mob) · [몹 체력바](#몹-체력바-healthbar)
+- [픽업·경험치·자석](#픽업경험치자석)
+- [플레이어 이동·대시](#플레이어-이동대시)
+- [자동 공격 토글](#자동-공격-토글)
+- [플레이어 접촉 피해](#플레이어-접촉-피해)
+- [피격 깜박임](#피격-깜박임-hitflash)
+- [원거리 몹](#원거리-몹-mob_ranged)
+- [밸런스 모델](#밸런스-모델-왜-이렇게-동작하는지)
+- [디스플레이·카메라·UI](#디스플레이카메라ui) · 상세 [`Docs/AGENTS_Display_UI.md`](Docs/AGENTS_Display_UI.md)
+- [자주 쓰는 Godot 패턴](#자주-쓰는-godot-패턴)
+- [오브젝트 풀](#오브젝트-풀-scenepool)
+- [작업별로 먼저 볼 파일](#작업별로-먼저-볼-파일)
+- [연동 규칙 (`.mdc` 요약)](#연동-규칙-mdc-요약)
+- [핵심 제약](#핵심-제약-영어-원문--godot-coremdc)
+
+---
+
 ## 문서·언어 정책
 
 | 대상 | 언어 | 역할 |
 |------|------|------|
 | `.cursor/rules/*.mdc` | **영어** (짧은 must/must not) | 에이전트 **실행 규칙** — authoritative |
-| `AGENTS.md` (이 파일) | **한국어** + 경로·타입명 영어 | **지도·흐름·이유** (사람용) |
+| `AGENTS.md` (이 파일) | **한국어** + 경로·타입명 영어 | **지도·흐름·이유** — 단일 진입점 |
+| `Docs/AGENTS_*.md` | **한국어** | 도메인별 상세(맵·UI 등). 루트에는 요약만 |
+| `Docs/Plan_*.md` | **한국어** | 설계·체크리스트·Epic |
+| `BACKLOG.md` | **한국어** | 미구현·후속 작업 |
 | 코드 주석 (`.gd`) | **한국어** 한 줄 목적 | 비즈니스 맥락; must 문장은 `.mdc`에만 |
 
 제약이 겹치면 **`.mdc`가 우선**입니다. 이 파일은 규칙을 한글로 요약만 하고, 상세 must는 각 `.mdc`를 따릅니다.
@@ -21,7 +52,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 - **Autoload 없음** — 다수 스크립트가 `/root/Game` 경로를 하드코딩
 - **창·뷰포트:** HD **1280×720** (`project.godot` `[display]`, `resizable=false`, `stretch` `canvas_items` + `expand`)
 - **카메라:** `player.tscn` `%` 없음 `Camera2D` — **`zoom = (0.5, 0.5)`** (메인·테스트 공통, 시야 약 2배)
-- **UI 좌표:** FHD **1920×1080** 기준 배치 → `UiViewportLayout`이 뷰포트에 맞게 스케일 ([디스플레이·카메라·UI](#디스플레이카메라ui))
+- **UI 좌표:** FHD **1920×1080** 기준 배치 → `UiViewportLayout`이 뷰포트에 맞게 스케일 ([`Docs/AGENTS_Display_UI.md`](Docs/AGENTS_Display_UI.md))
 
 ---
 
@@ -40,56 +71,24 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | `entities/player/` | 이동, 대시·쿨다운 게이지, 경험치, 무기 컨테이너, 피격, **자동 공격 토글(F)**, `Camera2D` **`zoom 0.5`** |
 | `entities/mob/` | 공용 `mob.gd` + 변종 `.tscn`(플레이 **7종** + 테스트 `mob_dummy`); `%HealthBar`(피해 전 숨김)·`target_indicator_ring.gd`·`GroundShadow` 충돌 동기화; ranged `mob_projectile`·`mob_attack_mark` |
 | `weapons/` | `WeaponData`, catalog, `gun`, `melee_projectile`·`area_damage_zone`·탄환·마법 등 |
-| `ui/` | 무기 선택·일시정지(`pause_menu.gd`)·게임오버 HUD, `ui_viewport_layout.gd`·`ui_resolution_config.gd`(FHD UI 스케일), `tree_density_settings.gd`(일시정지 설정 — 소나무 밀도) |
+| `ui/` | `pause_menu`, `weapon_select_menu`, `ui_viewport_layout`, `ui_resolution_config` — **설정**은 [`ui/settings/`](ui/settings/) (`display_settings`, `audio_settings`, `gameplay_settings`, `locale_settings`·`ui_locale`, `*_settings_ui`, `tree_density_settings`, `settings_save_util`) |
 | `effects/exp_orb/` | 경험치 오브 (`exp_orbs` 그룹, `ScenePool` 적용) |
 | `effects/magnet_pickup/` | 자석 아이템 (1% 드랍, 풀 미적용) |
 | `effects/health_pickup/` | 체력 회복 아이템 (1% 드랍, +30 HP, 풀 미적용) |
 | `effects/hit_flash/` | `HitFlash` — 피격 시 `CanvasItem.modulate` 짧은 깜박임(풀·씬 없음, 정적 API) |
 | `effects/` (기타) | 데미지 텍스트, 사망 연기 등 |
 | `characters/` | Slime / HappyBoo 비주얼 + `shared/ground_shadow_footprint.gd` (`GroundShadowFootprint`) |
-| `world/trees/` | `pine_tree.tscn` — `StaticBody2D` 장애물(레이어 1). `poisson_sampler.gd` + `MapArena._rebuild_trees()`로 절차 배치 (`tree_min_spacing`, `player_clear_radius`). 튜닝: §소나무 |
+| `world/trees/` | `pine_tree.tscn` — `StaticBody2D` 장애물(레이어 1). `poisson_sampler.gd` + `MapArena._rebuild_trees()`로 절차 배치. 튜닝: [`Docs/AGENTS_MapArena.md`](Docs/AGENTS_MapArena.md) §소나무 |
 
 ---
 
 ## 고정 맵 경계 (`MapArena`)
 
-메인·테스트 씬이 **같은 `map_arena.tscn` 프리팹**을 쓰지만, **맵 크기는 씬별로 다릅니다.** 예전 `Player/Path2D`·`%PathFollow2D` 테두리 스폰은 제거됨.
+메인(F5) **3×** `6336×4104` · 테스트(F6) **1×** `2112×1368` — 같은 `map_arena.tscn` 프리팹, **씬별 `arena_rect` 오버라이드**. 몹 스폰: `get_random_spawn_position(%Player.global_position)` → `spawn_mob` / `initialize_spawn_health`. 소나무: Poisson + `%PauseMenu` 설정 밀도.
 
-### 맵 크기 — 메인(F5) vs 테스트(F6)
+**Must not (맵 크기):** `map_arena.gd`의 `ARENA_RECT_1X`만 바꾸면 **F6만** 바뀝니다. **F5**는 `survivors_game.tscn` `%MapArena` 오버라이드만 수정.
 
-| 구분 | `arena_rect` (크기) | `spawn_margin` | 소나무 |
-|------|---------------------|----------------|--------|
-| **메인** `survivors_game.tscn` | **6336×4104** — `Rect2(-3167, -2065, 6336, 4104)` **씬 인스턴스 오버라이드** | **288** (씬 오버라이드) | Poisson 생성 (`spawn_trees` 기본 true) |
-| **스크립트·F6** `map_arena.gd` / `test_arena.tscn` | **2112×1368** — `ARENA_RECT_1X` | **96** — `SPAWN_MARGIN_1X` | `test_arena`: `spawn_trees = false` |
-
-**Must not (맵 크기):** `map_arena.gd`의 `ARENA_RECT_1X`만 바꾸면 **F6만** 바뀝니다. **F5 메인 맵을 바꿀 때는 반드시 `survivors_game.tscn`의 `%MapArena` 노드**에서 `arena_rect`·`spawn_margin`을 오버라이드하세요. (스크립트 기본값을 3×로 올리면 테스트 아레나까지 커집니다.)
-
-1× 기준 rect 중심 ≈ `(1, -13)`(플레이어 원점 근처). 3×는 같은 중심을 유지한 선형 확대.
-
-### 동작 요약
-
-| 항목 | 내용 |
-|------|------|
-| 씬·스크립트 | `world/map_arena/map_arena.tscn`, `map_arena.gd` (`class_name MapArena`) |
-| 벽 | `StaticBody2D` 4면 + `Polygon2D` (`wall_thickness` 48), 레이어 **1** |
-| 몹 스폰 | `get_random_spawn_position(exclude_near_world?)` → 글로벌 좌표, `spawn_margin` 안쪽 랜덤, layer 1 `intersect_shape`(r=52, 12회). 메인은 `game.gd`가 `%Player.global_position` 전달 → `player_clear_radius + mob_spawn_player_clear_extra`(기본 **130**) 반경 밖만 허용 |
-| 호출 | `spawn_mob()` → `acquire(..., spawn_pos)` + `initialize_spawn_health` (`spawn_pos`는 `get_random_spawn_position` 결과) |
-
-### 소나무 (Poisson)
-
-| 항목 | 내용 |
-|------|------|
-| 샘플러 | `world/trees/poisson_sampler.gd` (`PoissonSampler`, Bridson) |
-| 배치 | `_rebuild_trees()` → 자식 `Obstacles`에 `pine_tree.tscn` |
-| 밀도 | `tree_spacing_dense` **50**(많음) · `tree_spacing_sparse` **960**(적음) · `tree_min_spacing` 기본 **50%**(`TREE_MIN_SPACING_DEFAULT`≈505) |
-| 밀도 UI | `%PauseMenu` → `%SettingsPanel` → `TreeDensitySettings` (`ui/tree_density_settings.gd`) — 슬라이더 **0~100%** → `set_tree_density_normalized()` → 드래그 중 즉시 `_rebuild_trees()`. (구 HUD `%TreeDensityGui` 제거) |
-| 금지 | `wall_padding`(기본 288), `player_clear_radius`(기본 280), 원심 `(0,0)` |
-| 수동 나무 | 메인 씬 `PineTree*` 노드 **없음** (전부 절차 생성) |
-| 미구현(선택) | BFS로 막힌 맵 재시드 — `BACKLOG.md` §맵·장식 |
-
-**인스펙터:** `arena_rect` / `wall_thickness` / `wall_color` / 나무 export 변경 시 `call_deferred`로 벽·나무 재생성.
-
-**튜닝·확장 시:** 맵 3× 유지 시 `wall_padding`·`spawn_margin`·`player_clear_radius`를 1× 대비 약 **3배**로 맞추는 것이 자연스럽습니다. 메인 맵이 여전히 빽빽하면 일시정지 **설정 0%** 또는 `%MapArena` **`tree_spacing_sparse`** 를 **1200~1600**으로 올립니다. 밀집(간격 50 근처)은 몹 스폰(r=52) 압박. **링 스폰**·**카메라 클램프**·바닥 `checker_background` 맞춤은 BACKLOG.
+**상세 (F5/F6 표·스폰·소나무·튜닝):** [`Docs/AGENTS_MapArena.md`](Docs/AGENTS_MapArena.md)
 
 ---
 
@@ -190,7 +189,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | 공통 채우기 | `game.gd` `populate_weapon_damage_list(list, rows, empty_text, include_grand_total, weapon_type_font_colors?)` — `get_weapon_damage_display_rows()`·`format_damage_amount()` |
 | 미집계 | `Mob.take_damage`만 쓰는 폴백 경로(무기 없음), 플레이어·몹 투사체 피해 |
 
-**왜 `apply_weapon_damage` 한곳:** 탄환·근접·마법·연금·독 등 대부분이 이미 이 API를 탐. 새 무기도 `health -=` 대신 이 경로를 쓰면 통계·플로팅 텍스트가 같이 맞춰짐.
+**왜 `apply_weapon_damage` 한곳:** 탄환·근접·마법·연금·독 등 대부분이 이미 이 API를 탐. 새 무기도 `health -=` 대신 이 경로를 쓰면 통계·플로팅 텍스트가 같이 맞춰짐. 플로팅 숫자 표시 여부는 `GameplaySettings` → `FloatingDamageText._spawn` 게이트(일시정지 **게임 플레이**, 기본 ON).
 
 **튜닝·확장 시:** 게임오버에 처치 수·생존 시간·레벨을 붙일 때는 `_on_player_health_depleted` / `_populate_game_over_weapon_damage` 근처에서 HUD 값을 읽어 라벨만 추가. 일시정지 목록도 바꿀 때는 `pause_menu.gd`·`populate_weapon_damage_list` 인자를 같이 맞출 것.
 
@@ -205,13 +204,13 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | 열기·닫기 | **Esc** — `game.show_pause_menu()` / `resume_game()`. 무기 선택·게임오버·클리어 중에는 `pause_menu.gd`가 입력 무시 |
 | 메인 버튼 | **계속하기** → `resume_game()` · **설정** → `%SettingsPanel` · **다시하기** → `_restart_game()` · **게임 종료** → `get_tree().quit()` |
 | 보유 무기 | `%PauseMainContent` / `%PauseOwnedWeaponsList` — `refresh_owned_weapons()` (`show_pause_menu()` 직전) |
-| 설정 | `%SettingsPanel` — `TreeDensitySettings`(`tree_density_settings.gd`) 소나무 밀도 슬라이더. 열 때 `sync_from_arena()` |
+| 설정 | `%SettingsPanel` — **언어**(`LocaleSettings`, `user://locale_settings.cfg`, ko/en) · 화면·오디오 · `%GameplaySettings` · 소나무. `UiLocale` + `ui_locale_refresh` 그룹 `refresh_locale()` |
 | 설정 닫기 | **돌아가기** · 설정 화면에서 **Esc** → 메인 일시정지(`%PauseMainContent`). 메인에서 Esc → 게임 재개 |
 | 메뉴 닫힘 | `visibility_changed` → `_close_settings_view()` — 재개·`hide()` 시 설정 패널 초기화 |
 
 **Must not:** `CanvasLayer`에서 네이티브 `hide()`/`show()` **오버라이드 금지**(Godot 4 — 엔진 미호출·경고-as-error). 닫힘 처리는 `visibility_changed` 또는 `game.gd`에서 명시 호출.
 
-**튜닝·확장 시:** 새 설정 항목은 `%SettingsPanel/SettingsCenter/SettingsVBox`에 추가. 소나무 밀도는 `map_arena.gd`·`tree_density_settings.gd`·§소나무 동기화.
+**튜닝·확장 시:** 새 설정 항목은 `%SettingsPanel/SettingsCenter/SettingsVBox`에 추가. `load_and_apply` 정책 — **Display**: 저장 없으면 `project.godot` 유지 · **Locale/Audio/Gameplay**: 저장 없으면 기본값 apply · 저장 실패는 `SettingsSaveUtil`. 언어 2차 범위는 `BACKLOG.md` §UI 다국어 2차. 화면 — [`Docs/AGENTS_Display_UI.md`](Docs/AGENTS_Display_UI.md). 사운드 — `AudioStreamPlayer.bus` `"BGM"`/`"SFX"`. 소나무 — [`Docs/AGENTS_MapArena.md`](Docs/AGENTS_MapArena.md).
 
 ---
 
@@ -254,6 +253,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | 피해 | `take_damage` / `apply_weapon_damage` / 독 틱 `_apply_poison_tick` → `_reveal_health_bar()` — **첫 피해 이후** 표시·갱신 |
 | 사망 | `_request_die()` → `_hide_health_bar()` — 사망 연출 전 숨김 (`queue_free` 아님, 풀 재사용) |
 | 풀 | `pool_reset()`에서도 숨김 — 재스폰 시 다시 미표시 상태 |
+| 설정 | 일시정지 **게임 플레이** → `GameplaySettings.is_mob_health_bar_visible()` (기본 ON). OFF면 `_reveal_health_bar` 무시·필드 몹 `refresh_health_bar_visibility()`로 숨김 |
 
 **튜닝·확장 시:** 항상 표시·보스만 항상 표시 등은 `mob.gd` `_hide_health_bar` / `_reveal_health_bar` 호출 지점만 조정. 바 위치는 씬 `HealthBar` 오프셋.
 
@@ -390,7 +390,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 ### 비주얼
 
 - 보라 슬라임 `slime_tint`, HP 바 보라.
-- `AttackRangeRing` — `attack_distance` 반경 링 (`_sync_attack_range_ring`, `pool_on_acquire` 시 갱신).
+- `AttackRangeRing` — `attack_distance` 반경 링 (`_sync_attack_range_ring`, `pool_on_acquire` 시 갱신). 표시 여부: 일시정지 **게임 플레이** → `GameplaySettings` (`user://gameplay_settings.cfg`, 기본 ON).
 - 예고 마크 — 주황빛 `circle.png`, 슬라임 tint 기반.
 
 ### 풀 (`ObjectPools`)
@@ -440,47 +440,12 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 
 ## 디스플레이·카메라·UI
 
-게임 **월드**와 **UI**는 해상도·줌 정책이 다릅니다. UI는 FHD 좌표, 월드는 뷰포트·카메라 줌이 직접 반영됩니다.
+- **뷰포트:** HD **1280×720** (`project.godot` `[display]`). **UI:** FHD **1920×1080** 좌표 → `UiViewportLayout` 균일 스케일 (`ui_resolution_config.gd`, `ui_viewport_layout.gd`).
+- **카메라:** `player.tscn` `Camera2D` **`zoom (0.5, 0.5)`** — `player.gd`에서 줌 변경 없음. 바닥 `checker_background.gd`는 줌·뷰포트에 연동.
 
-### 창·뷰포트 (`project.godot`)
+**Must not (UI):** FHD 레이아웃을 HD 픽셀로 이중 축소하지 말 것 — 스케일은 `UiViewportLayout`만.
 
-| 항목 | 현재 값 |
-|------|---------|
-| `viewport_width` × `viewport_height` | **1280 × 720** (HD) |
-| `resizable` | `false` |
-| `stretch/mode` | `canvas_items` |
-| `stretch/aspect` | `expand` |
-
-**FHD로 바꿀 때:** 위 두 픽셀만 **1920 × 1080**으로 수정. UI는 `UiViewportLayout`이 자동 스케일(기준 FHD 유지). 월드 스프라이트는 뷰포트 픽셀 1:1이라 HD→FHD 시 화면에 더 많은 픽셀이 그려짐(줌·맵 밸런스는 별도 튜닝).
-
-### 카메라 (`entities/player/player.tscn`)
-
-| 항목 | 내용 |
-|------|------|
-| 노드 | `Player` 자식 `Camera2D` (플레이어 추적) |
-| `zoom` | **`Vector2(0.5, 0.5)`** — 기본 1.0 대비 가로·세로 시야 약 **2배** |
-| 가시 월드 크기 | 대략 `뷰포트 크기 ÷ zoom` (HD 기준 약 **2560×1440** 월드 단위) |
-| 코드 변경 | `player.gd`에서 줌을 건드리지 않음 — **씬 인스펙터·`.tscn`만** |
-
-`world/floor/checker_background.gd`는 매 프레임 `camera.zoom`·`get_viewport_rect().size`로 셰이더 `viewport_half`를 갱신합니다. 줌 변경 시 바닥 체커도 같이 맞춰집니다.
-
-### UI (FHD 기준 스케일)
-
-HUD·메뉴·테스트 UI는 **1920×1080(FHD) 좌표**로 배치하고, 실제 창이 HD여도 `UiViewportLayout`이 균일 스케일합니다.
-
-| 항목 | 내용 |
-|------|------|
-| 기준 상수 | `ui/ui_resolution_config.gd` — `DESIGN_FHD`, `HD`, `FHD` |
-| 스크립트 | `ui/ui_viewport_layout.gd` (`class_name UiViewportLayout`) |
-| 메인 HUD | `survivors_game.tscn` → `HUD/HUDRoot` (`align_mode` 좌상, `pass_mouse_to_game` true) |
-| 메뉴 | `WeaponSelectMenu`·`PauseMenu`·`GameOver` → 각 `MenuOverlay` (중앙, `pass_mouse_to_game` false) |
-| 테스트 | `test_arena.tscn` → `TestUI/TestUILayout` (`pass_mouse_to_game` false) |
-
-**Must not (UI):** FHD offset·폰트를 HD 픽셀에 맞춰 이중으로 줄이지 말 것 — 스케일은 `UiViewportLayout`만 담당.
-
-**새 전체 화면 UI:** FHD 크기 `Control`(1920×1080) + `UiViewportLayout`을 루트에 붙이고, HUD/메뉴와 동일하게 `align_mode`·`pass_mouse_to_game` 선택.
-
-**튜닝:** `design_size`·`align_mode`·뷰포트 HD/FHD 전환. 카메라 시야는 `Camera2D.zoom`만 조정( UI `UiViewportLayout`과 독립).
+**상세 (FHD 전환·HUD/메뉴 노드·튜닝):** [`Docs/AGENTS_Display_UI.md`](Docs/AGENTS_Display_UI.md)
 
 ---
 
@@ -491,6 +456,8 @@ HUD·메뉴·테스트 UI는 **1920×1080(FHD) 좌표**로 배치하고, 실제 
 - 살아 있는 몹: `get_tree().get_nodes_in_group("mobs")` (풀에 있는 비활성 몹은 그룹에 없음)
 - 무기 추가·몹 사망: `call_deferred`
 - 무기 데이터: `WeaponData` Resource + catalog 풀 → 랜덤 3택1; 설명·리롤·버리기·버린 목록·자동 선택 UI는 `ui/weapon_select_menu.gd` + `survivors_game.tscn` (`DiscardSlot0~2`, `RerollButton`, `RightColumnVBox/DiscardedPanel`, `AutoSelectRow`, `AutoPriorityPanel`)
+
+---
 
 ## 오브젝트 풀 (`ScenePool`)
 
@@ -519,7 +486,7 @@ HUD·메뉴·테스트 UI는 **1920×1080(FHD) 좌표**로 배치하고, 실제 
 |------|------|
 | 오브젝트 풀 | `game/pool/scene_pool.gd`, `pool_util.gd`, `survivors_game.tscn` (`ObjectPools`) |
 | 스폰·시간·UI | `game/game.gd`, `survivors_game.tscn`, `world/map_arena/map_arena.gd` (`%MapArena`) |
-| 맵 경계·벽·소나무·스폰 | `map_arena.gd`, `poisson_sampler.gd`, **`survivors_game.tscn` `%MapArena` 오버라이드(3×)**, `test_arena.tscn`, `ui/tree_density_settings.gd`, `%PauseMenu` `%SettingsPanel` |
+| 맵 경계·벽·소나무·스폰 | [`Docs/AGENTS_MapArena.md`](Docs/AGENTS_MapArena.md), `map_arena.gd`, `poisson_sampler.gd`, **`survivors_game.tscn` `%MapArena` 오버라이드(3×)**, `test_arena.tscn`, `ui/settings/tree_density_settings.gd` |
 | 무기별 피해·게임오버·일시정지 | `weapon_damage_tracker.gd`, `game.gd` (`populate_weapon_damage_list`, `get_weapon_damage_display_rows`), `ui/pause_menu.gd`, `survivors_game.tscn` (`%PauseMainContent`, `%SettingsPanel`, `%PauseOwnedWeaponsList`, `%WeaponDamageList`) |
 | 난이도 곡선·타임라인·클리어 | `default_balance_table.tres`, `default_balance_timeline.tres`, `balance_table.gd`, `balance_timeline*.gd`, `game.gd` (`_trigger_stage_clear`, `_tick_balance_timeline`) |
 | 몹 타입 추가 | `mob.gd`, `mob_spawn_selector.gd`, `mob_*.tscn`, balance `.tres` (메인 스폰 시). 테스트 전용만이면 `MOB_DUMMY`처럼 상수+prewarm+`test_arena` `MOB_OPTIONS` |
@@ -535,8 +502,8 @@ HUD·메뉴·테스트 UI는 **1920×1080(FHD) 좌표**로 배치하고, 실제 
 | 조준 링 | `gun.gd` (`_update_target_display`, `_set_targeted`), `mob.gd` (`set_targeted`), `target_indicator_ring.gd`, 몹 `.tscn` `%TargetIndicator` |
 | 몹 체력바 | `mob.gd` (`_hide_health_bar`, `_reveal_health_bar`, `_sync_health_bar`), 몹 `.tscn` `%HealthBar` |
 | 피격 깜박임 | `effects/hit_flash/hit_flash.gd`, `mob.gd` (`_play_hit_flash`, `pool_reset`), `player.gd` (`_play_hit_flash`, `HappyBoo/Colorizer`) |
-| 뷰포트·UI 스케일 | `project.godot` `[display]`, `ui/ui_resolution_config.gd`, `ui/ui_viewport_layout.gd`, `survivors_game.tscn` (`HUDRoot`·`MenuOverlay`×3), `test_arena.tscn` (`TestUILayout`) |
-| 카메라 줌·바닥 | `entities/player/player.tscn` (`Camera2D`), `world/floor/checker_background.gd` |
+| 뷰포트·UI 스케일 | [`Docs/AGENTS_Display_UI.md`](Docs/AGENTS_Display_UI.md), `project.godot` `[display]`, `ui/ui_resolution_config.gd`, `ui/ui_viewport_layout.gd`, `survivors_game.tscn` (`HUDRoot`·`MenuOverlay`×3), `test_arena.tscn` (`TestUILayout`) |
+| 카메라 줌·바닥 | [`Docs/AGENTS_Display_UI.md`](Docs/AGENTS_Display_UI.md) §카메라, `entities/player/player.tscn` (`Camera2D`), `world/floor/checker_background.gd` |
 
 ---
 
