@@ -58,7 +58,7 @@ func prewarm(scene: PackedScene, count: int) -> void:
 	_prewarm_scene(scene, count)
 
 
-func acquire(scene: PackedScene, parent: Node) -> Node:
+func acquire(scene: PackedScene, parent: Node, spawn_global_position: Vector2 = Vector2(INF, INF)) -> Node:
 	var key := _scene_key(scene)
 	var node: Node = _pop_inactive(key)
 
@@ -75,6 +75,9 @@ func acquire(scene: PackedScene, parent: Node) -> Node:
 		if node.get_parent():
 			node.get_parent().remove_child(node)
 		parent.add_child(node)
+
+	if node is Node2D and is_finite(spawn_global_position.x) and is_finite(spawn_global_position.y):
+		(node as Node2D).global_position = spawn_global_position
 
 	_activate(node)
 	node.set_meta(&"_pooled_active", true)
@@ -141,9 +144,9 @@ func _prewarm_scene(scene: PackedScene, count: int) -> void:
 	for _i in count:
 		var node := scene.instantiate()
 		_register_node(node, key)
+		_attach_to_pool_storage(node)
 		if node.has_method("pool_reset"):
 			node.pool_reset()
-		_attach_to_pool_storage(node)
 		_deactivate(node)
 		_push_inactive(key, node)
 

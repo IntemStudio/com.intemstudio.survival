@@ -26,8 +26,8 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 
 | 경로 | 역할 |
 |------|------|
-| `survivors_game.tscn` | 메인 씬: `Game`, `Timer`, `%ObjectPools`, `%MapArena`, `Player`, HUD, 일시정지, 무기 UI, `%GameOver`·`%WeaponDamageList` |
-| `world/map_arena/` | `MapArena` — 고정 직사각형 맵 벽(충돌)·플레이 영역 내부 몹 스폰 좌표 |
+| `survivors_game.tscn` | 메인 씬(F5): `Game`, `%MapArena`(3× 맵 오버라이드), `Player`, HUD·`%TreeDensityGui`, 무기 UI, `%GameOver` |
+| `world/map_arena/` | `MapArena` — 벽·Poisson 소나무(`Obstacles`)·플레이 영역 내부 몹 스폰 좌표 |
 | `game/game.gd` | 스폰 타이머, 밸런스 시계, 처치 HUD, 일시정지/게임오버, 무기 선택, 무기별 피해 집계·게임오버 표시 |
 | `game/weapon_damage_tracker.gd` | `WeaponDamageTracker` — 무기 `get_unique_key()`별 누적 피해, 게임오버 행 목록 생성 |
 | `game/pool/` | `ScenePool` (`scene_pool.gd`), `PoolUtil` — 공통 `acquire` / `release` |
@@ -35,36 +35,59 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | `test_arena.tscn` | **테스트 전용** 씬: `Game` + `game/test_arena.gd` — 몹/무기 수동 스폰, 리스폰 (`run/main_scene` 아님, **F6**) |
 | `game/test_arena.gd` | 테스트 아레나 오케스트레이션(스폰·무기 Equip·플레이어/몹 리스폰) |
 | `entities/player/` | 이동, 대시·쿨다운 게이지, 경험치, 무기 컨테이너, 피격, **자동 공격 토글(F)** |
-| `entities/mob/` | 공용 `mob.gd` + 변종 `.tscn`(플레이 **7종** + 테스트 전용 `mob_dummy`); ranged 전용 `mob_projectile`·`mob_attack_mark` |
+| `entities/mob/` | 공용 `mob.gd` + 변종 `.tscn`(플레이 **7종** + 테스트 `mob_dummy`); `%TargetIndicator`·`GroundShadow` 충돌 동기화; ranged `mob_projectile`·`mob_attack_mark` |
 | `weapons/` | `WeaponData`, catalog, `gun`, `melee_projectile`·`area_damage_zone`·탄환·마법 등 |
-| `ui/` | 무기 선택(3택1 + 설명 + 자동 선택·우선순위), 일시정지 |
+| `ui/` | 무기 선택(3택1 + 리롤·버리기·자동 선택), `pause_menu.gd`(Esc·보유 무기 피해 목록), `tree_density_settings.gd`(소나무 밀도 HUD) |
 | `effects/exp_orb/` | 경험치 오브 (`exp_orbs` 그룹, `ScenePool` 적용) |
 | `effects/magnet_pickup/` | 자석 아이템 (1% 드랍, 풀 미적용) |
 | `effects/health_pickup/` | 체력 회복 아이템 (1% 드랍, +30 HP, 풀 미적용) |
 | `effects/hit_flash/` | `HitFlash` — 피격 시 `CanvasItem.modulate` 짧은 깜박임(풀·씬 없음, 정적 API) |
 | `effects/` (기타) | 데미지 텍스트, 사망 연기 등 |
-| `characters/` | Slime / HappyBoo 비주얼 |
-| `world/trees/` | `pine_tree.tscn` — `StaticBody2D` 장애물(레이어 1), 스폰 겹침 검사 대상. **Poisson 배치 설계:** [`Docs/Plan_Tree_Placement_Poisson.md`](Docs/Plan_Tree_Placement_Poisson.md) |
+| `characters/` | Slime / HappyBoo 비주얼 + `shared/ground_shadow_footprint.gd` (`GroundShadowFootprint`) |
+| `world/trees/` | `pine_tree.tscn` — `StaticBody2D` 장애물(레이어 1). `poisson_sampler.gd` + `MapArena._rebuild_trees()`로 절차 배치 (`tree_min_spacing`, `player_clear_radius`). 설계·튜닝: [`Docs/Plan_Tree_Placement_Poisson.md`](Docs/Plan_Tree_Placement_Poisson.md) |
 
 ---
 
 ## 고정 맵 경계 (`MapArena`)
 
-메인·테스트 씬 공통으로 **월드 좌표 기준 고정 직사각형** 플레이 영역을 둡니다. 예전 `Player/Path2D`·`%PathFollow2D` **테두리 스폰 경로는 제거**되었습니다.
+메인·테스트 씬이 **같은 `map_arena.tscn` 프리팹**을 쓰지만, **맵 크기는 씬별로 다릅니다.** 예전 `Player/Path2D`·`%PathFollow2D` 테두리 스폰은 제거됨.
+
+### 맵 크기 — 메인(F5) vs 테스트(F6)
+
+| 구분 | `arena_rect` (크기) | `spawn_margin` | 소나무 |
+|------|---------------------|----------------|--------|
+| **메인** `survivors_game.tscn` | **6336×4104** — `Rect2(-3167, -2065, 6336, 4104)` **씬 인스턴스 오버라이드** | **288** (씬 오버라이드) | Poisson 생성 (`spawn_trees` 기본 true) |
+| **스크립트·F6** `map_arena.gd` / `test_arena.tscn` | **2112×1368** — `ARENA_RECT_1X` | **96** — `SPAWN_MARGIN_1X` | `test_arena`: `spawn_trees = false` |
+
+**Must not (맵 크기):** `map_arena.gd`의 `ARENA_RECT_1X`만 바꾸면 **F6만** 바뀝니다. **F5 메인 맵을 바꿀 때는 반드시 `survivors_game.tscn`의 `%MapArena` 노드**에서 `arena_rect`·`spawn_margin`을 오버라이드하세요. (스크립트 기본값을 3×로 올리면 테스트 아레나까지 커집니다.)
+
+1× 기준 rect 중심 ≈ `(1, -13)`(플레이어 원점 근처). 3×는 같은 중심을 유지한 선형 확대.
+
+### 동작 요약
 
 | 항목 | 내용 |
 |------|------|
 | 씬·스크립트 | `world/map_arena/map_arena.tscn`, `map_arena.gd` (`class_name MapArena`) |
-| 메인 배치 | `survivors_game.tscn` — `Game` 직계 `%MapArena` (기본 위치 원점) |
-| 테스트 | `test_arena.tscn` 동일 인스턴스 — `spawn_test_mob`도 `get_random_spawn_position()` 사용 |
-| 플레이 영역 | `arena_rect` 기본 **2112×1368** (`Rect2(-1055, -697, 2112, 1368)`) |
-| 벽 | `_ready`·인스펙터 변경 시 `StaticBody2D` 4면 + `Polygon2D` (`wall_thickness` 48). **레이어 1** — 플레이어·몹·탄환(`collision_mask` 3)과 충돌 |
-| 스폰 | `get_random_spawn_position()` → **글로벌** 좌표. `spawn_margin`(96) 안쪽 균일 랜덤 → 레이어 1 `intersect_shape`(반경 52px, 최대 12회)로 소나무·벽 겹침 회피 → 실패 시 영역 중심 |
-| 호출 | `game.gd` `spawn_mob()` — `new_mob.global_position = %MapArena.get_random_spawn_position()` |
+| 벽 | `StaticBody2D` 4면 + `Polygon2D` (`wall_thickness` 48), 레이어 **1** |
+| 몹 스폰 | `get_random_spawn_position(exclude_near_world?)` → 글로벌 좌표, `spawn_margin` 안쪽 랜덤, layer 1 `intersect_shape`(r=52, 12회). 메인은 `game.gd`가 `%Player.global_position` 전달 → `player_clear_radius + mob_spawn_player_clear_extra`(기본 **130**) 반경 밖만 허용 |
+| 호출 | `spawn_mob()` → `acquire(..., spawn_pos)` + `initialize_spawn_health` (`spawn_pos`는 `get_random_spawn_position` 결과) |
 
-**인스펙터:** `arena_rect` / `wall_thickness` / `wall_color` 변경 시 `call_deferred("_rebuild_walls")`. `spawn_margin`이 영역보다 크면 클램프 + `push_warning`.
+### 소나무 (Poisson)
 
-**튜닝·확장 시:** 맵 크기는 `arena_rect`만 맞추면 벽·스폰 내부가 같이 따라감. `MapArena` 노드를 옮겨도 `to_global`이라 스폰 월드 좌표는 유지됨. **소나무 절차 배치(Poisson·밀도·금지 구역)** 는 [`Docs/Plan_Tree_Placement_Poisson.md`](Docs/Plan_Tree_Placement_Poisson.md) 참고(현재 씬 수동 11그루). **플레이어 주변 링 스폰**·**카메라 클램프**·바닥 `checker_background` 맞춤은 미구현(BACKLOG). 내부 균일 랜덤은 플레이어 거리와 무관해 체감 밀도가 달라질 수 있음 — `max_alive_mobs`·스폰 타이머와 함께 조정.
+| 항목 | 내용 |
+|------|------|
+| 샘플러 | `world/trees/poisson_sampler.gd` (`PoissonSampler`, Bridson) |
+| 배치 | `_rebuild_trees()` → 자식 `Obstacles`에 `pine_tree.tscn` |
+| 밀도 | `tree_spacing_dense` **50**(많음) · `tree_spacing_sparse` **960**(적음) · `tree_min_spacing` 기본 **50%**(`TREE_MIN_SPACING_DEFAULT`≈505) |
+| HUD | `HUD/HUDRoot/%TreeDensityGui` (`ui/tree_density_settings.gd`, `process_mode` ALWAYS) — 슬라이더 **0~100%** → `set_tree_density_normalized()` → 드래그 중 즉시 `_rebuild_trees()` |
+| 금지 | `wall_padding`(기본 288), `player_clear_radius`(기본 280), 원심 `(0,0)` |
+| 수동 나무 | 메인 씬 `PineTree*` 노드 **없음** (전부 절차 생성) |
+
+상세 설계·튜닝: [`Docs/Plan_Tree_Placement_Poisson.md`](Docs/Plan_Tree_Placement_Poisson.md).
+
+**인스펙터:** `arena_rect` / `wall_thickness` / `wall_color` / 나무 export 변경 시 `call_deferred`로 벽·나무 재생성.
+
+**튜닝·확장 시:** 맵 3× 유지 시 `wall_padding`·`spawn_margin`·`player_clear_radius`를 1× 대비 약 **3배**로 맞추는 것이 자연스럽습니다. 메인 맵이 여전히 빽빽하면 HUD **0%** 또는 `%MapArena` **`tree_spacing_sparse`** 를 **1200~1600**으로 올립니다. 밀집(간격 50 근처)은 몹 스폰(r=52) 압박. **링 스폰**·**카메라 클램프**·바닥 `checker_background` 맞춤은 BACKLOG.
 
 ---
 
@@ -96,7 +119,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 
 | 블록 | 동작 |
 |------|------|
-| **몹** | `%MobTypeOption` + **Spawn** → `spawn_test_mob` (`ScenePool` + `%MapArena.get_random_spawn_position()` + `initialize_spawn_health(1.0)`). 한 번에 1마리(교체 시 이전 몹 `PoolUtil.release_node`) |
+| **몹** | `%MobTypeOption` + **Spawn** → `spawn_test_mob`: 플레이어 오른쪽 **`MOB_SPAWN_OFFSET_FROM_PLAYER`(280, 0)** 고정 좌표(`%MapArena` 랜덤 아님). HP: **Dummy**는 프리팹 기본(500), 그 외는 더미 최대×**10** 배수. 한 번에 1마리(교체 시 `PoolUtil.release_node`) |
 | | `%MobRespawnCheck` — 처치 후 `register_kill()` → `mob_respawn_delay`(기본 2초) 뒤 `_last_mob_scene` 재스폰. **Spawn·수동 교체 시** `_mob_respawn_token`으로 대기 콜백 취소 |
 | **무기** | 시작 `revolver.tres` Equip. `%WeaponTypeFilter`(전체/원거리/마법/근접) + `%WeaponRarityFilter`(전체/커먼/…) + `%WeaponOption` + **Equip** → `Player.clear_weapons()` 후 `add_weapon` |
 | | 필터 결과 0개 → `%StatusLabel` `"조건에 맞는 무기가 없습니다."` |
@@ -129,12 +152,15 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 
 ## 무기 선택 UI (`WeaponSelectMenu`)
 
-씬: `survivors_game.tscn` — `WeaponSelectMenu/MenuOverlay/.../VBoxContainer` 아래 `AutoSelectRow`, `AutoPriorityPanel`, `ContentHBox`(선택 버튼·`DetailPanel`). 스크립트: `ui/weapon_select_menu.gd`.
+씬: `survivors_game.tscn` — `WeaponSelectMenu/MenuOverlay/.../VBoxContainer` 아래 `AutoSelectRow`, `AutoPriorityPanel`, `ContentHBox`(`ChoicesVBox`·`RightColumnVBox`=`DetailPanel`+`DiscardedPanel`). 스크립트: `ui/weapon_select_menu.gd`.
 
 | 기능 | 동작 |
 |------|------|
 | 수동 선택 | `ChoicesVBox` 버튼 4개(표시는 `CHOICE_COUNT`=3) → `Game.on_weapon_chosen` |
 | 설명 | 호버·포커스·자동 대상 시 `WeaponData.build_select_tooltip_bbcode()` → `DetailLabel` |
+| 버리기 | `ChoiceRow0~2` — 무기 버튼 옆 `DiscardSlot0~2Button`(`버리기`) → `discard_weapon_at_index()`. **남은 버리기 0회면 버튼 숨김**(비활성 아님). `_discarded_weapons` 등록·**한 판 최대 3회**. 가능하면 같은 슬롯 교체, 없으면 행 제거 |
+| 버린 목록 | `DiscardedPanel`/`DiscardedListLabel` — 버린 순서대로 `• 표시명` 목록, 없으면 `(없음)` |
+| 리롤 | `ChoicesVBox/RerollButton` → `reroll_choices()` — 보유·버린 무기 제외 풀에서 후보 `CHOICE_COUNT`개 재추출. **한 판 최대 3회**(`MAX_REROLLS_PER_RUN`, `_rerolls_remaining`). 남은 횟수 0 또는 선택 가능 풀이 비면 `disabled` |
 | 자동 선택 | `AutoSelectToggle` 켜면 `on_menu_opened` 후 **3초** 뒤 `_pick_auto_select_index()`로 확정 |
 | 우선순위 | `AutoPriorityPanel`의 `PrioritySlot0~2` ▲▼ — `_auto_priority_order` (`Ranged`/`Magic`/`Melee` 순서, **한 판 동안** 유지). 기본: 원거리 → 마법 → 근접 |
 | 카운트다운 | `AutoSelectCountdownLabel` (`자동 선택까지 N.N초`) |
@@ -142,7 +168,9 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 
 **왜 `on_menu_opened` / `on_menu_closed`:** `CanvasLayer`의 `show()`/`hide()`는 네이티브 오버라이드 불가(경고·에러). `game.gd`가 표시·숨김 직후 위 메서드를 호출해 자동 선택 타이머를 시작·정리한다.
 
-**자동 선택 중:** 대상 버튼만 투명 테두리 스타일 + 배경 게이지; 수동 클릭·토글 OFF·우선순위 변경 시 타이머 취소(우선순위 변경 시 자동 ON이면 3초 재시작).
+**자동 선택 중:** 대상 버튼만 투명 테두리 스타일 + 배경 게이지; 수동 클릭·토글 OFF·우선순위 변경·**리롤·버리기** 시 타이머 취소(우선순위 변경·리롤·버리기 시 자동 ON이면 3초 재시작).
+
+**튜닝·확장 시:** 리롤·버리기 횟수 상한은 `MAX_REROLLS_PER_RUN`·`MAX_DISCARDS_PER_RUN` 상수. 골드/레벨 비용·메뉴당 리셋은 `reroll_choices()`·`discard_weapon_at_index()`·카운터 초기화 지점만 조정. `present_random_choices`가 캐시한 `_owned_weapons`는 메뉴가 열린 동안 고정. `_discarded_weapons`·남은 횟수는 씬 재로드(재시작) 시 초기화.
 
 ---
 
@@ -155,12 +183,14 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | 집계 | `Game`의 `WeaponDamageTracker` (`game/weapon_damage_tracker.gd`), 키 = `WeaponData.get_unique_key()` |
 | 기록 경로 | `mob.gd` `apply_weapon_damage`·독 틱 `_apply_poison_tick` → `Game.register_weapon_damage` (무기 스크립트에서 직접 호출하지 않음) |
 | 독 도트 | `apply_poison` 스택에 `weapon` 보관 — 틱 피해도 해당 무기에 귀속 |
-| 게임오버 UI | `survivors_game.tscn` `GameOver/.../WeaponDamagePanel` — `%WeaponDamageList`에 보유 무기 전부(0 포함), 피해량 내림차순 + **합계** |
+| 게임오버 UI | `survivors_game.tscn` `GameOver/.../WeaponDamagePanel` — `%WeaponDamageList` |
+| 일시정지 UI | `%PauseMenu` — `refresh_owned_weapons()` → `%PauseOwnedWeaponsList`(보유 무기·누적 피해, 타입별 색·합계). `show_pause_menu()` 직전 갱신 |
+| 공통 채우기 | `game.gd` `populate_weapon_damage_list(list, rows, empty_text, include_grand_total, weapon_type_font_colors?)` — `get_weapon_damage_display_rows()`·`format_damage_amount()` |
 | 미집계 | `Mob.take_damage`만 쓰는 폴백 경로(무기 없음), 플레이어·몹 투사체 피해 |
 
 **왜 `apply_weapon_damage` 한곳:** 탄환·근접·마법·연금·독 등 대부분이 이미 이 API를 탐. 새 무기도 `health -=` 대신 이 경로를 쓰면 통계·플로팅 텍스트가 같이 맞춰짐.
 
-**튜닝·확장 시:** 게임오버에 처치 수·생존 시간·레벨을 붙일 때는 `game.gd` `_on_player_health_depleted` / `_populate_game_over_weapon_damage` 근처에서 HUD 값을 읽어 라벨만 추가하면 됨.
+**튜닝·확장 시:** 게임오버에 처치 수·생존 시간·레벨을 붙일 때는 `_on_player_health_depleted` / `_populate_game_over_weapon_damage` 근처에서 HUD 값을 읽어 라벨만 추가. 일시정지 목록도 바꿀 때는 `pause_menu.gd`·`populate_weapon_damage_list` 인자를 같이 맞출 것.
 
 ---
 
@@ -171,7 +201,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | 구분 | 조건 | 씬·코드 | 비고 |
 |------|------|---------|------|
 | **근접 관통 탄** | `weapon_type == "Melee"` | `melee_projectile.tscn`, `gun._shoot_melee_projectile()` | 사거리 `get_melee_range()`, 속도 `get_melee_projectile_speed()`. 타겟 없어도 발사. `hit_count` > 1이면 충돌 후 0.07s 연타 |
-| **영역 존** | `attack_delivery == "AreaZone"` | `area_damage_zone.tscn`, `setup_circle` / `setup_rectangle` | 연금: `concoction` 포물선 착지 → 존 스폰 + 독. 짧은 overlap 펄스 후 풀 반환 |
+| **영역 존** | `attack_delivery == "AreaZone"` | `area_damage_zone.tscn`, `setup_circle` / `setup_rectangle` | 연금: `concoction` 착지 → 존 + 독. `_pulse_damage`는 overlap → `intersect_shape` → 거리 폴백 순으로 몹 수집(풀 acquire 직후 빈 overlap 대비) |
 | **원거리 탄** | `Ranged`, `Bullet` | `bullet_2d.tscn` | 1몹 1타 후 소멸 |
 | **투척·연금 비행** | `Throwing` + `projectile_scene` | `concoction` 등 | 영역 무기도 비행 껍데기는 유지, **피해는 착지 존** |
 | **마법** | `Magic` | `magic_bolt`, `king_bible_orb` | 궤도는 `Orbit` |
@@ -180,20 +210,34 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 
 **튜닝·확장 시:** 새 영역 무기는 `attack_delivery = "AreaZone"` + `aoe_radius`(원형) 또는 `setup_rectangle`. 새 근접은 카탈로그 `Melee`만으로 `melee_projectile` 자동.
 
+### 조준 표시 (`Gun` → `Mob`)
+
+| 항목 | 동작 |
+|------|------|
+| 표시 | 몹 `.tscn` `%TargetIndicator` — `circle.png`, 기본 `visible = false`, 머리 위 오프셋·스케일은 변종별 |
+| API | `mob.gd` `set_targeted(active)` — ON 시 링 표시 + `_process`에서 스케일 펄스 |
+| 호출 | `gun.gd` `_update_target_display()` — 사거리 내 최근접 몹만 `_current_target`, 교체·사망 시 `set_targeted(false)` (`pool_reset`·`_die`에서도 해제) |
+| 씬 | 모든 플레이 몹 변종·`mob.tscn`에 `%TargetIndicator` 유지 (`godot-mobs.mdc`) |
+
 ---
 
 ## 픽업·경험치·자석
 
 | 대상 | 스폰 | 수집 | 비고 |
 |------|------|------|------|
-| 경험치 오브 | `mob.gd` `_die()` → `ScenePool.acquire(EXP_ORB_SCENE)` | `Player` `%PickupRange`(layer 4) → `start_magnet` / 플레이어 근접 시 자동 자석 | 수집 시 `gain_experience` → `PoolUtil.release_node` |
+| 경험치 오브 | `mob.gd` `_die()` → `ScenePool.acquire(EXP_ORB_SCENE)` | `Player` `%PickupRange`(layer 4) → `start_magnet` / `pickup_range` 이내 `pool_on_acquire` 자동 자석 | 수집 시 `gain_experience` → `PoolUtil.release_node` |
 | 자석 아이템 | `_die()`에서 `randf() < 0.01` → `magnet_pickup.tscn` `instantiate` | `%PickupRange` → `collect(player)` | `exp_orbs` 그룹 전원 `start_magnet(player)` 후 `queue_free` |
 | 체력 아이템 | `_die()`에서 `randf() < 0.01` → `health_pickup.tscn` `instantiate` | `%PickupRange` → `collect(player)` | `heal_health(heal_amount)` (기본 30, 최대 체력까지) 후 `queue_free` |
 
 - **물리:** 픽업·오브·자석 모두 `Area2D`, `collision_layer = 4`. 플레이어 `PickupRange`는 `collision_mask = 4`.
+- **범위 반경:** `player.gd` `@export pickup_range` (기본 **150**). `_ready`에서 `%PickupRange` `CircleShape2D` 반경과 동기화. `exp_orb.gd`는 플레이어 중심 거리 `<= player.pickup_range`일 때 자석 시작(Area 진입과 별도).
+- **범위 표시:** `player.tscn` `%PickupRange` 자식 `%PickupRangeRing` — `art/shared/fx/circle.png` `Sprite2D`, `modulate` 알파 **0.28**·연한 파랑. `player.gd` `_sync_pickup_range_visual()`가 `pickup_range`와 링 스케일을 맞춤(몹 `AttackRangeRing`과 동일 tex 반경÷스케일 방식). `z_index = -10`으로 캐릭터 뒤.
 - **비주얼:** 오브 scale `0.35`(파란), 자석·체력 `0.7`(주황·초록, 오브의 2배).
+- **자석 이동:** `exp_orb.gd` — 시간·거리 이중 가속(`MAGNET_RAMP_*`, `MAGNET_SNAP_*`, 상한 `MAGNET_MAX_SPEED`). 자석 중 `%MagnetTrail` `Line2D` 꼬리(폭·알파 그라데이션); `pool_reset`에서 초기화.
 - **플레이어 분기:** `player.gd` `_on_pickup_range_area_entered` — `collect` 우선, 없으면 `start_magnet`.
 - **자석·체력은 풀 밖:** 드랍 빈도가 낮아 `ScenePool` 미사용. 풀 도입 시 `pool_reset`/`pool_on_acquire`·`PoolUtil.release_node` 계약 필요.
+
+**튜닝·확장 시:** `pickup_range`·`PickupRangeRing` `modulate`(색·알파)는 `player.tscn`·인스펙터. 런타임에 범위가 바뀌면 `_sync_pickup_range_visual()`를 같이 호출해 충돌·링·`exp_orb` 거리 판정이 어긋나지 않게 할 것. 링 숨김이 필요하면 `PickupRangeRing.visible`만 끄면 됨(충돌은 `%PickupRange` 유지).
 
 ---
 
@@ -211,7 +255,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | 무적 | 없음 — 대시 중에도 접촉 피해 동일 ([접촉 피해](#플레이어-접촉-피해) 참고) |
 
 - **쿨다운 게이지:** `player.tscn` `%DashCooldownBar` (56×12, 발밑 `ProgressBar`). `_dash_cooldown_remaining > 0`일 때만 표시, 채움 = 경과 쿨다운, 0이 되면 `visible = false`. 갱신은 `player.gd` `_update_dash_cooldown_gauge()`.
-- **플레이어 `%` 노드:** `%HappyBoo`, `%Weapons`, `%HurtBox`, `%PickupRange`, `%HealthBar`, `%DashCooldownBar` — 이름·경로 변경 시 `player.gd`·`player.tscn` grep.
+- **플레이어 `%` 노드:** `%HappyBoo`, `%Weapons`, `%HurtBox`, `%PickupRange`, `%PickupRangeRing`, `%HealthBar`, `%DashCooldownBar` — 이름·경로 변경 시 `player.gd`·`player.tscn` grep.
 
 ---
 
@@ -236,24 +280,21 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 
 ## 플레이어 접촉 피해
 
-플레이어 이동·대시와 무관하게, `%HurtBox`와 겹친 몹 `CharacterBody2D`가 있으면 매 프레임 체력이 깎입니다 (`player.gd` `_physics_process`).
+플레이어 이동·대시와 무관하게, `%HurtBox`와 겹친 몹 `CharacterBody2D`가 있으면 매 프레임 체력이 깎입니다 (`player.gd` `_physics_process`). **게임 시작 전·무기 선택 중**에는 `set_contact_damage_enabled(false)`로 `%HurtBox.monitoring`을 끕니다(`game.gd` `_ensure_game_started`에서 true).
 
 | 항목 | 값·위치 |
 |------|---------|
 | 판정 | `%HurtBox.get_overlapping_bodies()` — `collision_mask = 2` (몹 레이어) |
-| HurtBox 크기 | `player.tscn` 사각형 **84×54** (`monitorable = false`) |
+| 충돌 박스 | `GroundShadowFootprint` — Slime/HappyBoo 자식 `GroundShadow` 스프라이트 글로벌 스케일 → **사각형** `CollisionShape2D`·`%HurtBox` (`TEXTURE_SIZE` 84×52 기준). `pool_on_acquire` / `_ready`에서 동기화 |
+| 몹 정지 거리 | `_get_contact_standoff_distance()` = `max(attack_distance, 발밑 AABB 비겹침 거리 + CONTACT_STANDOFF_PADDING 6)`. 기본 `mob.tscn` `attack_distance` **150** |
+| 분리 보정 | `_clamp_velocity_away_from_player()` — 몹 분리력이 standoff 안으로 밀어넣지 않도록 접근 속도 제거 |
 | 초당 피해 | `DAMAGE_RATE = 6.0` × **겹친 몹 수** |
 | 플로팅 숫자 | `DAMAGE_FLOAT_INTERVAL = 0.2`초마다, `maxi(int(누적), 1)` → 화면 **최소 1** (실제 DPS와 체감이 다를 수 있음) |
 | 피격 깜박임 | 플로팅 숫자와 **동일 0.2초 간격**으로 `HitFlash` ([피격 깜박임](#피격-깜박임-hitflash) 참고) |
 
-**가만히 서 있어도 맞는 이유**
+**왜 standoff를 쓰는지:** 접촉 DPS는 `get_overlapping_bodies()`(물리 겹침)이고, 몹 추적 정지는 중심 간 거리입니다. 예전에는 `attack_distance`만으로 멈춰 HurtBox와 몹 충돌이 겹친 채 DPS가 남는 경우가 많았습니다. 지금은 발밑 그림자 footprint로 양쪽 박스가 맞닿기 전에 멈추도록 맞춥니다.
 
-1. 몹은 `%MapArena` 직사각형 경계 안에서 스폰된 뒤 플레이어를 추적합니다(벽은 `MapArena`의 `StaticBody2D`).
-2. `mob.gd`는 중심 간 거리가 `attack_distance`(기본 **85**) 이하이면 `velocity = 0`으로 정지합니다.
-3. 정지 거리(중심↔중심)와 충돌체 크기는 별개입니다. 기본 몹 원형 충돌 **r≈67**(Y 오프셋 -28) + HurtBox 사각형이면, 85px에서 멈춰도 **HurtBox와 물리 겹침이 남아** 접촉 피해가 계속됩니다.
-4. 스폰 타이머가 돌면 주변에 몹이 쌓이고, 겹친 수만큼 피해량이 배수됩니다.
-
-**튜닝 시 같이 볼 것:** `mob.gd` `attack_distance`, 몹 `.tscn` `CollisionShape2D`, `player.tscn` `HurtBox`, `player.gd` `DAMAGE_RATE` / `DAMAGE_FLOAT_INTERVAL`. 한쪽만 바꾸면 “멈췄는데 안 맞음” 또는 “멀리서 1씩 뜸”처럼 어긋날 수 있습니다.
+**튜닝 시 같이 볼 것:** `mob.gd` `attack_distance`·`CONTACT_STANDOFF_PADDING`, `%Slime`/`%HappyBoo`의 `GroundShadow` 스케일·위치, `player.gd` `get_contact_hurtbox_half_extents()`, `DAMAGE_RATE` / `DAMAGE_FLOAT_INTERVAL`. 슬라임 스케일을 바꾸면 `pool_on_acquire`의 `_sync_body_collision_to_shadow()`가 다시 맞춥니다.
 
 ---
 
@@ -272,7 +313,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | 풀 반환 | `mob.gd` `pool_reset` → `HitFlash.cancel(%Slime, slime_tint)` (트윈·색 초기화) |
 | 연타 | 같은 `target`에 새 `play` 시 기존 트윈 `kill` 후 재시작 |
 
-**튜닝:** `hit_flash.gd`의 `FLASH_MULTIPLIER`(기본 2.4), `BLINK_COUNT`(2), `BLINK_ON_SEC` / `BLINK_OFF_SEC`. 몹 tint·플레이어 `Colorizer` 색을 바꿨으면 `restore_modulate` 인자가 맞는지 확인.
+**튜닝:** `hit_flash.gd`의 `FLASH_MULTIPLIER`(기본 2.4), `BLINK_COUNT`(1), `BLINK_ON_SEC` / `BLINK_OFF_SEC`. 몹 tint·플레이어 `Colorizer` 색을 바꿨으면 `restore_modulate` 인자가 맞는지 확인.
 
 **왜 modulate:** 캐릭터 프리팹마다 hurt 애니 유무가 다르지만(슬라임만 전용 hurt 트랙), `CanvasItem`은 공통이라 한 API로 통일. 새 변종 몹도 `%Slime`만 맞으면 추가 씬 작업 없음.
 
@@ -365,7 +406,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 - 기본 리소스·VFX: `preload("res://...")`
 - 살아 있는 몹: `get_tree().get_nodes_in_group("mobs")` (풀에 있는 비활성 몹은 그룹에 없음)
 - 무기 추가·몹 사망: `call_deferred`
-- 무기 데이터: `WeaponData` Resource + catalog 풀 → 랜덤 3택1; 설명·자동 선택 UI는 `ui/weapon_select_menu.gd` + `survivors_game.tscn` (`AutoSelectRow`, `AutoPriorityPanel`, `ContentHBox/DetailPanel`)
+- 무기 데이터: `WeaponData` Resource + catalog 풀 → 랜덤 3택1; 설명·리롤·버리기·버린 목록·자동 선택 UI는 `ui/weapon_select_menu.gd` + `survivors_game.tscn` (`DiscardSlot0~2`, `RerollButton`, `RightColumnVBox/DiscardedPanel`, `AutoSelectRow`, `AutoPriorityPanel`)
 
 ## 오브젝트 풀 (`ScenePool`)
 
@@ -373,7 +414,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 
 | API | 용도 |
 |-----|------|
-| `ScenePool.acquire(scene, parent)` | 꺼내기 → `pool_reset` → 부모 재부착 → 활성화 → `pool_on_acquire`(마지막). 위치·`setup`·HP는 호출자가 `acquire` 반환 후 설정 |
+| `ScenePool.acquire(scene, parent, spawn_global_position?)` | `pool_reset` → 부모 재부착 → (선택) `Node2D.global_position` → 활성화 → `pool_on_acquire`. 몹은 `spawn_mob`/`spawn_test_mob`가 위치·`initialize_spawn_health`까지 설정 |
 | `PoolUtil.release_node(node)` | 반환(풀 미등록이면 `queue_free`) |
 
 **이미 풀 적용:** 발사체(`gun.gd` — 총알·`melee_projectile`·마법 등), **영역 존**(`area_damage_zone`, 연금 착지), 경험치 오브(`mob.gd` `_die`), 몹 7종+더미 prewarm, 몹 투사체·공격 예고 마크.
@@ -394,19 +435,20 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 |------|------|
 | 오브젝트 풀 | `game/pool/scene_pool.gd`, `pool_util.gd`, `survivors_game.tscn` (`ObjectPools`) |
 | 스폰·시간·UI | `game/game.gd`, `survivors_game.tscn`, `world/map_arena/map_arena.gd` (`%MapArena`) |
-| 맵 경계·벽·스폰 영역 | `world/map_arena/map_arena.gd`, `map_arena.tscn`, `survivors_game.tscn` / `test_arena.tscn` (`arena_rect`, `spawn_margin`) |
-| 무기별 피해·게임오버 통계 | `game/weapon_damage_tracker.gd`, `game/game.gd` (`register_weapon_damage`, `_populate_game_over_weapon_damage`), `entities/mob/mob.gd` (`apply_weapon_damage`, `apply_poison`), `survivors_game.tscn` (`%WeaponDamageList`) |
+| 맵 경계·벽·소나무·스폰 | `map_arena.gd`, `poisson_sampler.gd`, **`survivors_game.tscn` `%MapArena` 오버라이드(3×)**, `test_arena.tscn`, `ui/tree_density_settings.gd` |
+| 무기별 피해·게임오버·일시정지 | `weapon_damage_tracker.gd`, `game.gd` (`populate_weapon_damage_list`, `get_weapon_damage_display_rows`), `ui/pause_menu.gd`, `survivors_game.tscn` (`%WeaponDamageList`, `%PauseOwnedWeaponsList`) |
 | 난이도 곡선·타임라인·클리어 | `default_balance_table.tres`, `default_balance_timeline.tres`, `balance_table.gd`, `balance_timeline*.gd`, `game.gd` (`_trigger_stage_clear`, `_tick_balance_timeline`) |
 | 몹 타입 추가 | `mob.gd`, `mob_spawn_selector.gd`, `mob_*.tscn`, balance `.tres` (메인 스폰 시). 테스트 전용만이면 `MOB_DUMMY`처럼 상수+prewarm+`test_arena` `MOB_OPTIONS` |
 | 테스트 아레나 | `test_arena.tscn`, `game/test_arena.gd`, `MobSpawnSelector`, `scene_pool.gd` prewarm, `player.gd` (`clear_weapons`, `reset_health_depleted_state`) |
 | 원거리 몹 | `mob.gd`, `mob_ranged.tscn`, `mob_projectile.*`, `mob_attack_mark.*`, `player.apply_mob_projectile_damage`, `mob_spawn_selector.gd`, `default_balance_table.tres` (`ranged_spawn_ratio`), `scene_pool.gd` prewarm |
-| 무기 추가 | `weapon_data.gd`, `weapons/catalogs/*`, `gun.gd`, `player.gd`, `ui/weapon_select_menu.gd` |
+| 무기 추가 | `weapon_data.gd`, `weapons/catalogs/*`, `gun.gd` (`_update_target_display`, `set_targeted`), `player.gd`, `ui/weapon_select_menu.gd` |
 | 근접·영역 전달 | `weapons/melee/melee_projectile.*`, `weapons/area/area_damage_zone.*`, `weapon_data.gd` (`attack_delivery`, `melee_projectile_speed`), `concoction.gd`, `scene_pool.gd` prewarm |
-| 무기 선택·자동 선택 UI | `ui/weapon_select_menu.gd`, `game/game.gd` (`on_menu_opened`/`closed`), `survivors_game.tscn` (`AutoSelectRow`, `AutoPriorityPanel`, `ContentHBox`), `weapon_data.gd` (`build_select_tooltip_bbcode`) |
-| 경험치·픽업 아이템 | `effects/exp_orb/exp_orb.gd`, `effects/magnet_pickup/`, `effects/health_pickup/`, `entities/player/player.gd` (`heal_health`), `entities/mob/mob.gd` (드랍 확률) |
+| 무기 선택·리롤·버리기 UI | `ui/weapon_select_menu.gd` (`present_random_choices`, `reroll_choices`, `discard_weapon_at_index`, `_owned_weapons`, `_discarded_weapons`), `game/game.gd` (`on_menu_opened`/`closed`), `survivors_game.tscn` (`DiscardSlot0~2`, `RerollButton`, `RightColumnVBox`, `AutoSelectRow`, `AutoPriorityPanel`), `weapon_data.gd` (`build_select_tooltip_bbcode`) |
+| 경험치·픽업 아이템 | `effects/exp_orb/exp_orb.gd`, `effects/magnet_pickup/`, `effects/health_pickup/`, `entities/player/player.gd` (`pickup_range`, `_sync_pickup_range_visual`, `heal_health`), `entities/player/player.tscn` (`%PickupRange`, `%PickupRangeRing`), `entities/mob/mob.gd` (드랍 확률) |
 | 대시·쿨다운 UI | `entities/player/player.gd`, `entities/player/player.tscn` (`%DashCooldownBar`), `project.godot` (`dash` 입력) |
 | 자동 공격 토글·HUD | `player.gd` (`toggle_auto_attack`, `set_auto_attack_enabled`), `gun.gd` (`refresh_auto_attack`), `king_bible_orb.gd`, `survivors_game.tscn` (`%AutoAttackLabel`), `project.godot` |
-| 접촉 피해·피격 표시 | `player.gd`/`player.tscn` (`HurtBox`), `mob.gd` (`attack_distance`), `floating_damage_text.gd`, `effects/hit_flash/hit_flash.gd`; 원거리 탄환은 `apply_mob_projectile_damage` |
+| 접촉 피해·충돌 정렬 | `characters/shared/ground_shadow_footprint.gd`, `player.gd` (`_sync_collision_to_ground_shadow`, `set_contact_damage_enabled`), `mob.gd` (`_get_contact_standoff_distance`, `_sync_body_collision_to_shadow`), `floating_damage_text.gd`, `effects/hit_flash/hit_flash.gd`; 원거리 탄환은 `apply_mob_projectile_damage` |
+| 조준 링 | `gun.gd` (`_set_targeted`), `mob.gd` (`set_targeted`), 몹 `.tscn` `%TargetIndicator` |
 | 피격 깜박임 | `effects/hit_flash/hit_flash.gd`, `mob.gd` (`_play_hit_flash`, `pool_reset`), `player.gd` (`_play_hit_flash`, `HappyBoo/Colorizer`) |
 
 ---
@@ -432,5 +474,5 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 
 - Do not rename root `Game` or `%` nodes without repo-wide path updates.
 - Do not change group `mobs` or per-variant mob scripts.
-- Spawn only via `Game.spawn_mob()` → `%MapArena.get_random_spawn_position()` → `Mob` + `initialize_spawn_health`.
+- Spawn only via `Game.spawn_mob()` → `%MapArena.get_random_spawn_position(%Player.global_position)` → `Mob` + `initialize_spawn_health`.
 - Do not start spawn `Timer` before `_ensure_game_started()`.

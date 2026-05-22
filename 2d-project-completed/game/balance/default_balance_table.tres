@@ -1,14 +1,10 @@
-[gd_resource type="Resource" script_class="BalanceTable" load_steps=18 format=3]
+[gd_resource type="Resource" script_class="BalanceTable" format=3 uid="uid://116o6sa3qti5"]
 
-[ext_resource type="Script" path="res://game/balance/balance_table.gd" id="1_table"]
-[ext_resource type="Script" path="res://game/balance/balance_phase.gd" id="2_phase"]
+[ext_resource type="Script" uid="uid://1c1kg1bbnrvm" path="res://game/balance/balance_table.gd" id="1_table"]
+[ext_resource type="Script" uid="uid://b3yuepmexhfl5" path="res://game/balance/balance_phase.gd" id="2_phase"]
 
 [sub_resource type="Resource" id="BalancePhase_0"]
 script = ExtResource("2_phase")
-minute = 0.0
-hp_multiplier = 1.0
-spawn_density = 1.0
-threat = 1.0
 design_intent = "VS 0~8 — 적응, 기본 몬스터"
 
 [sub_resource type="Resource" id="BalancePhase_4"]
@@ -192,4 +188,4 @@ design_intent = "표 확장 상한 (30분과 동일)"
 
 [resource]
 script = ExtResource("1_table")
-phases = [SubResource("BalancePhase_0"), SubResource("BalancePhase_4"), SubResource("BalancePhase_5"), SubResource("BalancePhase_8"), SubResource("BalancePhase_9"), SubResource("BalancePhase_11"), SubResource("BalancePhase_14"), SubResource("BalancePhase_16"), SubResource("BalancePhase_20"), SubResource("BalancePhase_24"), SubResource("BalancePhase_25"), SubResource("BalancePhase_28"), SubResource("BalancePhase_30"), SubResource("BalancePhase_35"), SubResource("BalancePhase_40")]
+phases = Array[ExtResource("2_phase")]([SubResource("BalancePhase_0"), SubResource("BalancePhase_4"), SubResource("BalancePhase_5"), SubResource("BalancePhase_8"), SubResource("BalancePhase_9"), SubResource("BalancePhase_11"), SubResource("BalancePhase_14"), SubResource("BalancePhase_16"), SubResource("BalancePhase_20"), SubResource("BalancePhase_24"), SubResource("BalancePhase_25"), SubResource("BalancePhase_28"), SubResource("BalancePhase_30"), SubResource("BalancePhase_35"), SubResource("BalancePhase_40")])

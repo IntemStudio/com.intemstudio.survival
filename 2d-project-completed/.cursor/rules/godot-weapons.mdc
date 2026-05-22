@@ -12,7 +12,7 @@ alwaysApply: false
 2. Register it in the correct catalog (`ranged_weapon_catalog.gd`, `melee_weapon_catalog.gd`, or `magic_weapon_catalog.gd`) so `WeaponSelectMenu` can offer it.
 3. Ensure `weapon_id` (or unique `resource_path`) is unique — duplicate keys break `Player.has_weapon` / menu filtering.
 4. Verify `weapons/core/gun.gd` already handles the weapon’s `weapon_type` / `weapon_subtype` / `magic_attack_style` / `ranged_attack_style` / `attack_delivery`; if not, extend `gun.gd` and the required projectile scene in the same change.
-5. **Melee** (`weapon_type == "Melee"`): `melee_projectile.tscn` — short-range pierce via `get_melee_range()` / `get_melee_projectile_speed()`. **Area** (`attack_delivery == "AreaZone"`): `area_damage_zone.tscn` only (e.g. alchemical concoction landing via `concoction.gd`); use `setup_circle` / `setup_rectangle` on `AreaDamageZone`.
+5. **Melee** (`weapon_type == "Melee"`): `melee_projectile.tscn` — short-range pierce via `get_melee_range()` / `get_melee_projectile_speed()`. **Area** (`attack_delivery == "AreaZone"`): `area_damage_zone.tscn` only (e.g. alchemical concoction landing via `concoction.gd`); use `setup_circle` / `setup_rectangle` on `AreaDamageZone`. Zone damage must use `_collect_hit_bodies()` (overlap → shape query → distance fallback); do not rely on `get_overlapping_bodies()` alone right after pool acquire.
 6. If the weapon spawns a new projectile scene, add `pool_reset` / `pool_on_acquire` and end with `PoolUtil.release_node` (spawn via `gun.gd` `_spawn_from_pool`).
 
 Skipping step 2 makes the weapon invisible in level-up selection.
@@ -39,6 +39,11 @@ Skipping step 2 makes the weapon invisible in level-up selection.
 - `Game.show_weapon_select` must call `%WeaponSelectMenu.on_menu_opened()` after `show()`; `on_weapon_chosen` must call `on_menu_closed()` before `hide()`.
 - Do not override `show()` / `hide()` on `WeaponSelectMenu` (`CanvasLayer`); use `on_menu_opened` / `on_menu_closed` instead.
 
+## Target indicator
+
+- `gun.gd` `_update_target_display()` must call `Mob.set_targeted` only via `_set_targeted` (check `has_method("set_targeted")`).
+- Do not leave `%TargetIndicator` visible when the mob is not the gun's current in-range target; `pool_reset` / mob death must clear targeting.
+
 ## Damage API
 
 - Use `Mob.take_damage` / `Mob.apply_weapon_damage` / `Mob.take_magic_damage` — do not write ad-hoc `health -=` on mobs from new weapon code.
@@ -49,6 +54,8 @@ Skipping step 2 makes the weapon invisible in level-up selection.
 
 - You must keep weapon pools sourced from the three catalogs; do not hardcode weapon lists only in the scene without updating catalogs.
 - `CHOICE_COUNT` and `_buttons` node paths must stay consistent with `survivors_game.tscn` button names (`ContentHBox/ChoicesVBox/*`, `ContentHBox/DetailPanel/.../DetailLabel`).
+- Reroll UI path must stay consistent with `survivors_game.tscn`: `ContentHBox/ChoicesVBox/RerollButton` → `_on_reroll_button_pressed` / `reroll_choices()`. Reroll must use the same selectable pool as `present_random_choices` (`_owned_weapons` cache + `_discarded_weapons` + catalog `_get_all_weapons()`). Run cap: `MAX_REROLLS_PER_RUN` (3) via `_rerolls_remaining`; do not bypass in `reroll_choices()`.
+- Discard UI paths must stay consistent with `survivors_game.tscn`: `ChoicesVBox/ChoiceRow0~2/DiscardSlot0~2Button` beside weapon buttons → `discard_weapon_at_index()`; hide discard buttons when `_discards_remaining <= 0`. Discarded list `RightColumnVBox/DiscardedPanel/.../DiscardedListLabel`. Weapon buttons: `ChoiceRow0~2/RevolverButton` etc. Detail panel: `RightColumnVBox/DetailPanel/.../DetailLabel`. `_discarded_weapons` persists for the run (scene reload clears). Run cap: `MAX_DISCARDS_PER_RUN` (3) via `_discards_remaining`.
 - Auto-select UI paths must stay consistent with `survivors_game.tscn`: `AutoSelectRow/AutoSelectToggle`, `AutoSelectCountdownLabel`, `AutoPriorityPanel/PrioritySlot0~2` (`TypeLabel`, `UpButton`, `DownButton`).
 - Weapon detail text must come from `WeaponData.build_select_tooltip_bbcode()`; do not duplicate stat formatting in the menu script.
 - Auto-pick priority must use `_auto_priority_order` (`Ranged` / `Magic` / `Melee`); do not hardcode a fixed priority map separate from the in-game ▲▼ UI.

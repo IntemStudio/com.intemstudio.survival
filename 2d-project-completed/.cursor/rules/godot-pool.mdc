@@ -10,9 +10,9 @@ alwaysApply: false
 
 - Single pool service: `Game/ObjectPools` node, script `game/pool/scene_pool.gd` (`class_name ScenePool`).
 - Helpers: `game/pool/pool_util.gd` — `PoolUtil.release_node(node)`.
-- API: `acquire(scene: PackedScene, parent: Node)`, `release(node: Node)`. Buckets keyed by `PackedScene.resource_path`; no per-type pool classes.
-- `acquire` order: `pool_reset` → reparent to caller parent → `_activate` → set `_pooled_active` → `pool_on_acquire()` last. Caller applies position/`setup()`/`initialize_spawn_health` after `acquire` returns.
-- Prewarm: `_prewarm_scene` must `add_child` to `ObjectPools` before `_deactivate` so pooled scenes run `_ready()` once.
+- API: `acquire(scene: PackedScene, parent: Node, spawn_global_position: Vector2 = INF)`, `release(node: Node)`. Buckets keyed by `PackedScene.resource_path`; no per-type pool classes.
+- `acquire` order: `pool_reset` → reparent to caller parent → (if finite `spawn_global_position`) set `Node2D.global_position` → `_activate` → set `_pooled_active` → `pool_on_acquire()` last. Caller may still set position/`setup()`/`initialize_spawn_health` after return when not passed via acquire.
+- Prewarm: `_prewarm_scene` must `add_child` to `ObjectPools`, then `pool_reset`, then `_deactivate` so pooled scenes run `_ready()` once.
 - Prewarm counts are `@export` on `ObjectPools` in `survivors_game.tscn`.
 
 ## Must (pooled node script)
@@ -24,7 +24,7 @@ alwaysApply: false
 
 ## Must (spawn callers)
 
-- Mobs: `Game.spawn_mob()` → `ScenePool.acquire` → `%MapArena.get_random_spawn_position()` → `initialize_spawn_health`.
+- Mobs: `Game.spawn_mob()` → `%MapArena.get_random_spawn_position(%Player.global_position)` → `ScenePool.acquire(..., spawn_pos)` → `initialize_spawn_health`.
 - Exp orbs: `mob.gd` `_die()` → `acquire(EXP_ORB_SCENE, parent)` → set position.
 - Projectiles / orbit magic: `gun.gd` `_spawn_from_pool` → setup → `PoolUtil.release_node` on end.
 - Area damage (연금 착지 등): `concoction.gd` → `ScenePool.acquire(AREA_DAMAGE_ZONE_SCENE)` → `setup_circle` → `PoolUtil.release_node` on zone lifetime end. Prewarm: `prewarm_area_damage_zones`.

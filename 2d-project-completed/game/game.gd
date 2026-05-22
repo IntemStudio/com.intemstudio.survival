@@ -34,6 +34,10 @@ func _ready() -> void:
 		_ensure_game_started()
 
 
+func is_game_started() -> bool:
+	return _game_started
+
+
 func is_weapon_select_open() -> bool:
 	return %WeaponSelectMenu.visible
 
@@ -67,6 +71,7 @@ func _ensure_game_started() -> void:
 	if _game_started:
 		return
 	_game_started = true
+	%Player.set_contact_damage_enabled(true)
 	_apply_spawn_interval_from_phase(true)
 	$Timer.start()
 
@@ -94,6 +99,15 @@ func register_kill() -> void:
 # 몹 피해 적용 시 무기별 누적 피해량을 기록합니다.
 func register_weapon_damage(weapon: WeaponData, amount: int) -> void:
 	_weapon_damage.register(weapon, amount)
+
+
+# UI 표시용 — 보유 무기 포함, 피해량 내림차순 행 목록.
+func get_weapon_damage_display_rows() -> Array[Dictionary]:
+	return _weapon_damage.build_display_rows(%Player.get_owned_weapons())
+
+
+func format_damage_amount(amount: int) -> String:
+	return _format_damage(amount)
 
 
 func _update_kill_count_hud() -> void:
@@ -220,17 +234,18 @@ func spawn_mob(forced_scene: PackedScene = null, ignore_alive_cap: bool = false)
 
 	var phase := _query_balance_phase()
 	var mob_scene := forced_scene if forced_scene else MobSpawnSelector.pick_scene(phase)
+	var spawn_pos: Vector2 = %MapArena.get_random_spawn_position(%Player.global_position)
 	var pool: ScenePool = $ObjectPools as ScenePool
 	var new_mob: Mob
 	if pool:
-		new_mob = pool.acquire(mob_scene, self) as Mob
+		new_mob = pool.acquire(mob_scene, self, spawn_pos) as Mob
 	else:
 		new_mob = mob_scene.instantiate() as Mob
 		add_child(new_mob)
+		new_mob.global_position = spawn_pos
 	if not new_mob:
 		push_error("Game.spawn_mob: spawn scene must instantiate a Mob.")
 		return
-	new_mob.global_position = %MapArena.get_random_spawn_position()
 	new_mob.initialize_spawn_health(phase.hp_multiplier)
 
 
@@ -283,6 +298,7 @@ func _show_stage_clear() -> void:
 func show_pause_menu() -> void:
 	if is_weapon_select_open():
 		return
+	%PauseMenu.refresh_owned_weapons()
 	%PauseMenu.show()
 	get_tree().paused = true
 
@@ -303,14 +319,28 @@ func _on_player_health_depleted():
 
 
 func _populate_game_over_weapon_damage() -> void:
-	var list := %WeaponDamageList
+	populate_weapon_damage_list(
+		%WeaponDamageList,
+		get_weapon_damage_display_rows(),
+		"기록된 피해 없음",
+		true
+	)
+
+
+# 게임 오버·일시정지 등 무기별 피해 목록 UI를 채웁니다.
+func populate_weapon_damage_list(
+	list: VBoxContainer,
+	rows: Array[Dictionary],
+	empty_text: String,
+	include_grand_total: bool,
+	weapon_type_font_colors: Dictionary = {}
+) -> void:
 	for child in list.get_children():
 		child.queue_free()
 
-	var rows := _weapon_damage.build_display_rows(%Player.get_owned_weapons())
 	if rows.is_empty():
 		var empty_label := Label.new()
-		empty_label.text = "기록된 피해 없음"
+		empty_label.text = empty_text
 		empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		list.add_child(empty_label)
 		return
@@ -323,13 +353,21 @@ func _populate_game_over_weapon_damage() -> void:
 		var weapon: WeaponData = row["weapon"]
 		var total: int = int(row["total"])
 		var label := Label.new()
-		label.text = "%s  %s" % [weapon.get_display_name_localized(), _format_damage(total)]
+		label.text = "%s  %s" % [weapon.get_display_name_localized(), format_damage_amount(total)]
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		label.add_theme_font_size_override("font_size", 22)
+		if not weapon_type_font_colors.is_empty():
+			label.add_theme_color_override(
+				"font_color",
+				weapon_type_font_colors.get(weapon.weapon_type, Color(0.92, 0.92, 0.95, 1))
+			)
 		list.add_child(label)
 
+	if not include_grand_total:
+		return
+
 	var total_label := Label.new()
-	total_label.text = "합계  %s" % _format_damage(grand_total)
+	total_label.text = "합계  %s" % format_damage_amount(grand_total)
 	total_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	total_label.add_theme_font_size_override("font_size", 24)
 	list.add_child(total_label)

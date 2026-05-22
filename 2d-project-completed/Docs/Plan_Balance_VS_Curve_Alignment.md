@@ -364,7 +364,7 @@ VS 25분 하이퍼 해제에 상응. `BalanceNoticeBanner`에 “HYPER” 표시
 
 - 11분 `spawn_density`만 올리고 `max_alive_mobs`(100)에 막히면 체감 스파이크 약함 → B의 burst 또는 일시 상한 상향 검토.
 - `balance_pace_multiplier = 2.0`이면 15분에 30분 곡선 도달 → **30분 마감**은 실시간 15분이 됨; 마감 시각도 `30 / multiplier`로 문서화.
-- 플레이어 레벨 D 도입 시 테스트 아레나 `initialize_spawn_health(1.0)`와 분리 유지.
+- 플레이어 레벨 D 도입 시 테스트 아레나 `_get_test_mob_hp_multiplier()`(Dummy vs 10×)와 분리 유지.
 
 ---
 

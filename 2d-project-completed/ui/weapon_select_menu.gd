@@ -4,6 +4,8 @@ const RangedWeaponCatalog = preload("res://weapons/catalogs/ranged_weapon_catalo
 const MeleeWeaponCatalog = preload("res://weapons/catalogs/melee_weapon_catalog.gd")
 const MagicWeaponCatalog = preload("res://weapons/catalogs/magic_weapon_catalog.gd")
 const CHOICE_COUNT := 3
+const MAX_REROLLS_PER_RUN := 3
+const MAX_DISCARDS_PER_RUN := 3
 const AUTO_SELECT_DELAY_SEC := 3.0
 const DEFAULT_AUTO_PRIORITY_ORDER: Array[String] = ["Ranged", "Magic", "Melee"]
 const WEAPON_TYPE_LABELS_KO := {
@@ -23,6 +25,10 @@ const AUTO_GAUGE_DIM_ALPHA := 0.42
 const AUTO_GAUGE_FILL_ALPHA := 0.92
 
 var _current_choices: Array[WeaponData] = []
+var _owned_weapons: Array[WeaponData] = []
+var _discarded_weapons: Array[WeaponData] = []
+var _rerolls_remaining := MAX_REROLLS_PER_RUN
+var _discards_remaining := MAX_DISCARDS_PER_RUN
 var _button_styles_by_type: Dictionary = {}
 var _auto_select_active := false
 var _auto_select_elapsed := 0.0
@@ -31,16 +37,29 @@ var _auto_priority_order: Array[String] = DEFAULT_AUTO_PRIORITY_ORDER.duplicate(
 var _gauge_tracks: Array[ColorRect] = []
 var _gauge_fills: Array[ColorRect] = []
 
+@onready var _choice_rows: Array[HBoxContainer] = [
+	$MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/ChoicesVBox/ChoiceRow0,
+	$MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/ChoicesVBox/ChoiceRow1,
+	$MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/ChoicesVBox/ChoiceRow2,
+]
 @onready var _buttons: Array[Button] = [
-	$MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/ChoicesVBox/RevolverButton,
-	$MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/ChoicesVBox/TommyGunsButton,
-	$MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/ChoicesVBox/BoomerangButton,
+	$MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/ChoicesVBox/ChoiceRow0/RevolverButton,
+	$MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/ChoicesVBox/ChoiceRow1/TommyGunsButton,
+	$MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/ChoicesVBox/ChoiceRow2/BoomerangButton,
 	$MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/ChoicesVBox/ConcoctionButton,
 ]
 @onready var _title_label: Label = $MenuOverlay/CenterContainer/VBoxContainer/TitleLabel
 @onready var _detail_label: RichTextLabel = (
-	$MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/DetailPanel/MarginContainer/DetailLabel
+	$MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/RightColumnVBox/DetailPanel/MarginContainer/DetailLabel
 )
+@onready var _discarded_list_label: Label = (
+	$MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/RightColumnVBox/DiscardedPanel/MarginContainer/VBoxContainer/DiscardedListLabel
+)
+@onready var _discard_buttons: Array[Button] = [
+	$MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/ChoicesVBox/ChoiceRow0/DiscardSlot0Button,
+	$MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/ChoicesVBox/ChoiceRow1/DiscardSlot1Button,
+	$MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/ChoicesVBox/ChoiceRow2/DiscardSlot2Button,
+]
 @onready var _auto_select_toggle: CheckButton = (
 	$MenuOverlay/CenterContainer/VBoxContainer/AutoSelectRow/AutoSelectToggle
 )
@@ -62,6 +81,9 @@ var _gauge_fills: Array[ColorRect] = []
 	$MenuOverlay/CenterContainer/VBoxContainer/AutoPriorityPanel/PrioritySlot1/DownButton,
 	$MenuOverlay/CenterContainer/VBoxContainer/AutoPriorityPanel/PrioritySlot2/DownButton,
 ]
+@onready var _reroll_button: Button = (
+	$MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/ChoicesVBox/RerollButton
+)
 
 
 func _ready() -> void:
@@ -109,21 +131,120 @@ func _get_all_weapons() -> Array[WeaponData]:
 
 func present_random_choices(title: String = "무기 선택", owned_weapons: Array[WeaponData] = []) -> bool:
 	_cancel_auto_select()
-	_current_choices = _pick_random_weapons(CHOICE_COUNT, owned_weapons)
+	_owned_weapons = owned_weapons.duplicate()
+	_current_choices = _pick_random_weapons(CHOICE_COUNT, _owned_weapons)
 	_title_label.text = title
 	_update_button_labels()
+	_update_reroll_button_state()
+	_update_discarded_list_ui()
 	return not _current_choices.is_empty()
 
 
-func _pick_random_weapons(count: int, owned_weapons: Array[WeaponData]) -> Array[WeaponData]:
-	var pool: Array[WeaponData] = []
-	for weapon in _get_all_weapons():
-		if not _is_weapon_owned(weapon, owned_weapons):
-			pool.append(weapon)
+func reroll_choices() -> void:
+	if _rerolls_remaining <= 0:
+		return
+	_rerolls_remaining -= 1
+	_cancel_auto_select()
+	_current_choices = _pick_random_weapons(CHOICE_COUNT, _owned_weapons)
+	_update_button_labels()
+	_update_reroll_button_state()
+	if visible and _auto_select_toggle.button_pressed:
+		_begin_auto_select_if_enabled()
 
+
+func discard_weapon_at_index(index: int) -> void:
+	if _discards_remaining <= 0:
+		return
+	if index < 0 or index >= _current_choices.size():
+		return
+	_discards_remaining -= 1
+	_cancel_auto_select()
+	var weapon := _current_choices[index]
+	_register_discarded_weapon(weapon)
+	var replacement := _pick_replacement_weapon()
+	if replacement:
+		_current_choices[index] = replacement
+	else:
+		_current_choices.remove_at(index)
+	_update_button_labels()
+	_update_discarded_list_ui()
+	_update_reroll_button_state()
+	if visible and _auto_select_toggle.button_pressed:
+		_begin_auto_select_if_enabled()
+
+
+func _pick_random_weapons(count: int, owned_weapons: Array[WeaponData]) -> Array[WeaponData]:
+	var pool := _build_selectable_weapon_pool(owned_weapons)
 	pool.shuffle()
 	var choice_count := mini(count, pool.size())
 	return pool.slice(0, choice_count)
+
+
+func _pick_replacement_weapon() -> WeaponData:
+	var pool := _build_selectable_weapon_pool(_owned_weapons)
+	var used_keys: Dictionary = {}
+	for weapon in _current_choices:
+		used_keys[weapon.get_unique_key()] = true
+	pool.shuffle()
+	for weapon in pool:
+		if not used_keys.has(weapon.get_unique_key()):
+			return weapon
+	return null
+
+
+func _build_selectable_weapon_pool(owned_weapons: Array[WeaponData]) -> Array[WeaponData]:
+	var pool: Array[WeaponData] = []
+	for weapon in _get_all_weapons():
+		if _is_weapon_owned(weapon, owned_weapons):
+			continue
+		if _is_weapon_discarded(weapon):
+			continue
+		pool.append(weapon)
+	return pool
+
+
+func _register_discarded_weapon(weapon: WeaponData) -> void:
+	if _is_weapon_discarded(weapon):
+		return
+	_discarded_weapons.append(weapon)
+
+
+func _is_weapon_discarded(weapon: WeaponData) -> bool:
+	var key := weapon.get_unique_key()
+	for discarded in _discarded_weapons:
+		if discarded.get_unique_key() == key:
+			return true
+	return false
+
+
+func _update_reroll_button_state() -> void:
+	_reroll_button.text = "리롤 (%d회 남음)" % _rerolls_remaining
+	_reroll_button.disabled = (
+		_rerolls_remaining <= 0
+		or _build_selectable_weapon_pool(_owned_weapons).is_empty()
+	)
+
+
+func _update_discard_buttons_state() -> void:
+	var show_discard := _discards_remaining > 0
+	for i in _discard_buttons.size():
+		var has_choice := i < _current_choices.size()
+		var row: HBoxContainer = _choice_rows[i]
+		row.visible = has_choice
+		var discard_button := _discard_buttons[i]
+		discard_button.visible = show_discard and has_choice
+		if show_discard:
+			discard_button.text = "버리기"
+
+
+func _update_discarded_list_ui() -> void:
+	if _discarded_weapons.is_empty():
+		_discarded_list_label.text = "(없음)"
+		return
+	var lines: PackedStringArray = []
+	for weapon in _discarded_weapons:
+		lines.append("• %s" % weapon.get_display_name_localized())
+	_discarded_list_label.text = "\n".join(lines)
 
 
 func _is_weapon_owned(weapon: WeaponData, owned_weapons: Array[WeaponData]) -> bool:
@@ -137,7 +258,7 @@ func _is_weapon_owned(weapon: WeaponData, owned_weapons: Array[WeaponData]) -> b
 func _update_button_labels() -> void:
 	for i in _buttons.size():
 		var button := _buttons[i]
-		if i < _current_choices.size():
+		if i < _current_choices.size() and i < _choice_rows.size():
 			var weapon := _current_choices[i]
 			button.visible = true
 			button.text = weapon.get_select_label()
@@ -146,6 +267,7 @@ func _update_button_labels() -> void:
 		else:
 			button.visible = false
 			button.disabled = true
+	_update_discard_buttons_state()
 	_show_weapon_detail(0)
 
 
@@ -437,3 +559,19 @@ func _on_boomerang_button_pressed() -> void:
 
 func _on_concoction_button_pressed() -> void:
 	_select_weapon_at_index(3)
+
+
+func _on_reroll_button_pressed() -> void:
+	reroll_choices()
+
+
+func _on_discard_slot_0_pressed() -> void:
+	discard_weapon_at_index(0)
+
+
+func _on_discard_slot_1_pressed() -> void:
+	discard_weapon_at_index(1)
+
+
+func _on_discard_slot_2_pressed() -> void:
+	discard_weapon_at_index(2)

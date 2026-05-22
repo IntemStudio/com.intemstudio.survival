@@ -8,6 +8,9 @@ const MagicWeaponCatalog = preload("res://weapons/catalogs/magic_weapon_catalog.
 
 const START_WEAPON := preload("res://weapons/data/revolver.tres")
 const PLAYER_RESPAWN_DELAY := 3.0
+const MOB_SPAWN_OFFSET_FROM_PLAYER := Vector2(280.0, 0.0)
+const DUMMY_BASE_MAX_HEALTH := 500
+const NON_DUMMY_HP_VS_DUMMY_MULTIPLIER := 10.0
 
 const WEAPON_TYPE_ORDER: Array[String] = ["Ranged", "Magic", "Melee"]
 const WEAPON_TYPE_LABELS_KO := {
@@ -56,6 +59,7 @@ var _mob_respawn_token := 0
 
 func _ready() -> void:
 	_place_player_at_spawn()
+	%Player.set_contact_damage_enabled(true)
 	_build_weapon_options()
 	_setup_mob_type_option()
 	_setup_weapon_filters()
@@ -159,14 +163,14 @@ func _on_weapon_filters_changed(_index: int = -1) -> void:
 
 
 func _get_weapon_filter_type() -> String:
-	var index := %WeaponTypeFilter.selected
+	var index: int = %WeaponTypeFilter.selected
 	if index <= 0:
 		return ""
 	return WEAPON_TYPE_ORDER[index - 1]
 
 
 func _get_weapon_filter_rarity() -> String:
-	var index := %WeaponRarityFilter.selected
+	var index: int = %WeaponRarityFilter.selected
 	if index <= 0:
 		return ""
 	if index - 1 < _available_rarities.size():
@@ -225,14 +229,14 @@ func _on_equip_weapon_button_pressed() -> void:
 
 
 func _get_selected_mob_scene() -> PackedScene:
-	var index := %MobTypeOption.selected
+	var index: int = %MobTypeOption.selected
 	if index < 0 or index >= MOB_OPTIONS.size():
 		return MobSpawnSelector.MOB_BASIC_SCENE
 	return MOB_OPTIONS[index]["scene"] as PackedScene
 
 
 func _get_selected_weapon() -> WeaponData:
-	var index := %WeaponOption.selected
+	var index: int = %WeaponOption.selected
 	if index < 0 or index >= _filtered_weapon_options.size():
 		return null
 	return _filtered_weapon_options[index]
@@ -255,21 +259,29 @@ func spawn_test_mob(scene: PackedScene) -> void:
 		return
 	_cancel_pending_mob_respawn()
 	_clear_active_mob()
+	var spawn_pos: Vector2 = %Player.global_position + MOB_SPAWN_OFFSET_FROM_PLAYER
 	var pool: ScenePool = $ObjectPools as ScenePool
 	var mob: Mob
 	if pool:
-		mob = pool.acquire(scene, self) as Mob
+		mob = pool.acquire(scene, self, spawn_pos) as Mob
 	else:
 		mob = scene.instantiate() as Mob
 		add_child(mob)
+		mob.global_position = spawn_pos
 	if not mob:
 		push_error("TestArena.spawn_test_mob: scene must instantiate a Mob.")
 		return
-	var arena: MapArena = %MapArena
-	mob.global_position = arena.get_random_spawn_position() if arena else %MobSpawnPoint.global_position
-	mob.initialize_spawn_health(1.0)
+	mob.initialize_spawn_health(_get_test_mob_hp_multiplier(scene, mob))
 	_active_mob = mob
 	_last_mob_scene = scene
+
+
+# 더미는 프리팹 기본 HP, 그 외 몹은 더미 최대 체력의 10배가 되도록 배수를 맞춥니다.
+func _get_test_mob_hp_multiplier(scene: PackedScene, mob: Mob) -> float:
+	if scene == MobSpawnSelector.MOB_DUMMY_SCENE:
+		return 1.0
+	var target_max := float(DUMMY_BASE_MAX_HEALTH * NON_DUMMY_HP_VS_DUMMY_MULTIPLIER)
+	return target_max / maxf(float(mob.base_max_health), 1.0)
 
 
 # 몹 사망 시 선택적으로 동일 프리팹을 재스폰합니다.

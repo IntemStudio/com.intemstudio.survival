@@ -4,8 +4,8 @@
 [ext_resource type="PackedScene" uid="uid://ogik4s70pgwl" path="res://characters/slime/slime.tscn" id="2_slime"]
 [ext_resource type="Texture2D" uid="uid://dn80eu1qs371v" path="res://art/shared/fx/circle.png" id="3_ring"]
 
-[sub_resource type="CircleShape2D" id="CircleShape2D_dummy"]
-radius = 67.0
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_dummy"]
+size = Vector2(67.2, 41.6)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dummy_hp"]
 bg_color = Color(0.55, 0.58, 0.52, 1)
@@ -49,6 +49,5 @@ value = 500.0
 show_percentage = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-position = Vector2(0, -28)
-shape = SubResource("CircleShape2D_dummy")
+shape = SubResource("RectangleShape2D_dummy")
 debug_color = Color(0.55, 0.58, 0.52, 0.42)

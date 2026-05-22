@@ -4,7 +4,7 @@ class_name HitFlash
 const FLASH_MULTIPLIER := Color(2.4, 2.4, 2.4, 1.0)
 const BLINK_ON_SEC := 0.05
 const BLINK_OFF_SEC := 0.055
-const BLINK_COUNT := 2
+const BLINK_COUNT := 1
 
 static var _tweens: Dictionary = {}
 

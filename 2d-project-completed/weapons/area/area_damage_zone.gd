@@ -84,10 +84,7 @@ func _pulse_damage() -> void:
 	if not is_inside_tree() or not _weapon:
 		return
 
-	for body in get_overlapping_bodies():
-		if not is_instance_valid(body) or not body.is_in_group("mobs"):
-			continue
-
+	for body in _collect_hit_bodies():
 		var mob_id: int = body.get_instance_id()
 		var hits_done: int = _hit_mobs.get(mob_id, 0)
 		if hits_done >= _weapon.hit_count:
@@ -99,3 +96,90 @@ func _pulse_damage() -> void:
 			body.apply_weapon_damage(_weapon.roll_damage(), _weapon)
 
 		_hit_mobs[mob_id] = hits_done + 1
+
+
+# 풀 acquire 직후 overlap이 비어 있을 수 있어, overlap → shape 쿼리 → 거리 폴백 순으로 수집
+func _collect_hit_bodies() -> Array[Node]:
+	var hits: Array[Node] = []
+	var seen: Dictionary = {}
+
+	for body in get_overlapping_bodies():
+		if not _is_valid_mob(body):
+			continue
+		var mob_id: int = body.get_instance_id()
+		if seen.get(mob_id, false):
+			continue
+		seen[mob_id] = true
+		hits.append(body)
+
+	if not hits.is_empty():
+		return hits
+
+	var collision := $CollisionShape2D as CollisionShape2D
+	if not collision or not collision.shape:
+		return hits
+
+	var space_state := get_world_2d().direct_space_state
+	if space_state:
+		var params := PhysicsShapeQueryParameters2D.new()
+		params.shape = collision.shape
+		params.transform = collision.global_transform
+		params.collision_mask = collision_mask
+		params.collide_with_areas = false
+		params.collide_with_bodies = true
+
+		for result in space_state.intersect_shape(params, 64):
+			var collider: Object = result.get("collider")
+			if not _is_valid_mob(collider):
+				continue
+			var query_mob_id: int = collider.get_instance_id()
+			if seen.get(query_mob_id, false):
+				continue
+			seen[query_mob_id] = true
+			hits.append(collider)
+
+	if not hits.is_empty():
+		return hits
+
+	return _collect_hit_bodies_by_distance(collision)
+
+
+func _is_valid_mob(body: Variant) -> bool:
+	return body is Node and is_instance_valid(body) and (body as Node).is_in_group("mobs")
+
+
+func _collect_hit_bodies_by_distance(collision: CollisionShape2D) -> Array[Node]:
+	if not collision.shape is CircleShape2D:
+		return []
+
+	var circle := collision.shape as CircleShape2D
+	var center := collision.global_position
+	var shape_scale := collision.global_transform.get_scale()
+	var radius := circle.radius * maxf(shape_scale.x, shape_scale.y)
+
+	var hits: Array[Node] = []
+	for mob in get_tree().get_nodes_in_group("mobs"):
+		if not is_instance_valid(mob) or mob is not Node2D:
+			continue
+		var mob_node := mob as Node2D
+		var mob_center := _get_mob_hit_center(mob_node)
+		var mob_radius := _get_mob_hit_radius(mob_node)
+		if mob_center.distance_to(center) <= radius + mob_radius:
+			hits.append(mob)
+	return hits
+
+
+func _get_mob_hit_center(mob: Node2D) -> Vector2:
+	var mob_collision := mob.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	if mob_collision:
+		return mob_collision.global_position
+	return mob.global_position
+
+
+func _get_mob_hit_radius(mob: Node2D) -> float:
+	var mob_collision := mob.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	if mob_collision and mob_collision.shape is CircleShape2D:
+		var mob_circle := mob_collision.shape as CircleShape2D
+		var shape_scale := mob_collision.global_transform.get_scale()
+		return mob_circle.radius * maxf(shape_scale.x, shape_scale.y)
+	return 0.0

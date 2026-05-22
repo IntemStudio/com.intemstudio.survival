@@ -3,7 +3,7 @@ class_name Mob
 
 signal died
 
-@export var attack_distance := 85.0
+@export var attack_distance := 150.0
 @export var movement_enabled := true
 @export var combat_enabled := true
 @export var base_max_health := 200
@@ -42,6 +42,8 @@ const MOB_PROJECTILE_SCENE := preload("res://entities/mob/mob_projectile.tscn")
 const MOB_ATTACK_MARK_SCENE := preload("res://entities/mob/mob_attack_mark.tscn")
 const MOB_COLLISION_LAYER := 2
 const MOB_COLLISION_MASK := 3
+const POOL_STORAGE_POSITION := Vector2(-50000.0, -50000.0)
+const CONTACT_STANDOFF_PADDING := 6.0
 
 @onready var player: Node2D = get_node("/root/Game/Player")
 @onready var _target_indicator: Sprite2D = %TargetIndicator
@@ -70,6 +72,8 @@ func pool_reset() -> void:
 	velocity = Vector2.ZERO
 	collision_layer = 0
 	collision_mask = 0
+	if is_inside_tree():
+		global_position = POOL_STORAGE_POSITION
 	if is_node_ready():
 		HitFlash.cancel(%Slime, slime_tint)
 		_target_indicator.visible = false
@@ -92,6 +96,7 @@ func pool_on_acquire() -> void:
 		_sync_attack_range_ring()
 	else:
 		_set_attack_range_ring_visible(false)
+	_sync_body_collision_to_shadow()
 	set_physics_process(true)
 
 
@@ -146,8 +151,9 @@ func _physics_process(delta: float) -> void:
 	if movement_enabled:
 		var offset: Vector2 = player.global_position - global_position
 		var distance: float = offset.length()
+		var stop_distance := _get_contact_standoff_distance()
 
-		if distance > attack_distance:
+		if distance > stop_distance:
 			velocity = offset / distance * speed
 		else:
 			velocity = Vector2.ZERO
@@ -164,6 +170,7 @@ func _physics_process(delta: float) -> void:
 
 	if movement_enabled:
 		_apply_mob_separation()
+		_clamp_velocity_away_from_player()
 	_process_poison(delta)
 	_process_nettles(delta)
 	move_and_slide()
@@ -184,6 +191,39 @@ func _apply_mob_separation() -> void:
 
 	if velocity.length() > speed:
 		velocity = velocity.normalized() * speed
+
+
+# 발밑 그림자 충돌 박스·플레이어 HurtBox가 겹치지 않는 중심 간 최소 거리
+func _get_contact_standoff_distance() -> float:
+	var mob_half := GroundShadowFootprint.footprint_half_extents_from_visual(%Slime)
+	var player_half := Vector2.ZERO
+	if player.has_method(&"get_contact_hurtbox_half_extents"):
+		player_half = player.call(&"get_contact_hurtbox_half_extents") as Vector2
+	var shape_clear := GroundShadowFootprint.min_center_distance_no_overlap(
+		mob_half,
+		player_half,
+		CONTACT_STANDOFF_PADDING
+	)
+	return maxf(attack_distance, shape_clear)
+
+
+# Slime 자식 GroundShadow 글로벌 스케일에 맞춰 몹 이동 충돌체를 맞춥니다.
+func _sync_body_collision_to_shadow() -> void:
+	var footprint := GroundShadowFootprint.footprint_size_from_visual(%Slime)
+	GroundShadowFootprint.apply_rectangle_collision($CollisionShape2D, footprint)
+
+
+# 몹 분리력이 플레이어 접촉 거리 안으로 밀어넣지 않도록 접근 속도를 제거합니다.
+func _clamp_velocity_away_from_player() -> void:
+	var to_player := player.global_position - global_position
+	var distance := to_player.length()
+	var stop_distance := _get_contact_standoff_distance()
+	if distance >= stop_distance or distance < 0.01:
+		return
+	var toward := to_player / distance
+	var toward_speed := velocity.dot(toward)
+	if toward_speed > 0.0:
+		velocity -= toward * toward_speed
 
 
 # 사거리 안에서 공격 마크를 띄운 뒤 ranged_telegraph_delay 후 탄환을 쏩니다.

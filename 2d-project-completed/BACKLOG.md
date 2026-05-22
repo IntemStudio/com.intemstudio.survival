@@ -17,17 +17,20 @@
 | 일시정지 | Esc, 무기 선택·게임오버·클리어 중 일시정지 차단 |
 | 밸런스 (VS형 A·B·C) | `default_balance_table.tres` VS 키프레임(11분 피크·16~20 호흡·25분 보스)·`balance_pace_multiplier` · `default_balance_timeline.tres`(9·11·25·28분 이벤트) · 30분 `die_from_stage_clear()` 클리어 |
 | 몹 | basic / fast / elite / special_a·b / boss — 공용 `mob.gd`; **ranged** — 8분+ 스폰(VS형 A); **dummy** — 테스트 전용 |
-| 테스트 아레나 | `test_arena.tscn` + `test_arena.gd` — F6 실행, 몹 8종 Spawn, 무기 타입·등급 필터+Equip(리볼버 시작), 플레이어 3초 리스폰, 몹 리스폰 옵션, `health_depleted` 1회 emit |
+| 테스트 아레나 | F6, 몹 8종 Spawn(플레이어+280px·Dummy 500HP/그 외 10×), 무기 필터+Equip, 3초 리스폰, 몹 리스폰 옵션 |
 | 무기 | Ranged·Melee·Magic 카탈로그 + `gun.gd` — **근접 관통 탄**(`melee_projectile`), **영역 존**(`area_damage_zone`/연금 착지), 탄환·마법·투척·궤도; **F** 자동 공격 HUD |
-| 무기 선택 UI | 3택1 버튼 + 호버/포커스 시 `WeaponData.build_select_tooltip_bbcode()` 설명 패널 (`DetailPanel`) |
+| 무기 선택 UI | 3택1 + 설명 패널 + **리롤·버리기 각 3회/판** + 버린 목록 + 자동 선택·우선순위 |
 | 상태이상 | 독(연금), 쐐기(nettles), 피격·독 데미지 플로팅 텍스트 |
 | 피격 연출 | `HitFlash` — 몹 `%Slime`·플레이어 `HappyBoo/Colorizer` modulate 깜박임; 몹은 무기/독 피해 + `play_hurt()` 애니 병행 |
 | 오브젝트 풀 | `ScenePool` + `PoolUtil` — 무기 발사체, 경험치 오브, 몹 7종+더미 prewarm, **몹 투사체·공격 예고 마크** (`prewarm_mob_projectiles` 32, `prewarm_mob_attack_marks` 20) |
-| 픽업·경험치 | 오브(`ScenePool`, `exp_orbs` 그룹, 픽업 범위 자석·수집); 자석 아이템 1% 드랍·전장 오브 일괄 자석·주황 2× 크기 |
-| 플레이어 피격 | `%HurtBox` 접촉 DPS; 원거리 `apply_mob_projectile_damage`(무기 통계 제외); 플로팅 최소 1; 접촉·투사체 시 `HitFlash` |
-| 무기 피해 통계 | `WeaponDamageTracker` + `mob.apply_weapon_damage`/독 틱 → 게임오버 `%WeaponDamageList` |
-| 맵 경계 | `%MapArena` — 고정 직사각형 벽(레이어 1)·플레이 영역 내부 몹 스폰(장애물 겹침 회피). 구 경로 `PathFollow2D` 테두리 스폰 제거 |
-| 기타 | 몹 분리, 나무 장애물 충돌, 처치 수·시간 HUD |
+| 픽업·경험치 | 오브(`ScenePool`, `exp_orbs`, `pickup_range` 자동 자석·가속·`MagnetTrail` 꼬리); `%PickupRangeRing`; 자석 1%·체력 1% 드랍(오프셋 스폰) |
+| 플레이어 피격 | `%HurtBox` 접촉 DPS(시작·무기 선택 중 `monitoring` off); `GroundShadowFootprint` 발밑 박스·몹 standoff; 원거리 투사체·`HitFlash` |
+| 무기 조준 | `gun.gd` 사거리 내 최근접 몹 `%TargetIndicator` 링(펄스) |
+| 무기 피해 통계 | `WeaponDamageTracker` → 게임오버 `%WeaponDamageList` · 일시정지 `%PauseOwnedWeaponsList`(타입별 색·합계) |
+| 몹 스폰(메인) | `%MapArena.get_random_spawn_position(플레이어 위치)` — 플레이어 근처 금지 반경(`mob_spawn_player_clear_extra` 130) |
+| 맵 경계 | `%MapArena` — 벽(레이어 1)·내부 몹 스폰. **메인 3×** (`survivors_game.tscn` 오버라이드 6336×4104), **F6 1×** (`ARENA_RECT_1X`) |
+| 소나무 | Poisson(`sparse` 960 / `dense` 50, 기본 밀도 50%), HUD `%TreeDensityGui` 실시간 슬라이더. 수동 `PineTree*` 없음 |
+| 기타 | 몹 분리, 처치 수·시간 HUD |
 
 ---
 
@@ -40,7 +43,7 @@
 
 - [ ] **특수 몹 A/B** — HP·속도·색만 다름. `design_intent`의 “패턴”에 해당하는 행동 없음.
 - [ ] **보스** — 체력·크기만 큼. 페이즈·고유 스킬·등장 연출·처치 보상 차별 없음.
-- [ ] **엘리트** — 스탯·비주얼만 강화. 기믹 없음.
+- [ ] **엘리트** — 스탯·비주얼·`%TargetIndicator`만. 전용 기믹·등장 연출 없음.
 - [ ] **`BalancePhase.threat`** — 키프레임·보간만 되고, 스폰·피해·플레이어 데미지 등 어디에도 미반영.
 - [ ] **`mob_kind`** — 씬 export만 있고, AI·보상·UI 분기에 미사용.
 - [ ] **레이피어 “En Garde”** — 카탈로그 `effect` 문구만 있고, 전투 시작 버프 미구현.
@@ -69,7 +72,7 @@
 - [ ] **VS E — 하이퍼 모드 (25분)** — 25분부터 전역 배율(스폰·HP 등)·`BalanceNoticeBanner` “HYPER” 표시. B 보스 이벤트와 연동. Plan §단계 E.
 - [ ] **VS F — 플레이테스트·튜닝** — 11분 피크·16~24 호흡·25분 보스·30분 클리어 체감 검증; 키프레임·`density_mult`·이벤트 수치 조정. (선택) `.cursor/rules/godot-balance.mdc`.
 - [ ] **VS Q2 — 31~40분 구간** — plateau 유지 vs 클리어 후 하드 모드 확장. Plan §9.
-- [ ] **접촉 피해 거리·히트박스 정렬** — `attack_distance`(중심 간 85)에서 몹이 멈춰도 `HurtBox`(84×54)와 몹 원형 충돌(r≈67)이 겹쳐 정지 상태 DPS가 남음. 의도 유지 시 수치 문서화, 완화 시 `attack_distance`↑ / HurtBox 축소 / 접촉 시에만 피해 / i-frame 중 선택. (`AGENTS.md` 접촉 피해 섹션)
+- [ ] **접촉 피해 미세 튜닝** — `GroundShadowFootprint` standoff·`CONTACT_STANDOFF_PADDING`로 겹침 DPS는 완화됨. 남음: i-frame·“접촉 시에만” 정책·변종별 `attack_distance` 재검증. (`AGENTS.md` 접촉 피해)
 - [ ] **`threat` 활용 설계** — 예: 플레이어 접촉 데미지 배수, 스폰 밀도와 분리한 “압박도” 지표로 쓸지 결정 후 연결.
 - [ ] **동시 생존 몹 상한 UX** — `max_alive_mobs` 도달 시 스폰 스킵만 함. HUD·디버그 표시 없음.
 - [ ] **난이도 프리셋** — Easy/Normal/Hard용 `BalanceTable` 리소스 분리.
@@ -80,7 +83,7 @@
 
 - [ ] **무기 선택 UI 정리** — `CHOICE_COUNT = 3`인데 버튼 4개·노드명(`RevolverButton` 등)이 초기 예제 잔재. 동적 버튼 생성 또는 이름 통일.
 - [ ] **현재 페이즈·위협 HUD** — 생존 시간만 표시. “지금 구간 의도”·`threat`·주요 스폰 비율 요약(디버그용이라도).
-- [ ] **게임오버 통계 (추가)** — 생존 시간·도달 레벨·처치 수를 게임오버 패널에 함께 표시. (무기별 누적 피해·합계는 구현됨 — `AGENTS.md` 무기별 피해 집계·게임오버)
+- [ ] **게임오버 통계 (추가)** — 생존 시간·도달 레벨·처치 수를 **게임오버 패널**에 표시. (무기별 피해·합계는 게임오버·**Esc 일시정지** 모두 구현 — `AGENTS.md` 무기별 피해 집계)
 - [ ] **쐐기·독 디버프 비주얼** — 로직은 있으나 몹 위 상태 아이콘·지속 틴트 약함(확인 후 보강). 일반 피격 `modulate` 깜박임은 `HitFlash`로 구현됨(`AGENTS.md`).
 - [ ] **로컬라이제이션 정리** — `display_name_ko`는 선택 UI에 사용 중. `weapon_subtype`·`effect`는 `build_select_tooltip_bbcode()`에서 부분 치환(`_effect_ko`); 카탈로그 `effect_ko`·분류 한글 필드는 미도입.
 
@@ -93,7 +96,7 @@
 - [ ] **몹 비주얼 다양화** — Slime 변종만. ranged/special/boss 전용 실루엣·애니 없음.
 - [ ] **사운드** — `default_bus_layout.tres`만 있고, BGM·타격·레벨업·보스 SFX 미연결.
 - [ ] **프로젝트 표기** — `project.godot` 앱 이름이 GDQuest 튜토리얼명. 배포용 이름·아이콘 변경.
-- [ ] **맵·장식 (추가)** — `%MapArena` 직사각형 벽·내부 몹 스폰은 구현됨. 소나무는 **수동 11그루**(`survivors_game.tscn`); **Poisson 절차 배치** 설계는 [`Docs/Plan_Tree_Placement_Poisson.md`](Docs/Plan_Tree_Placement_Poisson.md). 파괴·카메라 클램프·바닥 `arena_rect` 맞춤 등은 없음.
+- [ ] **맵·장식 (추가)** — Poisson 소나무·HUD 밀도·3×/1× 씬 분리는 구현됨([`Docs/Plan_Tree_Placement_Poisson.md`](Docs/Plan_Tree_Placement_Poisson.md)). 남음: `pine_tree` 파괴, 카메라 클램프, 바닥 체커를 `arena_rect`에 맞춤, (선택) BFS 막힘 재시드
 
 ---
 
@@ -112,10 +115,10 @@
 
 구현 여부·난이도·재미 기여는 플레이 테스트 후 결정. 기각해도 됩니다.
 
-- 플레이어 주변 **링/오프스크린** 스폰(현재는 `%MapArena` 내부 균일 랜덤), 밀집 웨이브
+- 플레이어 주변 **링/오프스크린** 스폰(현재는 내부 균일 랜덤 + 플레이어 근처 **410px** 금지 — `player_clear_radius` 280 + `mob_spawn_player_clear_extra` 130), 밀집 웨이브
 - `arena_rect` 밖 **카메라 클램프**·바닥 체커를 플레이 영역에만 그리기
 - 보스 처치 시 일시 무적·전체 경험치·상자 드롭
-- 무기 선택 “리롤” 1회(소모품·레벨 대가)
+- 무기 선택 리롤·버리기 **골드/레벨 비용** (횟수 상한 3회/판은 구현됨 — `AGENTS.md` 무기 선택 UI)
 - 시간 제한 이벤트(예: 5분마다 30초 고밀도)
 - `pine_tree` 파괴·불 장판 등 환경 상호작용
 - 플레이어 넉백·무적 프레임 (대시는 구현됨 — `AGENTS.md` 플레이어 이동·대시)
@@ -130,18 +133,22 @@
 1. **몹 추가** → `mob_*.tscn` + `mob_spawn_selector.gd` + `default_balance_table.tres` + `ScenePool.MOB_SCENES` (`.mdc` 필수)
 2. **무기 추가** → 카탈로그 + `gun.gd` 타입 처리 + `weapon_id` 고유 + 선택 UI 풀. 새 투사체는 `pool_reset`/`PoolUtil.release`. 툴팁에 새 스탯·특수 규칙이 보이면 `weapon_data.gd`의 `build_select_tooltip_bbcode()`도 같이 갱신
 3. **풀 대상 이펙트 추가** → `ScenePool.acquire` + `pool_reset`/`pool_on_acquire` + `PoolUtil.release_node`, prewarm 수치
-4. **자석·픽업 변경** → `mob.gd` 드랍 확률·`magnet_pickup`·`exp_orb`·`player.gd` `collect`/`start_magnet` 분기; `AGENTS.md` 픽업 섹션 동기화
+4. **자석·픽업 변경** → `mob.gd` 드랍 확률·`magnet_pickup`·`exp_orb`·`player.gd` `collect`/`start_magnet`·`pickup_range`·`_sync_pickup_range_visual`·`player.tscn` `%PickupRangeRing`; `AGENTS.md` 픽업 섹션 동기화
 4b. **대시·게이지 변경** → `player.gd` 상수·`_update_dash_cooldown_gauge`·`player.tscn` `%DashCooldownBar`; `AGENTS.md` 플레이어 이동·대시 섹션 동기화
 4c. **자동 공격 토글·HUD 변경** → `player.gd` (`auto_attack_enabled`, `toggle_auto_attack`), `gun.gd` (`refresh_auto_attack`, `_is_auto_attack_enabled`), `king_bible_orb.gd`, `survivors_game.tscn` `%AutoAttackLabel`, `project.godot` `toggle_auto_attack`; `AGENTS.md` 자동 공격 토글 섹션 동기화
-4d. **무기 피해 집계·게임오버 표시 변경** → `mob.gd` `apply_weapon_damage`/`apply_poison`, `game/weapon_damage_tracker.gd`, `game.gd` `register_weapon_damage`·`_populate_game_over_weapon_damage`, `survivors_game.tscn` `%WeaponDamageList`; `AGENTS.md` 무기별 피해 집계·게임오버 섹션 동기화
+4d. **무기 피해 집계·게임오버·일시정지 표시 변경** → `mob.gd` `apply_weapon_damage`/`apply_poison`, `weapon_damage_tracker.gd`, `game.gd` (`populate_weapon_damage_list`, `get_weapon_damage_display_rows`), `ui/pause_menu.gd`, `survivors_game.tscn` `%WeaponDamageList`·`%PauseOwnedWeaponsList`; `AGENTS.md` 무기별 피해 집계
+4k. **몹 스폰·플레이어 근처 금지** → `map_arena.gd` `get_random_spawn_position`·`mob_spawn_player_clear_extra`, `game.gd` `spawn_mob`; `godot-core.mdc`·`AGENTS.md` §MapArena 동기화
 4e. **원거리 몹·투사체·예고 마크** → `mob.gd` export·`mob_ranged.tscn`·`mob_projectile.*`·`mob_attack_mark.*`·`player.apply_mob_projectile_damage`·`scene_pool` prewarm·`ranged_spawn_ratio`; `AGENTS.md` 원거리 몹 섹션
 4f. **테스트 아레나·더미 몹** → `test_arena.tscn`·`test_arena.gd`·`mob_dummy.tscn`·`mob.gd` `movement_enabled`/`combat_enabled`·`MobSpawnSelector.MOB_DUMMY_SCENE`·`scene_pool` prewarm·`player.gd` `clear_weapons`/`reset_health_depleted_state`; `AGENTS.md` 테스트 아레나 섹션
 4g. **피격 깜박임 변경** → `effects/hit_flash/hit_flash.gd` (`FLASH_MULTIPLIER`, `BLINK_COUNT`, on/off 시간), `mob.gd` (`_play_hit_flash`, `pool_reset`·`HitFlash.cancel`), `player.gd` (`_play_hit_flash`, `Colorizer`); `AGENTS.md` 피격 깜박임 섹션 동기화
-4h. **맵 경계·스폰 영역 변경** → `world/map_arena/map_arena.gd` (`arena_rect`, `wall_thickness`, `spawn_margin`, `SPAWN_TEST_RADIUS`/`SPAWN_CLEAR_ATTEMPTS`), `survivors_game.tscn`·`test_arena.tscn` `%MapArena`, `game.gd` `spawn_mob`; `AGENTS.md` 고정 맵 경계 섹션·`.cursor/rules/godot-core.mdc` 스폰 계약
-5. **접촉 피해·피격 UX 변경** → `player.gd`/`player.tscn` `HurtBox`, `mob.gd` `attack_distance`, 몹 충돌 shape, `DAMAGE_RATE`·플로팅 간격·`HitFlash` 호출 간격; `AGENTS.md` 접촉 피해·피격 깜박임 섹션 동기화
+4h. **맵 경계·스폰 영역 변경** → `map_arena.gd`, **`survivors_game.tscn` `%MapArena` 오버라이드(메인 3×)**, `test_arena.tscn`(1×·`spawn_trees`), `game.gd` `spawn_mob`; `AGENTS.md`·`godot-core.mdc`
+4j. **소나무 Poisson·밀도 HUD 변경** → `poisson_sampler.gd`, `map_arena.gd`(`tree_spacing_dense`/`sparse`, `tree_min_spacing`, `get/set_tree_density_normalized`, 기본 밀도 50%), `ui/tree_density_settings.gd`, `survivors_game.tscn` `%TreeDensityGui`; [`Docs/Plan_Tree_Placement_Poisson.md`](Docs/Plan_Tree_Placement_Poisson.md)·`AGENTS.md` §소나무
+4i. **무기 선택·리롤·버리기 UI 변경** → `ui/weapon_select_menu.gd` (`present_random_choices`, `reroll_choices`, `discard_weapon_at_index`, `_owned_weapons`, `_discarded_weapons`, `_build_selectable_weapon_pool`), `survivors_game.tscn` (`DiscardSlot0~2`, `RerollButton`, `RightColumnVBox/DiscardedPanel`, `AutoSelectRow`, `AutoPriorityPanel`); `AGENTS.md` 무기 선택 UI·`.cursor/rules/godot-weapons.mdc`
+5. **접촉 피해·충돌 정렬 변경** → `ground_shadow_footprint.gd`, `player.gd`/`player.tscn` (`GroundShadow`, `HurtBox`, `set_contact_damage_enabled`), `mob.gd` (`attack_distance`, `_get_contact_standoff_distance`, `_sync_body_collision_to_shadow`), `DAMAGE_RATE`·`HitFlash`; `AGENTS.md` 접촉 피해·피격 깜박임
+5b. **조준 링·경험치 자석 연출** → `gun.gd` `_set_targeted`, `mob.gd` `set_targeted`·`%TargetIndicator`, `exp_orb.gd`/`exp_orb.tscn` (`MagnetTrail`, 가속 상수); `AGENTS.md` 조준 표시·픽업 섹션
 6. **이 항목 완료** → 위 목록에서 해당 줄 삭제 또는 “완료(날짜)” 한 줄로 축약
 7. **기각** → 이유 한 줄 남기고 삭제하거나 “기각” 섹션으로 이동(선택)
 
 ---
 
-*마지막 갱신: 코드베이스 기준 2026-05-22 (`%MapArena` 고정 직사각형 맵·내부 스폰·벽 충돌, `PathFollow2D` 제거; 테스트 아레나 F6, 더미 몹, **`HitFlash`** 등). 구현이 바뀌면 이 문서도 함께 맞춥니다.*
+*마지막 갱신: 2026-05-22 — Poisson·3× 맵·리롤·standoff·타겟 링·자석 꼬리·일시정지 무기 피해·플레이어 근처 스폰 금지·F6 고정 스폰/HP. 구현이 바뀌면 이 문서도 함께 맞춥니다.*

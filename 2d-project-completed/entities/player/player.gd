@@ -31,12 +31,52 @@ var _hit_flash_base_modulate := Color.WHITE
 func _ready() -> void:
 	_hit_flash_target = %HappyBoo.get_node("Colorizer") as CanvasItem
 	_hit_flash_base_modulate = _hit_flash_target.modulate
-	var pickup_shape := %PickupRange.get_node("CollisionShape2D").shape as CircleShape2D
-	pickup_shape.radius = pickup_range
+	_sync_collision_to_ground_shadow()
+	_sync_pickup_range_visual()
 	%PickupRange.area_entered.connect(_on_pickup_range_area_entered)
 	%DashCooldownBar.visible = false
+	set_contact_damage_enabled(false)
 	_update_experience_hud()
 	_update_auto_attack_hud()
+
+
+# 접촉 DPS Area 감시 — 게임 시작 전·무기 선택 중에는 끕니다.
+func set_contact_damage_enabled(enabled: bool) -> void:
+	%HurtBox.monitoring = enabled
+
+
+# 발밑 GroundShadow 크기에 맞춰 이동·접촉 판정 충돌체를 맞춥니다.
+func _sync_collision_to_ground_shadow() -> void:
+	var footprint := GroundShadowFootprint.footprint_size_from_visual(%HappyBoo)
+	if footprint == Vector2.ZERO:
+		return
+	GroundShadowFootprint.apply_rectangle_collision($CollisionShape2D, footprint)
+	GroundShadowFootprint.apply_rectangle_collision(
+		%HurtBox.get_node("CollisionShape2D") as CollisionShape2D,
+		footprint
+	)
+
+
+# 몹 접촉 거리 계산용 HurtBox 반경(그림자 발밑 박스 기준)
+func get_contact_hurtbox_half_extents() -> Vector2:
+	var hurt_shape := %HurtBox.get_node("CollisionShape2D").shape as RectangleShape2D
+	if hurt_shape:
+		return hurt_shape.size * 0.5
+	return GroundShadowFootprint.footprint_half_extents_from_visual(%HappyBoo)
+
+
+# PickupRange 충돌·반투명 링을 pickup_range 반경에 맞춥니다.
+func _sync_pickup_range_visual() -> void:
+	var pickup_shape := %PickupRange.get_node("CollisionShape2D").shape as CircleShape2D
+	pickup_shape.radius = pickup_range
+	var ring := get_node_or_null("%PickupRangeRing") as Sprite2D
+	if not ring or not ring.texture:
+		return
+	var tex_radius := maxf(ring.texture.get_width(), ring.texture.get_height()) * 0.5
+	if tex_radius <= 0.0:
+		return
+	var ring_scale := pickup_range / tex_radius
+	ring.scale = Vector2(ring_scale, ring_scale)
 
 
 func is_auto_attack_enabled() -> bool:
@@ -240,11 +280,15 @@ func _physics_process(delta: float) -> void:
 		%HappyBoo.play_idle_animation()
 	
 	# Taking damage
-	if not _health_depleted_emitted:
+	if not _health_depleted_emitted and %HurtBox.monitoring:
 		const DAMAGE_RATE = 6.0
-		var overlapping_mobs = %HurtBox.get_overlapping_bodies()
-		if overlapping_mobs:
-			var damage_this_frame: float = DAMAGE_RATE * overlapping_mobs.size() * delta
+		var overlapping_count := 0
+		for body in %HurtBox.get_overlapping_bodies():
+			if not body is CharacterBody2D or not body.is_in_group("mobs"):
+				continue
+			overlapping_count += 1
+		if overlapping_count > 0:
+			var damage_this_frame: float = DAMAGE_RATE * overlapping_count * delta
 			health -= damage_this_frame
 			%HealthBar.value = health
 			_damage_float_accumulator += damage_this_frame
