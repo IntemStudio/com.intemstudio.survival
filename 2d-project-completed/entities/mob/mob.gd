@@ -69,6 +69,7 @@ func pool_reset() -> void:
 	collision_layer = 0
 	collision_mask = 0
 	if is_node_ready():
+		HitFlash.cancel(%Slime, slime_tint)
 		_target_indicator.visible = false
 		_target_indicator.scale = TARGET_INDICATOR_BASE_SCALE
 		_set_attack_range_ring_visible(false)
@@ -315,10 +316,17 @@ func _process_poison(delta: float) -> void:
 		index -= 1
 
 
+func _play_hit_flash() -> void:
+	if not is_node_ready():
+		return
+	HitFlash.play(%Slime, slime_tint)
+
+
 func _apply_poison_tick(amount: int, weapon: WeaponData = null) -> void:
 	if amount <= 0:
 		return
 
+	_play_hit_flash()
 	_register_weapon_damage(weapon, amount)
 	health -= amount
 	%HealthBar.value = maxf(health, 0.0)
@@ -332,6 +340,7 @@ func take_damage(amount: int) -> void:
 	if _is_dying or amount <= 0:
 		return
 
+	_play_hit_flash()
 	%Slime.play_hurt()
 	health -= amount
 	%HealthBar.value = maxf(health, 0.0)
@@ -346,6 +355,7 @@ func apply_weapon_damage(amount: int, weapon: WeaponData) -> void:
 		return
 
 	_register_weapon_damage(weapon, amount)
+	_play_hit_flash()
 	%Slime.play_hurt()
 	health -= amount
 	%HealthBar.value = maxf(health, 0.0)

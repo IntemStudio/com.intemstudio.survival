@@ -21,9 +21,10 @@
 | 무기 | Ranged·Melee·Magic 카탈로그 + `gun.gd` (탄환·근접·마법·투척·부메랑·연금·궤도 등); **F**로 자동 공격 ON/OFF, HUD `%AutoAttackLabel` |
 | 무기 선택 UI | 3택1 버튼 + 호버/포커스 시 `WeaponData.build_select_tooltip_bbcode()` 설명 패널 (`DetailPanel`) |
 | 상태이상 | 독(연금), 쐐기(nettles), 피격·독 데미지 플로팅 텍스트 |
+| 피격 연출 | `HitFlash` — 몹 `%Slime`·플레이어 `HappyBoo/Colorizer` modulate 깜박임; 몹은 무기/독 피해 + `play_hurt()` 애니 병행 |
 | 오브젝트 풀 | `ScenePool` + `PoolUtil` — 무기 발사체, 경험치 오브, 몹 7종+더미 prewarm, **몹 투사체·공격 예고 마크** (`prewarm_mob_projectiles` 32, `prewarm_mob_attack_marks` 20) |
 | 픽업·경험치 | 오브(`ScenePool`, `exp_orbs` 그룹, 픽업 범위 자석·수집); 자석 아이템 1% 드랍·전장 오브 일괄 자석·주황 2× 크기 |
-| 플레이어 피격 | `%HurtBox` 접촉 DPS; 원거리 `apply_mob_projectile_damage`(무기 통계 제외); 플로팅 최소 1 |
+| 플레이어 피격 | `%HurtBox` 접촉 DPS; 원거리 `apply_mob_projectile_damage`(무기 통계 제외); 플로팅 최소 1; 접촉·투사체 시 `HitFlash` |
 | 무기 피해 통계 | `WeaponDamageTracker` + `mob.apply_weapon_damage`/독 틱 → 게임오버 `%WeaponDamageList` |
 | 기타 | 몹 분리, 나무 장애물 충돌, 처치 수·시간 HUD |
 
@@ -72,7 +73,7 @@
 - [ ] **무기 선택 UI 정리** — `CHOICE_COUNT = 3`인데 버튼 4개·노드명(`RevolverButton` 등)이 초기 예제 잔재. 동적 버튼 생성 또는 이름 통일.
 - [ ] **현재 페이즈·위협 HUD** — 생존 시간만 표시. “지금 구간 의도”·`threat`·주요 스폰 비율 요약(디버그용이라도).
 - [ ] **게임오버 통계 (추가)** — 생존 시간·도달 레벨·처치 수를 게임오버 패널에 함께 표시. (무기별 누적 피해·합계는 구현됨 — `AGENTS.md` 무기별 피해 집계·게임오버)
-- [ ] **쐐기·독 디버프 비주얼** — 로직은 있으나 몹 위 상태 아이콘·틴트 약함(확인 후 보강).
+- [ ] **쐐기·독 디버프 비주얼** — 로직은 있으나 몹 위 상태 아이콘·지속 틴트 약함(확인 후 보강). 일반 피격 `modulate` 깜박임은 `HitFlash`로 구현됨(`AGENTS.md`).
 - [ ] **로컬라이제이션 정리** — `display_name_ko`는 선택 UI에 사용 중. `weapon_subtype`·`effect`는 `build_select_tooltip_bbcode()`에서 부분 치환(`_effect_ko`); 카탈로그 `effect_ko`·분류 한글 필드는 미도입.
 
 ---
@@ -126,10 +127,11 @@
 4d. **무기 피해 집계·게임오버 표시 변경** → `mob.gd` `apply_weapon_damage`/`apply_poison`, `game/weapon_damage_tracker.gd`, `game.gd` `register_weapon_damage`·`_populate_game_over_weapon_damage`, `survivors_game.tscn` `%WeaponDamageList`; `AGENTS.md` 무기별 피해 집계·게임오버 섹션 동기화
 4e. **원거리 몹·투사체·예고 마크** → `mob.gd` export·`mob_ranged.tscn`·`mob_projectile.*`·`mob_attack_mark.*`·`player.apply_mob_projectile_damage`·`scene_pool` prewarm·`ranged_spawn_ratio`; `AGENTS.md` 원거리 몹 섹션
 4f. **테스트 아레나·더미 몹** → `test_arena.tscn`·`test_arena.gd`·`mob_dummy.tscn`·`mob.gd` `movement_enabled`/`combat_enabled`·`MobSpawnSelector.MOB_DUMMY_SCENE`·`scene_pool` prewarm·`player.gd` `clear_weapons`/`reset_health_depleted_state`; `AGENTS.md` 테스트 아레나 섹션
-5. **접촉 피해·피격 UX 변경** → `player.gd`/`player.tscn` `HurtBox`, `mob.gd` `attack_distance`, 몹 충돌 shape, `DAMAGE_RATE`·플로팅 간격; `AGENTS.md` 접촉 피해 섹션 동기화
+4g. **피격 깜박임 변경** → `effects/hit_flash/hit_flash.gd` (`FLASH_MULTIPLIER`, `BLINK_COUNT`, on/off 시간), `mob.gd` (`_play_hit_flash`, `pool_reset`·`HitFlash.cancel`), `player.gd` (`_play_hit_flash`, `Colorizer`); `AGENTS.md` 피격 깜박임 섹션 동기화
+5. **접촉 피해·피격 UX 변경** → `player.gd`/`player.tscn` `HurtBox`, `mob.gd` `attack_distance`, 몹 충돌 shape, `DAMAGE_RATE`·플로팅 간격·`HitFlash` 호출 간격; `AGENTS.md` 접촉 피해·피격 깜박임 섹션 동기화
 6. **이 항목 완료** → 위 목록에서 해당 줄 삭제 또는 “완료(날짜)” 한 줄로 축약
 7. **기각** → 이유 한 줄 남기고 삭제하거나 “기각” 섹션으로 이동(선택)
 
 ---
 
-*마지막 갱신: 코드베이스 기준 2026-05-22 (테스트 아레나 F6, 더미 몹, 무기 타입·등급 필터, 플레이어/몹 리스폰, `health_depleted` 1회, `died` 시그널). 구현이 바뀌면 이 문서도 함께 맞춥니다.*
+*마지막 갱신: 코드베이스 기준 2026-05-22 (테스트 아레나 F6, 더미 몹, 무기 타입·등급 필터, 플레이어/몹 리스폰, `health_depleted` 1회, `died` 시그널, **`HitFlash` 피격 깜박임**). 구현이 바뀌면 이 문서도 함께 맞춥니다.*

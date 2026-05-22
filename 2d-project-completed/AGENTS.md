@@ -40,6 +40,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | `effects/exp_orb/` | 경험치 오브 (`exp_orbs` 그룹, `ScenePool` 적용) |
 | `effects/magnet_pickup/` | 자석 아이템 (1% 드랍, 풀 미적용) |
 | `effects/health_pickup/` | 체력 회복 아이템 (1% 드랍, +30 HP, 풀 미적용) |
+| `effects/hit_flash/` | `HitFlash` — 피격 시 `CanvasItem.modulate` 짧은 깜박임(풀·씬 없음, 정적 API) |
 | `effects/` (기타) | 데미지 텍스트, 사망 연기 등 |
 | `characters/` | Slime / HappyBoo 비주얼 |
 
@@ -201,6 +202,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | HurtBox 크기 | `player.tscn` 사각형 **84×54** (`monitorable = false`) |
 | 초당 피해 | `DAMAGE_RATE = 6.0` × **겹친 몹 수** |
 | 플로팅 숫자 | `DAMAGE_FLOAT_INTERVAL = 0.2`초마다, `maxi(int(누적), 1)` → 화면 **최소 1** (실제 DPS와 체감이 다를 수 있음) |
+| 피격 깜박임 | 플로팅 숫자와 **동일 0.2초 간격**으로 `HitFlash` ([피격 깜박임](#피격-깜박임-hitflash) 참고) |
 
 **가만히 서 있어도 맞는 이유**
 
@@ -210,6 +212,29 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 4. 스폰 타이머가 돌면 주변에 몹이 쌓이고, 겹친 수만큼 피해량이 배수됩니다.
 
 **튜닝 시 같이 볼 것:** `mob.gd` `attack_distance`, 몹 `.tscn` `CollisionShape2D`, `player.tscn` `HurtBox`, `player.gd` `DAMAGE_RATE` / `DAMAGE_FLOAT_INTERVAL`. 한쪽만 바꾸면 “멈췄는데 안 맞음” 또는 “멀리서 1씩 뜸”처럼 어긋날 수 있습니다.
+
+---
+
+## 피격 깜박임 (`HitFlash`)
+
+몹·플레이어가 **실제로 HP가 깎일 때** 스프라이트 `modulate`를 잠깐 밝게 깜박입니다. `FloatingDamageText`와 별도이며, `ScenePool` 대상이 아닙니다.
+
+| 항목 | 동작 |
+|------|------|
+| API | `effects/hit_flash/hit_flash.gd` — `HitFlash.play(target, restore_modulate)`, `HitFlash.cancel(...)` |
+| 몹 대상 | `%Slime` — 복구 색은 `slime_tint` (`pool_on_acquire`에서 설정) |
+| 몹 호출 | `mob.gd` `_play_hit_flash()` ← `take_damage`, `apply_weapon_damage`, 독 틱 `_apply_poison_tick` |
+| 몹 추가 연출 | 기존 `%Slime.play_hurt()` 애니(얼굴·몸 hurt 스프라이트)와 **병행** |
+| 플레이어 대상 | `%HappyBoo/Colorizer` — `_ready`에서 `modulate` 캐시 후 복구 |
+| 플레이어 호출 | `apply_mob_projectile_damage` 1회당 1회; 접촉 DPS는 플로팅 숫자와 같이 **0.2초마다** 1회 |
+| 풀 반환 | `mob.gd` `pool_reset` → `HitFlash.cancel(%Slime, slime_tint)` (트윈·색 초기화) |
+| 연타 | 같은 `target`에 새 `play` 시 기존 트윈 `kill` 후 재시작 |
+
+**튜닝:** `hit_flash.gd`의 `FLASH_MULTIPLIER`(기본 2.4), `BLINK_COUNT`(2), `BLINK_ON_SEC` / `BLINK_OFF_SEC`. 몹 tint·플레이어 `Colorizer` 색을 바꿨으면 `restore_modulate` 인자가 맞는지 확인.
+
+**왜 modulate:** 캐릭터 프리팹마다 hurt 애니 유무가 다르지만(슬라임만 전용 hurt 트랙), `CanvasItem`은 공통이라 한 API로 통일. 새 변종 몹도 `%Slime`만 맞으면 추가 씬 작업 없음.
+
+**튜닝·확장 시:** i-frame·넉백을 넣을 때 깜박임을 “무적 중에는 생략”할지 정책을 먼저 정한 뒤 `player.gd`·`mob.gd` 호출부만 게이트하면 됨.
 
 ---
 
@@ -320,7 +345,8 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | 경험치·픽업 아이템 | `effects/exp_orb/exp_orb.gd`, `effects/magnet_pickup/`, `effects/health_pickup/`, `entities/player/player.gd` (`heal_health`), `entities/mob/mob.gd` (드랍 확률) |
 | 대시·쿨다운 UI | `entities/player/player.gd`, `entities/player/player.tscn` (`%DashCooldownBar`), `project.godot` (`dash` 입력) |
 | 자동 공격 토글·HUD | `player.gd` (`toggle_auto_attack`, `set_auto_attack_enabled`), `gun.gd` (`refresh_auto_attack`), `king_bible_orb.gd`, `survivors_game.tscn` (`%AutoAttackLabel`), `project.godot` |
-| 접촉 피해·피격 표시 | `player.gd`/`player.tscn` (`HurtBox`), `mob.gd` (`attack_distance`), `floating_damage_text.gd`; 원거리 탄환은 `apply_mob_projectile_damage` |
+| 접촉 피해·피격 표시 | `player.gd`/`player.tscn` (`HurtBox`), `mob.gd` (`attack_distance`), `floating_damage_text.gd`, `effects/hit_flash/hit_flash.gd`; 원거리 탄환은 `apply_mob_projectile_damage` |
+| 피격 깜박임 | `effects/hit_flash/hit_flash.gd`, `mob.gd` (`_play_hit_flash`, `pool_reset`), `player.gd` (`_play_hit_flash`, `HappyBoo/Colorizer`) |
 
 ---
 

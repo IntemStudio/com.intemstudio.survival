@@ -24,9 +24,13 @@ var _dash_time_remaining := 0.0
 var _dash_cooldown_remaining := 0.0
 var auto_attack_enabled := true
 var _health_depleted_emitted := false
+var _hit_flash_target: CanvasItem
+var _hit_flash_base_modulate := Color.WHITE
 
 
 func _ready() -> void:
+	_hit_flash_target = %HappyBoo.get_node("Colorizer") as CanvasItem
+	_hit_flash_base_modulate = _hit_flash_target.modulate
 	var pickup_shape := %PickupRange.get_node("CollisionShape2D").shape as CircleShape2D
 	pickup_shape.radius = pickup_range
 	%PickupRange.area_entered.connect(_on_pickup_range_area_entered)
@@ -106,10 +110,16 @@ func reset_health_depleted_state() -> void:
 	_health_depleted_emitted = false
 
 
+func _play_hit_flash() -> void:
+	if _hit_flash_target:
+		HitFlash.play(_hit_flash_target, _hit_flash_base_modulate)
+
+
 # 몹 원거리 투사체 1발 피해 (접촉 DPS와 별도).
 func apply_mob_projectile_damage(amount: int) -> void:
 	if amount <= 0 or _health_depleted_emitted:
 		return
+	_play_hit_flash()
 	health -= float(amount)
 	%HealthBar.value = health
 	FloatingDamageText.spawn_player_damage(global_position, amount)
@@ -242,6 +252,7 @@ func _physics_process(delta: float) -> void:
 
 	_damage_float_timer -= delta
 	if _damage_float_accumulator > 0.0 and _damage_float_timer <= 0.0:
+		_play_hit_flash()
 		FloatingDamageText.spawn_player_damage(
 			global_position,
 			maxi(int(_damage_float_accumulator), 1)
