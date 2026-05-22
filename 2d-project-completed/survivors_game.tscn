@@ -12,6 +12,7 @@
 [ext_resource type="Script" path="res://game/pool/scene_pool.gd" id="7_scene_pool"]
 [ext_resource type="Script" path="res://game/speed_cheat.gd" id="8_speed_cheat"]
 [ext_resource type="PackedScene" path="res://world/map_arena/map_arena.tscn" id="10_map_arena"]
+[ext_resource type="Script" path="res://ui/ui_viewport_layout.gd" id="12_ui_viewport_layout"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_exp"]
 bg_color = Color(0.35, 0.85, 1, 1)
@@ -92,12 +93,13 @@ layer = 10
 
 [node name="HUDRoot" type="Control" parent="HUD"]
 layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+anchors_preset = 0
+offset_right = 1920.0
+offset_bottom = 1080.0
+grow_horizontal = 0
+grow_vertical = 0
 mouse_filter = 2
+script = ExtResource("12_ui_viewport_layout")
 
 [node name="KillCountLabel" type="Label" parent="HUD/HUDRoot"]
 unique_name_in_owner = true
@@ -260,64 +262,6 @@ theme_override_font_sizes/font_size = 20
 text = "자동 공격: ON (F)"
 vertical_alignment = 1
 
-[node name="TreeDensityGui" type="PanelContainer" parent="HUD/HUDRoot"]
-unique_name_in_owner = true
-process_mode = 3
-layout_mode = 1
-anchors_preset = 0
-offset_left = 16.0
-offset_top = 72.0
-offset_right = 392.0
-offset_bottom = 168.0
-grow_horizontal = 0
-grow_vertical = 0
-mouse_filter = 0
-theme_override_styles/panel = SubResource("StyleBoxFlat_tree_density_gui")
-
-[node name="TreeDensitySettings" type="VBoxContainer" parent="HUD/HUDRoot/TreeDensityGui"]
-layout_mode = 2
-theme_override_constants/separation = 6
-script = ExtResource("11_tree_density")
-
-[node name="TreeDensityTitle" type="Label" parent="HUD/HUDRoot/TreeDensityGui/TreeDensitySettings"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.1, 0.1, 0.1, 1)
-theme_override_font_sizes/font_size = 18
-text = "소나무 밀도"
-horizontal_alignment = 1
-
-[node name="TreeDensitySliderRow" type="HBoxContainer" parent="HUD/HUDRoot/TreeDensityGui/TreeDensitySettings"]
-layout_mode = 2
-theme_override_constants/separation = 10
-alignment = 1
-
-[node name="SparseLabel" type="Label" parent="HUD/HUDRoot/TreeDensityGui/TreeDensitySettings/TreeDensitySliderRow"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.15, 0.15, 0.15, 1)
-theme_override_font_sizes/font_size = 16
-text = "적음"
-
-[node name="TreeDensitySlider" type="HSlider" parent="HUD/HUDRoot/TreeDensityGui/TreeDensitySettings/TreeDensitySliderRow"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(240, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 4
-
-[node name="DenseLabel" type="Label" parent="HUD/HUDRoot/TreeDensityGui/TreeDensitySettings/TreeDensitySliderRow"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.15, 0.15, 0.15, 1)
-theme_override_font_sizes/font_size = 16
-text = "많음"
-
-[node name="TreeDensityValueLabel" type="Label" parent="HUD/HUDRoot/TreeDensityGui/TreeDensitySettings"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_colors/font_color = Color(0.2, 0.2, 0.2, 1)
-theme_override_font_sizes/font_size = 15
-text = "밀도 50% · 간격 505"
-horizontal_alignment = 1
-
 [node name="WeaponSelectMenu" type="CanvasLayer" parent="."]
 layer = 40
 process_mode = 3
@@ -328,12 +272,15 @@ script = ExtResource("3_weapon_select")
 [node name="MenuOverlay" type="Control" parent="WeaponSelectMenu"]
 process_mode = 3
 layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+anchors_preset = 0
+offset_right = 1920.0
+offset_bottom = 1080.0
+grow_horizontal = 0
+grow_vertical = 0
 mouse_filter = 0
+script = ExtResource("12_ui_viewport_layout")
+align_mode = 1
+pass_mouse_to_game = false
 
 [node name="ColorRect" type="ColorRect" parent="WeaponSelectMenu/MenuOverlay"]
 layout_mode = 1
@@ -652,12 +599,15 @@ script = ExtResource("2_pause")
 [node name="MenuOverlay" type="Control" parent="PauseMenu"]
 process_mode = 3
 layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+anchors_preset = 0
+offset_right = 1920.0
+offset_bottom = 1080.0
+grow_horizontal = 0
+grow_vertical = 0
 mouse_filter = 0
+script = ExtResource("12_ui_viewport_layout")
+align_mode = 1
+pass_mouse_to_game = false
 
 [node name="ColorRect" type="ColorRect" parent="PauseMenu/MenuOverlay"]
 layout_mode = 1
@@ -678,65 +628,162 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 0
 
-[node name="VBoxContainer" type="VBoxContainer" parent="PauseMenu/MenuOverlay/CenterContainer"]
+[node name="PauseMainContent" type="VBoxContainer" parent="PauseMenu/MenuOverlay/CenterContainer"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 40
 alignment = 1
 
-[node name="Label" type="Label" parent="PauseMenu/MenuOverlay/CenterContainer/VBoxContainer"]
+[node name="Label" type="Label" parent="PauseMenu/MenuOverlay/CenterContainer/PauseMainContent"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 96
 text = "일시정지"
 horizontal_alignment = 1
 
-[node name="OwnedWeaponsPanel" type="VBoxContainer" parent="PauseMenu/MenuOverlay/CenterContainer/VBoxContainer"]
+[node name="OwnedWeaponsPanel" type="VBoxContainer" parent="PauseMenu/MenuOverlay/CenterContainer/PauseMainContent"]
 layout_mode = 2
 theme_override_constants/separation = 8
 alignment = 1
 
-[node name="OwnedWeaponsTitle" type="Label" parent="PauseMenu/MenuOverlay/CenterContainer/VBoxContainer/OwnedWeaponsPanel"]
+[node name="OwnedWeaponsTitle" type="Label" parent="PauseMenu/MenuOverlay/CenterContainer/PauseMainContent/OwnedWeaponsPanel"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
 text = "보유 무기 · 피해량"
 horizontal_alignment = 1
 
-[node name="OwnedWeaponsScroll" type="ScrollContainer" parent="PauseMenu/MenuOverlay/CenterContainer/VBoxContainer/OwnedWeaponsPanel"]
+[node name="OwnedWeaponsScroll" type="ScrollContainer" parent="PauseMenu/MenuOverlay/CenterContainer/PauseMainContent/OwnedWeaponsPanel"]
 custom_minimum_size = Vector2(520, 160)
 layout_mode = 2
 size_flags_horizontal = 4
 horizontal_scroll_mode = 0
 
-[node name="PauseOwnedWeaponsList" type="VBoxContainer" parent="PauseMenu/MenuOverlay/CenterContainer/VBoxContainer/OwnedWeaponsPanel/OwnedWeaponsScroll"]
+[node name="PauseOwnedWeaponsList" type="VBoxContainer" parent="PauseMenu/MenuOverlay/CenterContainer/PauseMainContent/OwnedWeaponsPanel/OwnedWeaponsScroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 6
 
-[node name="Buttons" type="VBoxContainer" parent="PauseMenu/MenuOverlay/CenterContainer/VBoxContainer"]
+[node name="Buttons" type="VBoxContainer" parent="PauseMenu/MenuOverlay/CenterContainer/PauseMainContent"]
 layout_mode = 2
 theme_override_constants/separation = 16
 alignment = 1
 
-[node name="ContinueButton" type="Button" parent="PauseMenu/MenuOverlay/CenterContainer/VBoxContainer/Buttons"]
+[node name="ContinueButton" type="Button" parent="PauseMenu/MenuOverlay/CenterContainer/PauseMainContent/Buttons"]
 process_mode = 3
 custom_minimum_size = Vector2(280, 56)
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
 text = "계속하기"
 
-[node name="RestartButton" type="Button" parent="PauseMenu/MenuOverlay/CenterContainer/VBoxContainer/Buttons"]
+[node name="SettingsButton" type="Button" parent="PauseMenu/MenuOverlay/CenterContainer/PauseMainContent/Buttons"]
+process_mode = 3
+custom_minimum_size = Vector2(280, 56)
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "설정"
+
+[node name="RestartButton" type="Button" parent="PauseMenu/MenuOverlay/CenterContainer/PauseMainContent/Buttons"]
 process_mode = 3
 custom_minimum_size = Vector2(280, 56)
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
 text = "다시하기"
 
-[node name="QuitButton" type="Button" parent="PauseMenu/MenuOverlay/CenterContainer/VBoxContainer/Buttons"]
+[node name="QuitButton" type="Button" parent="PauseMenu/MenuOverlay/CenterContainer/PauseMainContent/Buttons"]
 process_mode = 3
 custom_minimum_size = Vector2(280, 56)
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
 text = "게임 종료"
+
+[node name="SettingsPanel" type="Control" parent="PauseMenu/MenuOverlay"]
+unique_name_in_owner = true
+visible = false
+process_mode = 3
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="SettingsCenter" type="CenterContainer" parent="PauseMenu/MenuOverlay/SettingsPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="SettingsVBox" type="VBoxContainer" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter"]
+layout_mode = 2
+theme_override_constants/separation = 24
+alignment = 1
+
+[node name="SettingsTitle" type="Label" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 72
+text = "설정"
+horizontal_alignment = 1
+
+[node name="TreeDensityGui" type="PanelContainer" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(480, 0)
+mouse_filter = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_tree_density_gui")
+
+[node name="TreeDensitySettings" type="VBoxContainer" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/TreeDensityGui"]
+layout_mode = 2
+theme_override_constants/separation = 6
+script = ExtResource("11_tree_density")
+
+[node name="TreeDensityTitle" type="Label" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/TreeDensityGui/TreeDensitySettings"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.1, 0.1, 0.1, 1)
+theme_override_font_sizes/font_size = 22
+text = "소나무 밀도"
+horizontal_alignment = 1
+
+[node name="TreeDensitySliderRow" type="HBoxContainer" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/TreeDensityGui/TreeDensitySettings"]
+layout_mode = 2
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="SparseLabel" type="Label" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/TreeDensityGui/TreeDensitySettings/TreeDensitySliderRow"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.15, 0.15, 0.15, 1)
+theme_override_font_sizes/font_size = 18
+text = "적음"
+
+[node name="TreeDensitySlider" type="HSlider" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/TreeDensityGui/TreeDensitySettings/TreeDensitySliderRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+
+[node name="DenseLabel" type="Label" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/TreeDensityGui/TreeDensitySettings/TreeDensitySliderRow"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.15, 0.15, 0.15, 1)
+theme_override_font_sizes/font_size = 18
+text = "많음"
+
+[node name="TreeDensityValueLabel" type="Label" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/TreeDensityGui/TreeDensitySettings"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.2, 0.2, 0.2, 1)
+theme_override_font_sizes/font_size = 17
+text = "밀도 50% · 간격 505"
+horizontal_alignment = 1
+
+[node name="SettingsBackButton" type="Button" parent="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox"]
+process_mode = 3
+custom_minimum_size = Vector2(280, 56)
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "돌아가기"
 
 [node name="GameOver" type="CanvasLayer" parent="." unique_id=880031702]
 layer = 30
@@ -747,12 +794,15 @@ visible = false
 [node name="MenuOverlay" type="Control" parent="GameOver"]
 process_mode = 3
 layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+anchors_preset = 0
+offset_right = 1920.0
+offset_bottom = 1080.0
+grow_horizontal = 0
+grow_vertical = 0
 mouse_filter = 0
+script = ExtResource("12_ui_viewport_layout")
+align_mode = 1
+pass_mouse_to_game = false
 
 [node name="ColorRect" type="ColorRect" parent="GameOver/MenuOverlay" unique_id=1711581986]
 layout_mode = 1
@@ -851,8 +901,10 @@ script = ExtResource("6_checker_bg")
 [connection signal="pressed" from="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/ContentHBox/ChoicesVBox/ChoiceRow2/DiscardSlot2Button" to="WeaponSelectMenu" method="_on_discard_slot_2_pressed"]
 [connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]
 [connection signal="health_depleted" from="Player" to="." method="_on_player_health_depleted"]
-[connection signal="pressed" from="PauseMenu/MenuOverlay/CenterContainer/VBoxContainer/Buttons/ContinueButton" to="." method="_on_pause_continue_pressed"]
-[connection signal="pressed" from="PauseMenu/MenuOverlay/CenterContainer/VBoxContainer/Buttons/RestartButton" to="." method="_on_pause_restart_pressed"]
-[connection signal="pressed" from="PauseMenu/MenuOverlay/CenterContainer/VBoxContainer/Buttons/QuitButton" to="." method="_on_pause_quit_pressed"]
+[connection signal="pressed" from="PauseMenu/MenuOverlay/CenterContainer/PauseMainContent/Buttons/ContinueButton" to="." method="_on_pause_continue_pressed"]
+[connection signal="pressed" from="PauseMenu/MenuOverlay/CenterContainer/PauseMainContent/Buttons/SettingsButton" to="PauseMenu" method="_on_settings_button_pressed"]
+[connection signal="pressed" from="PauseMenu/MenuOverlay/CenterContainer/PauseMainContent/Buttons/RestartButton" to="." method="_on_pause_restart_pressed"]
+[connection signal="pressed" from="PauseMenu/MenuOverlay/CenterContainer/PauseMainContent/Buttons/QuitButton" to="." method="_on_pause_quit_pressed"]
+[connection signal="pressed" from="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/SettingsBackButton" to="PauseMenu" method="_on_settings_back_pressed"]
 [connection signal="pressed" from="GameOver/MenuOverlay/CenterContainer/VBoxContainer/Buttons/RestartButton" to="." method="_on_restart_button_pressed"]
 [connection signal="pressed" from="GameOver/MenuOverlay/CenterContainer/VBoxContainer/Buttons/QuitButton" to="." method="_on_quit_button_pressed"]

@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://ojg88pe48jk5" path="res://entities/mob/mob.gd" id="1_xhyow"]
 [ext_resource type="PackedScene" uid="uid://ogik4s70pgwl" path="res://characters/slime/slime.tscn" id="3_n2uyc"]
-[ext_resource type="Texture2D" uid="uid://dn80eu1qs371v" path="res://art/shared/fx/circle.png" id="4_target_ring"]
+[ext_resource type="Script" path="res://entities/mob/target_indicator_ring.gd" id="4_target_ring"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ypitm"]
 size = Vector2(67.2, 41.6)
@@ -22,14 +22,14 @@ speed_max = 240.0
 [node name="Slime" parent="." unique_id=339565775 instance=ExtResource("3_n2uyc")]
 unique_name_in_owner = true
 
-[node name="TargetIndicator" type="Sprite2D" parent="."]
+[node name="TargetIndicator" type="Node2D" parent="."]
 unique_name_in_owner = true
 visible = false
 z_index = 50
 position = Vector2(0, -72)
 modulate = Color(1, 0.82, 0.18, 0.92)
 scale = Vector2(2.4, 2.4)
-texture = ExtResource("4_target_ring")
+script = ExtResource("4_target_ring")
 
 [node name="HealthBar" type="ProgressBar" parent="."]
 unique_name_in_owner = true

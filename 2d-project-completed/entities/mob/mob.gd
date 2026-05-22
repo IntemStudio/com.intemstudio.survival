@@ -46,7 +46,7 @@ const POOL_STORAGE_POSITION := Vector2(-50000.0, -50000.0)
 const CONTACT_STANDOFF_PADDING := 6.0
 
 @onready var player: Node2D = get_node("/root/Game/Player")
-@onready var _target_indicator: Sprite2D = %TargetIndicator
+@onready var _target_indicator: Node2D = %TargetIndicator
 @onready var _attack_range_ring: Sprite2D = get_node_or_null("AttackRangeRing")
 
 
@@ -56,6 +56,7 @@ func initialize_spawn_health(hp_multiplier: float) -> void:
 	max_health = scaled
 	health = scaled
 	_sync_health_bar()
+	_hide_health_bar()
 
 
 func pool_reset() -> void:
@@ -78,7 +79,9 @@ func pool_reset() -> void:
 		HitFlash.cancel(%Slime, slime_tint)
 		_target_indicator.visible = false
 		_target_indicator.scale = TARGET_INDICATOR_BASE_SCALE
+		_target_indicator.rotation = 0.0
 		_set_attack_range_ring_visible(false)
+		_hide_health_bar()
 
 
 func pool_on_acquire() -> void:
@@ -107,6 +110,21 @@ func _sync_health_bar() -> void:
 	%HealthBar.value = health
 
 
+func _hide_health_bar() -> void:
+	if not is_node_ready():
+		return
+	%HealthBar.visible = false
+
+
+# 피해를 입은 뒤에만 체력바를 표시하고 현재 HP를 반영합니다.
+func _reveal_health_bar() -> void:
+	if not is_node_ready():
+		return
+	%HealthBar.visible = true
+	%HealthBar.max_value = max_health
+	%HealthBar.value = maxf(health, 0.0)
+
+
 # 원거리 몹 전용 AttackRangeRing — attack_distance(중심 간 거리) 반경으로 맞춥니다.
 func _sync_attack_range_ring() -> void:
 	if not _attack_range_ring:
@@ -133,6 +151,7 @@ func set_targeted(active: bool) -> void:
 	_target_indicator.visible = active
 	if not active:
 		_target_indicator.scale = TARGET_INDICATOR_BASE_SCALE
+		_target_indicator.rotation = 0.0
 		_target_pulse = 0.0
 
 
@@ -142,6 +161,7 @@ func _process(delta: float) -> void:
 	_target_pulse += delta * 8.0
 	var pulse := 1.0 + sin(_target_pulse) * 0.1
 	_target_indicator.scale = TARGET_INDICATOR_BASE_SCALE * pulse
+	_target_indicator.rotation = sin(_target_pulse * 0.65) * 0.12
 
 
 func _physics_process(delta: float) -> void:
@@ -371,7 +391,7 @@ func _apply_poison_tick(amount: int, weapon: WeaponData = null) -> void:
 	_play_hit_flash()
 	_register_weapon_damage(weapon, amount)
 	health -= amount
-	%HealthBar.value = maxf(health, 0.0)
+	_reveal_health_bar()
 	FloatingDamageText.spawn_poison_damage(global_position, amount)
 
 	if health <= 0:
@@ -385,7 +405,7 @@ func take_damage(amount: int) -> void:
 	_play_hit_flash()
 	%Slime.play_hurt()
 	health -= amount
-	%HealthBar.value = maxf(health, 0.0)
+	_reveal_health_bar()
 	FloatingDamageText.spawn_enemy_damage(global_position, amount)
 
 	if health <= 0:
@@ -400,7 +420,7 @@ func apply_weapon_damage(amount: int, weapon: WeaponData) -> void:
 	_play_hit_flash()
 	%Slime.play_hurt()
 	health -= amount
-	%HealthBar.value = maxf(health, 0.0)
+	_reveal_health_bar()
 	FloatingDamageText.spawn_magic_damage(global_position, amount, weapon.get_element_color())
 
 	if weapon.applies_nettles:
@@ -437,6 +457,7 @@ func _request_die() -> void:
 	_cancel_ranged_telegraph()
 	_is_dying = true
 	set_targeted(false)
+	_hide_health_bar()
 	set_physics_process(false)
 	call_deferred("_die")
 

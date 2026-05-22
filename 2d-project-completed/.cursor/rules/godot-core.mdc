@@ -34,3 +34,8 @@ Godot 4.x GDScript survivors-like game. Main scene: `res://survivors_game.tscn`.
 
 - Mob bodies: `collision_layer = 2`, `collision_mask = 3`.
 - If you change mob layers, you must update weapon/projectile `collision_mask` consistently in the same PR.
+
+## Display / camera / UI (see AGENTS.md)
+
+- Viewport is HD 1280×720 in `project.godot`; UI layout uses FHD 1920×1080 via `UiViewportLayout` on HUD/menu roots — do not rescale UI offsets manually for HD.
+- Player `Camera2D` zoom is `0.5` in `player.tscn`; change zoom there (not ad hoc in `player.gd`) and keep `checker_background.gd` in mind.

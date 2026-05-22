@@ -27,7 +27,8 @@ If you skip step 2 or 3, the mob will never spawn in play.
 
 - Differentiate variants only via `.tscn` exports (`base_max_health`, `speed_min`/`speed_max`, `mob_kind`, `slime_tint`, optional `%TargetIndicator` offset/scale).
 - Boss/special/elite/ranged/fast scenes must remain instantiable as `Mob`.
-- Every play mob scene must include `%TargetIndicator` (`Sprite2D`, default hidden) for `gun.gd` `set_targeted`.
+- Every play mob scene must include `%TargetIndicator` (`Node2D` + `target_indicator_ring.gd`, default hidden) for `gun.gd` `set_targeted`. Do not revert to `circle.png` `Sprite2D` for targeting FX.
+- Mob `%HealthBar` must start hidden per spawn (`initialize_spawn_health` / `pool_reset`); reveal on damage via `_reveal_health_bar`; hide on `_request_die` (pool reuse — do not `queue_free` the bar).
 - Mob `CollisionShape2D` size is driven at runtime by `GroundShadowFootprint` from `%Slime` child `GroundShadow` (`pool_on_acquire` → `_sync_body_collision_to_shadow`). Do not rely on a static circle-only shape for contact standoff.
 - When changing `attack_distance`, `CONTACT_STANDOFF_PADDING`, or `GroundShadow` scale, verify contact DPS vs stop distance — player damage uses `get_overlapping_bodies()`; stop uses `_get_contact_standoff_distance()` (see `AGENTS.md` contact damage).
 

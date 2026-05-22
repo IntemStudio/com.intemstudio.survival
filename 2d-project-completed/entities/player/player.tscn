@@ -42,6 +42,7 @@ unique_name_in_owner = true
 shape = SubResource("RectangleShape2D_csncd")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=473099899]
+zoom = Vector2(0.5, 0.5)
 
 [node name="Weapons" type="Node2D" parent="."]
 unique_name_in_owner = true

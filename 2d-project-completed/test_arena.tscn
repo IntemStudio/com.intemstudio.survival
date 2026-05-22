@@ -5,6 +5,7 @@
 [ext_resource type="PackedScene" uid="uid://dsw8raqgacxsc" path="res://entities/player/player.tscn" id="3_player"]
 [ext_resource type="Script" uid="uid://8eenh1tol2s4" path="res://world/floor/checker_background.gd" id="4_checker_bg"]
 [ext_resource type="PackedScene" path="res://world/map_arena/map_arena.tscn" id="5_map_arena"]
+[ext_resource type="Script" path="res://ui/ui_viewport_layout.gd" id="6_ui_viewport_layout"]
 
 [node name="Game" type="Node2D" unique_id=1822041146]
 y_sort_enabled = true
@@ -43,7 +44,18 @@ script = ExtResource("4_checker_bg")
 [node name="TestUI" type="CanvasLayer" parent="." unique_id=228039965]
 layer = 10
 
-[node name="HintLabel" type="Label" parent="TestUI" unique_id=980359172]
+[node name="TestUILayout" type="Control" parent="TestUI"]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 1920.0
+offset_bottom = 1080.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+script = ExtResource("6_ui_viewport_layout")
+pass_mouse_to_game = false
+
+[node name="HintLabel" type="Label" parent="TestUI/TestUILayout" unique_id=980359172]
 offset_left = 16.0
 offset_top = 16.0
 offset_right = 760.0
@@ -51,7 +63,7 @@ offset_bottom = 56.0
 theme_override_font_sizes/font_size = 17
 text = "Test Arena (F6) — Mob / Weapon panels below. No tabs needed."
 
-[node name="StatusLabel" type="Label" parent="TestUI" unique_id=1555637677]
+[node name="StatusLabel" type="Label" parent="TestUI/TestUILayout" unique_id=1555637677]
 unique_name_in_owner = true
 offset_left = 16.0
 offset_top = 60.0
@@ -60,7 +72,7 @@ offset_bottom = 88.0
 theme_override_colors/font_color = Color(0.75, 0.15, 0.12, 1)
 theme_override_font_sizes/font_size = 16
 
-[node name="MobSectionLabel" type="Label" parent="TestUI" unique_id=1076228592]
+[node name="MobSectionLabel" type="Label" parent="TestUI/TestUILayout" unique_id=1076228592]
 offset_left = 16.0
 offset_top = 96.0
 offset_right = 200.0
@@ -68,44 +80,44 @@ offset_bottom = 120.0
 theme_override_font_sizes/font_size = 15
 text = "몹"
 
-[node name="SpawnPanel" type="PanelContainer" parent="TestUI" unique_id=525767670]
+[node name="SpawnPanel" type="PanelContainer" parent="TestUI/TestUILayout" unique_id=525767670]
 offset_left = 16.0
 offset_top = 124.0
 offset_right = 560.0
 offset_bottom = 176.0
 
-[node name="SpawnRow" type="HBoxContainer" parent="TestUI/SpawnPanel" unique_id=2145142564]
+[node name="SpawnRow" type="HBoxContainer" parent="TestUI/TestUILayout/SpawnPanel" unique_id=2145142564]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="MobTypeOption" type="OptionButton" parent="TestUI/SpawnPanel/SpawnRow" unique_id=479008454]
+[node name="MobTypeOption" type="OptionButton" parent="TestUI/TestUILayout/SpawnPanel/SpawnRow" unique_id=479008454]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(220, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="SpawnMobButton" type="Button" parent="TestUI/SpawnPanel/SpawnRow" unique_id=1871181501]
+[node name="SpawnMobButton" type="Button" parent="TestUI/TestUILayout/SpawnPanel/SpawnRow" unique_id=1871181501]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(120, 36)
 layout_mode = 2
 text = "Spawn"
 
-[node name="OptionsPanel" type="PanelContainer" parent="TestUI" unique_id=133124483]
+[node name="OptionsPanel" type="PanelContainer" parent="TestUI/TestUILayout" unique_id=133124483]
 offset_left = 16.0
 offset_top = 184.0
 offset_right = 560.0
 offset_bottom = 228.0
 
-[node name="OptionsRow" type="HBoxContainer" parent="TestUI/OptionsPanel" unique_id=1937913868]
+[node name="OptionsRow" type="HBoxContainer" parent="TestUI/TestUILayout/OptionsPanel" unique_id=1937913868]
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="MobRespawnCheck" type="CheckButton" parent="TestUI/OptionsPanel/OptionsRow" unique_id=1728179177]
+[node name="MobRespawnCheck" type="CheckButton" parent="TestUI/TestUILayout/OptionsPanel/OptionsRow" unique_id=1728179177]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Mob respawn (2s delay)"
 
-[node name="WeaponSectionLabel" type="Label" parent="TestUI" unique_id=685294775]
+[node name="WeaponSectionLabel" type="Label" parent="TestUI/TestUILayout" unique_id=685294775]
 offset_left = 16.0
 offset_top = 236.0
 offset_right = 200.0
@@ -113,47 +125,47 @@ offset_bottom = 260.0
 theme_override_font_sizes/font_size = 15
 text = "무기"
 
-[node name="WeaponPanel" type="PanelContainer" parent="TestUI" unique_id=1441476860]
+[node name="WeaponPanel" type="PanelContainer" parent="TestUI/TestUILayout" unique_id=1441476860]
 offset_left = 16.0
 offset_top = 264.0
 offset_right = 560.0
 offset_bottom = 388.0
 
-[node name="WeaponVBox" type="VBoxContainer" parent="TestUI/WeaponPanel" unique_id=1539226539]
+[node name="WeaponVBox" type="VBoxContainer" parent="TestUI/TestUILayout/WeaponPanel" unique_id=1539226539]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="WeaponFilterRow" type="HBoxContainer" parent="TestUI/WeaponPanel/WeaponVBox" unique_id=2033069903]
+[node name="WeaponFilterRow" type="HBoxContainer" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox" unique_id=2033069903]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="WeaponTypeFilter" type="OptionButton" parent="TestUI/WeaponPanel/WeaponVBox/WeaponFilterRow" unique_id=1020247422]
+[node name="WeaponTypeFilter" type="OptionButton" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox/WeaponFilterRow" unique_id=1020247422]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 
-[node name="WeaponRarityFilter" type="OptionButton" parent="TestUI/WeaponPanel/WeaponVBox/WeaponFilterRow" unique_id=1662787838]
+[node name="WeaponRarityFilter" type="OptionButton" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox/WeaponFilterRow" unique_id=1662787838]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 
-[node name="WeaponFilterHint" type="Label" parent="TestUI/WeaponPanel/WeaponVBox/WeaponFilterRow" unique_id=938538622]
+[node name="WeaponFilterHint" type="Label" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox/WeaponFilterRow" unique_id=938538622]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 14
 text = "타입 · 등급 필터 → 무기 목록"
 
-[node name="WeaponRow" type="HBoxContainer" parent="TestUI/WeaponPanel/WeaponVBox" unique_id=1673834133]
+[node name="WeaponRow" type="HBoxContainer" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox" unique_id=1673834133]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="WeaponOption" type="OptionButton" parent="TestUI/WeaponPanel/WeaponVBox/WeaponRow" unique_id=812297849]
+[node name="WeaponOption" type="OptionButton" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox/WeaponRow" unique_id=812297849]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(280, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="EquipWeaponButton" type="Button" parent="TestUI/WeaponPanel/WeaponVBox/WeaponRow" unique_id=1959828577]
+[node name="EquipWeaponButton" type="Button" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox/WeaponRow" unique_id=1959828577]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(120, 36)
 layout_mode = 2

@@ -1,6 +1,6 @@
 extends VBoxContainer
 
-## HUD — 소나무 밀도 슬라이더(플레이 중 실시간 %MapArena 재배치).
+## 일시정지 설정 — 소나무 밀도 슬라이더(드래그 시 %MapArena 실시간 재배치).
 
 @onready var _slider: HSlider = %TreeDensitySlider
 @onready var _value_label: Label = %TreeDensityValueLabel

@@ -14,7 +14,7 @@
 | 영역 | 구현 요약 |
 |------|-----------|
 | 게임 루프 | 시작 무기 선택 → 스폰 타이머 → 레벨업 3택1 → **30분 클리어** 또는 패배 게임오버(무기별 피해·합계)·재시작 |
-| 일시정지 | Esc, 무기 선택·게임오버·클리어 중 일시정지 차단 |
+| 일시정지 | Esc, **설정**(소나무 밀도), 무기 선택·게임오버·클리어 중 일시정지 차단 |
 | 밸런스 (VS형 A·B·C) | `default_balance_table.tres` VS 키프레임(11분 피크·16~20 호흡·25분 보스)·`balance_pace_multiplier` · `default_balance_timeline.tres`(9·11·25·28분 이벤트) · 30분 `die_from_stage_clear()` 클리어 |
 | 몹 | basic / fast / elite / special_a·b / boss — 공용 `mob.gd`; **ranged** — 8분+ 스폰(VS형 A); **dummy** — 테스트 전용 |
 | 테스트 아레나 | F6, 몹 8종 Spawn(플레이어+280px·Dummy 500HP/그 외 10×), 무기 필터+Equip, 3초 리스폰, 몹 리스폰 옵션 |
@@ -25,11 +25,11 @@
 | 오브젝트 풀 | `ScenePool` + `PoolUtil` — 무기 발사체, 경험치 오브, 몹 7종+더미 prewarm, **몹 투사체·공격 예고 마크** (`prewarm_mob_projectiles` 32, `prewarm_mob_attack_marks` 20) |
 | 픽업·경험치 | 오브(`ScenePool`, `exp_orbs`, `pickup_range` 자동 자석·가속·`MagnetTrail` 꼬리); `%PickupRangeRing`; 자석 1%·체력 1% 드랍(오프셋 스폰) |
 | 플레이어 피격 | `%HurtBox` 접촉 DPS(시작·무기 선택 중 `monitoring` off); `GroundShadowFootprint` 발밑 박스·몹 standoff; 원거리 투사체·`HitFlash` |
-| 무기 조준 | `gun.gd` 사거리 내 최근접 몹 `%TargetIndicator` 링(펄스) |
+| 무기 조준 | `gun.gd` 사거리 내 최근접 몹 — `%TargetIndicator` 속 빈 링+브래킷(`target_indicator_ring.gd`, 펄스·회전), 몹 루트 기준 고정 오프셋 |
 | 무기 피해 통계 | `WeaponDamageTracker` → 게임오버 `%WeaponDamageList` · 일시정지 `%PauseOwnedWeaponsList`(타입별 색·합계) |
 | 몹 스폰(메인) | `%MapArena.get_random_spawn_position(플레이어 위치)` — 플레이어 근처 금지 반경(`mob_spawn_player_clear_extra` 130) |
 | 맵 경계 | `%MapArena` — 벽(레이어 1)·내부 몹 스폰. **메인 3×** (`survivors_game.tscn` 오버라이드 6336×4104), **F6 1×** (`ARENA_RECT_1X`) |
-| 소나무 | Poisson(`sparse` 960 / `dense` 50, 기본 밀도 50%), HUD `%TreeDensityGui` 실시간 슬라이더. 수동 `PineTree*` 없음 |
+| 소나무 | Poisson(`sparse` 960 / `dense` 50, 기본 밀도 50%), **Esc → 설정** 슬라이더(`tree_density_settings.gd`). 수동 `PineTree*` 없음 |
 | 기타 | 몹 분리, 처치 수·시간 HUD |
 
 ---
@@ -96,7 +96,7 @@
 - [ ] **몹 비주얼 다양화** — Slime 변종만. ranged/special/boss 전용 실루엣·애니 없음.
 - [ ] **사운드** — `default_bus_layout.tres`만 있고, BGM·타격·레벨업·보스 SFX 미연결.
 - [ ] **프로젝트 표기** — `project.godot` 앱 이름이 GDQuest 튜토리얼명. 배포용 이름·아이콘 변경.
-- [ ] **맵·장식 (추가)** — Poisson 소나무·HUD 밀도·3×/1× 씬 분리는 구현됨([`Docs/Plan_Tree_Placement_Poisson.md`](Docs/Plan_Tree_Placement_Poisson.md)). 남음: `pine_tree` 파괴, 카메라 클램프, 바닥 체커를 `arena_rect`에 맞춤, (선택) BFS 막힘 재시드
+- [ ] **맵·장식 (추가)** — Poisson 소나무·일시정지 설정 밀도·3×/1× 씬 분리는 구현됨(`AGENTS.md` §소나무). 남음: `pine_tree` 파괴, 카메라 클램프, 바닥 체커를 `arena_rect`에 맞춤, (선택) BFS 막힘 재시드
 
 ---
 
@@ -142,13 +142,14 @@
 4f. **테스트 아레나·더미 몹** → `test_arena.tscn`·`test_arena.gd`·`mob_dummy.tscn`·`mob.gd` `movement_enabled`/`combat_enabled`·`MobSpawnSelector.MOB_DUMMY_SCENE`·`scene_pool` prewarm·`player.gd` `clear_weapons`/`reset_health_depleted_state`; `AGENTS.md` 테스트 아레나 섹션
 4g. **피격 깜박임 변경** → `effects/hit_flash/hit_flash.gd` (`FLASH_MULTIPLIER`, `BLINK_COUNT`, on/off 시간), `mob.gd` (`_play_hit_flash`, `pool_reset`·`HitFlash.cancel`), `player.gd` (`_play_hit_flash`, `Colorizer`); `AGENTS.md` 피격 깜박임 섹션 동기화
 4h. **맵 경계·스폰 영역 변경** → `map_arena.gd`, **`survivors_game.tscn` `%MapArena` 오버라이드(메인 3×)**, `test_arena.tscn`(1×·`spawn_trees`), `game.gd` `spawn_mob`; `AGENTS.md`·`godot-core.mdc`
-4j. **소나무 Poisson·밀도 HUD 변경** → `poisson_sampler.gd`, `map_arena.gd`(`tree_spacing_dense`/`sparse`, `tree_min_spacing`, `get/set_tree_density_normalized`, 기본 밀도 50%), `ui/tree_density_settings.gd`, `survivors_game.tscn` `%TreeDensityGui`; [`Docs/Plan_Tree_Placement_Poisson.md`](Docs/Plan_Tree_Placement_Poisson.md)·`AGENTS.md` §소나무
+4j. **소나무 Poisson·밀도 UI 변경** → `poisson_sampler.gd`, `map_arena.gd`(`tree_spacing_dense`/`sparse`, `tree_min_spacing`, `get/set_tree_density_normalized`, 기본 밀도 50%), `ui/tree_density_settings.gd`, `survivors_game.tscn` `%PauseMenu` `%SettingsPanel`; `AGENTS.md` §소나무·§일시정지
+4l. **일시정지·설정 UI 변경** → `ui/pause_menu.gd`, `survivors_game.tscn` (`%PauseMainContent`, `%SettingsPanel`, `SettingsButton`, `SettingsBackButton`); `AGENTS.md` §일시정지 메뉴
 4i. **무기 선택·리롤·버리기 UI 변경** → `ui/weapon_select_menu.gd` (`present_random_choices`, `reroll_choices`, `discard_weapon_at_index`, `_owned_weapons`, `_discarded_weapons`, `_build_selectable_weapon_pool`), `survivors_game.tscn` (`DiscardSlot0~2`, `RerollButton`, `RightColumnVBox/DiscardedPanel`, `AutoSelectRow`, `AutoPriorityPanel`); `AGENTS.md` 무기 선택 UI·`.cursor/rules/godot-weapons.mdc`
 5. **접촉 피해·충돌 정렬 변경** → `ground_shadow_footprint.gd`, `player.gd`/`player.tscn` (`GroundShadow`, `HurtBox`, `set_contact_damage_enabled`), `mob.gd` (`attack_distance`, `_get_contact_standoff_distance`, `_sync_body_collision_to_shadow`), `DAMAGE_RATE`·`HitFlash`; `AGENTS.md` 접촉 피해·피격 깜박임
-5b. **조준 링·경험치 자석 연출** → `gun.gd` `_set_targeted`, `mob.gd` `set_targeted`·`%TargetIndicator`, `exp_orb.gd`/`exp_orb.tscn` (`MagnetTrail`, 가속 상수); `AGENTS.md` 조준 표시·픽업 섹션
+5b. **조준 링·경험치 자석 연출** → `gun.gd` `_set_targeted`, `mob.gd` `set_targeted`·`target_indicator_ring.gd`·`%TargetIndicator`, `exp_orb.gd`/`exp_orb.tscn` (`MagnetTrail`, 가속 상수); `AGENTS.md` 조준 표시·픽업 섹션
 6. **이 항목 완료** → 위 목록에서 해당 줄 삭제 또는 “완료(날짜)” 한 줄로 축약
 7. **기각** → 이유 한 줄 남기고 삭제하거나 “기각” 섹션으로 이동(선택)
 
 ---
 
-*마지막 갱신: 2026-05-22 — Poisson·3× 맵·리롤·standoff·타겟 링·자석 꼬리·일시정지 무기 피해·플레이어 근처 스폰 금지·F6 고정 스폰/HP. 구현이 바뀌면 이 문서도 함께 맞춥니다.*
+*마지막 갱신: 2026-05-23 — 조준 FX(`target_indicator_ring.gd`, 속 빈 링·브래킷·몹 루트 고정 오프셋)·몹 HP 바(피해 전 숨김/사망 숨김). 구현이 바뀌면 이 문서도 함께 맞춥니다.*
