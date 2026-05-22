@@ -11,6 +11,7 @@
 [ext_resource type="Script" path="res://world/floor/checker_background.gd" id="6_checker_bg"]
 [ext_resource type="Script" path="res://game/pool/scene_pool.gd" id="7_scene_pool"]
 [ext_resource type="Script" path="res://game/speed_cheat.gd" id="8_speed_cheat"]
+[ext_resource type="PackedScene" path="res://world/map_arena/map_arena.tscn" id="10_map_arena"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_exp"]
 bg_color = Color(0.35, 0.85, 1, 1)
@@ -45,12 +46,6 @@ content_margin_bottom = 10.0
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_balance_phase"]
 bg_color = Color(1, 0.62, 0.18, 1)
 
-[sub_resource type="Curve2D" id="Curve2D_cp6e5"]
-_data = {
-"points": PackedVector2Array(0, 0, 0, 0, -1055, -697, 0, 0, 0, 0, 1057, -697, 0, 0, 0, 0, 1057, 671, 0, 0, 0, 0, -1055, 663, 0, 0, 0, 0, -1055, -689)
-}
-point_count = 5
-
 [node name="Game" type="Node2D" unique_id=327747119]
 y_sort_enabled = true
 script = ExtResource("1_qclsr")
@@ -69,15 +64,10 @@ prewarm_mob_attack_marks = 20
 [node name="SpeedCheat" type="Node" parent="."]
 script = ExtResource("8_speed_cheat")
 
+[node name="MapArena" parent="." instance=ExtResource("10_map_arena")]
+
 [node name="Player" parent="." unique_id=1174028023 instance=ExtResource("2_a7q7f")]
 unique_name_in_owner = true
-
-[node name="Path2D" type="Path2D" parent="Player" unique_id=1949369106]
-curve = SubResource("Curve2D_cp6e5")
-
-[node name="PathFollow2D" type="PathFollow2D" parent="Player/Path2D" unique_id=949713007]
-unique_name_in_owner = true
-position = Vector2(-1055, -697)
 
 [node name="HUD" type="CanvasLayer" parent="."]
 layer = 10

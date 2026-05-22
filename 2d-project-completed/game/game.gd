@@ -218,7 +218,6 @@ func spawn_mob(forced_scene: PackedScene = null, ignore_alive_cap: bool = false)
 	if not ignore_alive_cap and _count_alive_mobs() >= max_alive_mobs:
 		return
 
-	%PathFollow2D.progress_ratio = randf()
 	var phase := _query_balance_phase()
 	var mob_scene := forced_scene if forced_scene else MobSpawnSelector.pick_scene(phase)
 	var pool: ScenePool = $ObjectPools as ScenePool
@@ -231,7 +230,7 @@ func spawn_mob(forced_scene: PackedScene = null, ignore_alive_cap: bool = false)
 	if not new_mob:
 		push_error("Game.spawn_mob: spawn scene must instantiate a Mob.")
 		return
-	new_mob.global_position = %PathFollow2D.global_position
+	new_mob.global_position = %MapArena.get_random_spawn_position()
 	new_mob.initialize_spawn_health(phase.hp_multiplier)
 
 

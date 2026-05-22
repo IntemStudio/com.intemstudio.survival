@@ -4,6 +4,7 @@
 [ext_resource type="Script" path="res://game/pool/scene_pool.gd" id="2_scene_pool"]
 [ext_resource type="PackedScene" uid="uid://dsw8raqgacxsc" path="res://entities/player/player.tscn" id="3_player"]
 [ext_resource type="Script" path="res://world/floor/checker_background.gd" id="4_checker_bg"]
+[ext_resource type="PackedScene" path="res://world/map_arena/map_arena.tscn" id="5_map_arena"]
 
 [node name="Game" type="Node2D"]
 y_sort_enabled = true
@@ -22,6 +23,8 @@ unique_name_in_owner = true
 [node name="MobSpawnPoint" type="Marker2D" parent="."]
 unique_name_in_owner = true
 position = Vector2(280, 0)
+
+[node name="MapArena" parent="." instance=ExtResource("5_map_arena")]
 
 [node name="Player" parent="." instance=ExtResource("3_player")]
 unique_name_in_owner = true

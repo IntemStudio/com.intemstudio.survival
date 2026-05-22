@@ -265,7 +265,8 @@ func spawn_test_mob(scene: PackedScene) -> void:
 	if not mob:
 		push_error("TestArena.spawn_test_mob: scene must instantiate a Mob.")
 		return
-	mob.global_position = %MobSpawnPoint.global_position
+	var arena: MapArena = %MapArena
+	mob.global_position = arena.get_random_spawn_position() if arena else %MobSpawnPoint.global_position
 	mob.initialize_spawn_health(1.0)
 	_active_mob = mob
 	_last_mob_scene = scene

@@ -26,6 +26,7 @@
 | 픽업·경험치 | 오브(`ScenePool`, `exp_orbs` 그룹, 픽업 범위 자석·수집); 자석 아이템 1% 드랍·전장 오브 일괄 자석·주황 2× 크기 |
 | 플레이어 피격 | `%HurtBox` 접촉 DPS; 원거리 `apply_mob_projectile_damage`(무기 통계 제외); 플로팅 최소 1; 접촉·투사체 시 `HitFlash` |
 | 무기 피해 통계 | `WeaponDamageTracker` + `mob.apply_weapon_damage`/독 틱 → 게임오버 `%WeaponDamageList` |
+| 맵 경계 | `%MapArena` — 고정 직사각형 벽(레이어 1)·플레이 영역 내부 몹 스폰(장애물 겹침 회피). 구 경로 `PathFollow2D` 테두리 스폰 제거 |
 | 기타 | 몹 분리, 나무 장애물 충돌, 처치 수·시간 HUD |
 
 ---
@@ -92,7 +93,7 @@
 - [ ] **몹 비주얼 다양화** — Slime 변종만. ranged/special/boss 전용 실루엣·애니 없음.
 - [ ] **사운드** — `default_bus_layout.tres`만 있고, BGM·타격·레벨업·보스 SFX 미연결.
 - [ ] **프로젝트 표기** — `project.godot` 앱 이름이 GDQuest 튜토리얼명. 배포용 이름·아이콘 변경.
-- [ ] **맵·장식** — 소나무는 충돌만. 파괴·숨을 곳·스폰 금지 구역 등은 없음.
+- [ ] **맵·장식 (추가)** — `%MapArena` 직사각형 벽·내부 몹 스폰은 구현됨. 소나무는 **수동 11그루**(`survivors_game.tscn`); **Poisson 절차 배치** 설계는 [`Docs/Plan_Tree_Placement_Poisson.md`](Docs/Plan_Tree_Placement_Poisson.md). 파괴·카메라 클램프·바닥 `arena_rect` 맞춤 등은 없음.
 
 ---
 
@@ -111,7 +112,8 @@
 
 구현 여부·난이도·재미 기여는 플레이 테스트 후 결정. 기각해도 됩니다.
 
-- 스폰 경로(`PathFollow2D`) 밖 랜덤 링 스폰, 플레이어 주변 밀집 웨이브
+- 플레이어 주변 **링/오프스크린** 스폰(현재는 `%MapArena` 내부 균일 랜덤), 밀집 웨이브
+- `arena_rect` 밖 **카메라 클램프**·바닥 체커를 플레이 영역에만 그리기
 - 보스 처치 시 일시 무적·전체 경험치·상자 드롭
 - 무기 선택 “리롤” 1회(소모품·레벨 대가)
 - 시간 제한 이벤트(예: 5분마다 30초 고밀도)
@@ -135,10 +137,11 @@
 4e. **원거리 몹·투사체·예고 마크** → `mob.gd` export·`mob_ranged.tscn`·`mob_projectile.*`·`mob_attack_mark.*`·`player.apply_mob_projectile_damage`·`scene_pool` prewarm·`ranged_spawn_ratio`; `AGENTS.md` 원거리 몹 섹션
 4f. **테스트 아레나·더미 몹** → `test_arena.tscn`·`test_arena.gd`·`mob_dummy.tscn`·`mob.gd` `movement_enabled`/`combat_enabled`·`MobSpawnSelector.MOB_DUMMY_SCENE`·`scene_pool` prewarm·`player.gd` `clear_weapons`/`reset_health_depleted_state`; `AGENTS.md` 테스트 아레나 섹션
 4g. **피격 깜박임 변경** → `effects/hit_flash/hit_flash.gd` (`FLASH_MULTIPLIER`, `BLINK_COUNT`, on/off 시간), `mob.gd` (`_play_hit_flash`, `pool_reset`·`HitFlash.cancel`), `player.gd` (`_play_hit_flash`, `Colorizer`); `AGENTS.md` 피격 깜박임 섹션 동기화
+4h. **맵 경계·스폰 영역 변경** → `world/map_arena/map_arena.gd` (`arena_rect`, `wall_thickness`, `spawn_margin`, `SPAWN_TEST_RADIUS`/`SPAWN_CLEAR_ATTEMPTS`), `survivors_game.tscn`·`test_arena.tscn` `%MapArena`, `game.gd` `spawn_mob`; `AGENTS.md` 고정 맵 경계 섹션·`.cursor/rules/godot-core.mdc` 스폰 계약
 5. **접촉 피해·피격 UX 변경** → `player.gd`/`player.tscn` `HurtBox`, `mob.gd` `attack_distance`, 몹 충돌 shape, `DAMAGE_RATE`·플로팅 간격·`HitFlash` 호출 간격; `AGENTS.md` 접촉 피해·피격 깜박임 섹션 동기화
 6. **이 항목 완료** → 위 목록에서 해당 줄 삭제 또는 “완료(날짜)” 한 줄로 축약
 7. **기각** → 이유 한 줄 남기고 삭제하거나 “기각” 섹션으로 이동(선택)
 
 ---
 
-*마지막 갱신: 코드베이스 기준 2026-05-22 (테스트 아레나 F6, 더미 몹, 무기 타입·등급 필터, 플레이어/몹 리스폰, `health_depleted` 1회, `died` 시그널, **`HitFlash` 피격 깜박임**). 구현이 바뀌면 이 문서도 함께 맞춥니다.*
+*마지막 갱신: 코드베이스 기준 2026-05-22 (`%MapArena` 고정 직사각형 맵·내부 스폰·벽 충돌, `PathFollow2D` 제거; 테스트 아레나 F6, 더미 몹, **`HitFlash`** 등). 구현이 바뀌면 이 문서도 함께 맞춥니다.*

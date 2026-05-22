@@ -10,14 +10,14 @@ Godot 4.x GDScript survivors-like game. Main scene: `res://survivors_game.tscn`.
 ## Must not
 
 - Do not rename the main scene root node `Game` or change `run/main_scene` without updating every `/root/Game` reference.
-- Do not rename or remove `%`-referenced nodes in `survivors_game.tscn` (`%Player`, `%PathFollow2D`, `%WeaponSelectMenu`, etc.) without updating all `%` usages.
+- Do not rename or remove `%`-referenced nodes in `survivors_game.tscn` (`%Player`, `%MapArena`, `%WeaponSelectMenu`, etc.) without updating all `%` usages.
 - Do not change the group name `mobs`.
 - Do not edit `.uid` files manually.
 - Do not add per-variant mob scripts; all mob scenes must use `res://entities/mob/mob.gd`.
 
 ## Must (scene contract)
 
-- Spawn position must come from `%PathFollow2D` under `Player/Path2D` in the main scene.
+- Spawn position must come from `%MapArena.get_random_spawn_position()` (global coords, inside `arena_rect` minus `spawn_margin`; obstacle overlap retried on physics layer 1). Do not reintroduce `Player/Path2D` perimeter spawn without updating `AGENTS.md` and this rule.
 - `Game.spawn_mob()` must acquire a `Mob` via `ScenePool` (or instantiate fallback), set spawn position, then call `initialize_spawn_health()`.
 - On mob death, kills must still reach `Game.register_kill()` via the existing `mob.gd` `_die()` path.
 

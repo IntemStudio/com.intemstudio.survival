@@ -26,7 +26,8 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 
 | 경로 | 역할 |
 |------|------|
-| `survivors_game.tscn` | 메인 씬: `Game`, `Timer`, `%ObjectPools`, `Player`+스폰 경로, HUD, 일시정지, 무기 UI, `%GameOver`·`%WeaponDamageList` |
+| `survivors_game.tscn` | 메인 씬: `Game`, `Timer`, `%ObjectPools`, `%MapArena`, `Player`, HUD, 일시정지, 무기 UI, `%GameOver`·`%WeaponDamageList` |
+| `world/map_arena/` | `MapArena` — 고정 직사각형 맵 벽(충돌)·플레이 영역 내부 몹 스폰 좌표 |
 | `game/game.gd` | 스폰 타이머, 밸런스 시계, 처치 HUD, 일시정지/게임오버, 무기 선택, 무기별 피해 집계·게임오버 표시 |
 | `game/weapon_damage_tracker.gd` | `WeaponDamageTracker` — 무기 `get_unique_key()`별 누적 피해, 게임오버 행 목록 생성 |
 | `game/pool/` | `ScenePool` (`scene_pool.gd`), `PoolUtil` — 공통 `acquire` / `release` |
@@ -43,6 +44,27 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | `effects/hit_flash/` | `HitFlash` — 피격 시 `CanvasItem.modulate` 짧은 깜박임(풀·씬 없음, 정적 API) |
 | `effects/` (기타) | 데미지 텍스트, 사망 연기 등 |
 | `characters/` | Slime / HappyBoo 비주얼 |
+| `world/trees/` | `pine_tree.tscn` — `StaticBody2D` 장애물(레이어 1), 스폰 겹침 검사 대상. **Poisson 배치 설계:** [`Docs/Plan_Tree_Placement_Poisson.md`](Docs/Plan_Tree_Placement_Poisson.md) |
+
+---
+
+## 고정 맵 경계 (`MapArena`)
+
+메인·테스트 씬 공통으로 **월드 좌표 기준 고정 직사각형** 플레이 영역을 둡니다. 예전 `Player/Path2D`·`%PathFollow2D` **테두리 스폰 경로는 제거**되었습니다.
+
+| 항목 | 내용 |
+|------|------|
+| 씬·스크립트 | `world/map_arena/map_arena.tscn`, `map_arena.gd` (`class_name MapArena`) |
+| 메인 배치 | `survivors_game.tscn` — `Game` 직계 `%MapArena` (기본 위치 원점) |
+| 테스트 | `test_arena.tscn` 동일 인스턴스 — `spawn_test_mob`도 `get_random_spawn_position()` 사용 |
+| 플레이 영역 | `arena_rect` 기본 **2112×1368** (`Rect2(-1055, -697, 2112, 1368)`) |
+| 벽 | `_ready`·인스펙터 변경 시 `StaticBody2D` 4면 + `Polygon2D` (`wall_thickness` 48). **레이어 1** — 플레이어·몹·탄환(`collision_mask` 3)과 충돌 |
+| 스폰 | `get_random_spawn_position()` → **글로벌** 좌표. `spawn_margin`(96) 안쪽 균일 랜덤 → 레이어 1 `intersect_shape`(반경 52px, 최대 12회)로 소나무·벽 겹침 회피 → 실패 시 영역 중심 |
+| 호출 | `game.gd` `spawn_mob()` — `new_mob.global_position = %MapArena.get_random_spawn_position()` |
+
+**인스펙터:** `arena_rect` / `wall_thickness` / `wall_color` 변경 시 `call_deferred("_rebuild_walls")`. `spawn_margin`이 영역보다 크면 클램프 + `push_warning`.
+
+**튜닝·확장 시:** 맵 크기는 `arena_rect`만 맞추면 벽·스폰 내부가 같이 따라감. `MapArena` 노드를 옮겨도 `to_global`이라 스폰 월드 좌표는 유지됨. **소나무 절차 배치(Poisson·밀도·금지 구역)** 는 [`Docs/Plan_Tree_Placement_Poisson.md`](Docs/Plan_Tree_Placement_Poisson.md) 참고(현재 씬 수동 11그루). **플레이어 주변 링 스폰**·**카메라 클램프**·바닥 `checker_background` 맞춤은 미구현(BACKLOG). 내부 균일 랜덤은 플레이어 거리와 무관해 체감 밀도가 달라질 수 있음 — `max_alive_mobs`·스폰 타이머와 함께 조정.
 
 ---
 
@@ -51,7 +73,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 1. `_ready`: `BalanceTable` 로드 → 시작 무기 선택(버튼 호버 시 `%WeaponSelectMenu` 설명 패널) → 트리 `paused`
 2. `Game.show_weapon_select` → `present_random_choices` → `show()` → `on_menu_opened()` → `paused`. 닫을 때 `on_menu_closed()` → `hide()` (`game.gd`)
 3. `on_weapon_chosen` → `Player.add_weapon` → `_ensure_game_started` → 스폰 `Timer` 시작
-4. 타이머마다: `%PathFollow2D` 위치에 `spawn_mob` (`ScenePool`으로 몹 acquire) → `initialize_spawn_health`로 HP
+4. 타이머마다: `%MapArena` 플레이 영역 안 무작위 위치에 `spawn_mob` (`ScenePool`으로 몹 acquire) → `initialize_spawn_health`로 HP
 5. `leveled_up` → 무기 선택 대기열; 메뉴가 열려 있으면 스폰 시계 정지. 선택 UI는 `WeaponSelectMenu.present_random_choices` → 버튼 라벨 + `WeaponData.build_select_tooltip_bbcode()` 상세
 6. `health_depleted` → `%GameOverTitle` `"Game Over"` · 무기별 피해 · `paused`
 7. 표 축 **30분** → 클리어: `Timer` 정지 · `mobs` → `die_from_stage_clear()`(연기만, 드랍·처치 없음) · `%GameOverTitle` `"클리어!"` · `paused` (실시간 = `1800 / balance_pace_multiplier`초)
@@ -67,14 +89,14 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | 항목 | 내용 |
 |------|------|
 | 실행 | Godot에서 `test_arena.tscn` 연 뒤 **F6**(현재 씬 실행). F5는 메인 게임 |
-| 루트 계약 | 노드 이름 **`Game`**, 자식 **`Player`**, **`ObjectPools`** — `mob.gd`의 `/root/Game/Player`·풀 경로와 동일해야 함 |
+| 루트 계약 | 노드 이름 **`Game`**, 자식 **`Player`**, **`ObjectPools`**, **`%MapArena`** — `mob.gd`의 `/root/Game/Player`·풀·스폰 경로와 동일해야 함 |
 | 오케스트레이션 | `game/test_arena.gd` (`game.gd` 대체). `is_weapon_select_open` / `is_pause_menu_open` / `is_game_over` 스텁으로 `player.gd` F키·입력 차단과 호환 |
 
 ### UI (탭 없음 — `TestUI` 세로 패널)
 
 | 블록 | 동작 |
 |------|------|
-| **몹** | `%MobTypeOption` + **Spawn** → `spawn_test_mob` (`ScenePool` + `initialize_spawn_health(1.0)`). 한 번에 1마리(교체 시 이전 몹 `PoolUtil.release_node`) |
+| **몹** | `%MobTypeOption` + **Spawn** → `spawn_test_mob` (`ScenePool` + `%MapArena.get_random_spawn_position()` + `initialize_spawn_health(1.0)`). 한 번에 1마리(교체 시 이전 몹 `PoolUtil.release_node`) |
 | | `%MobRespawnCheck` — 처치 후 `register_kill()` → `mob_respawn_delay`(기본 2초) 뒤 `_last_mob_scene` 재스폰. **Spawn·수동 교체 시** `_mob_respawn_token`으로 대기 콜백 취소 |
 | **무기** | 시작 `revolver.tres` Equip. `%WeaponTypeFilter`(전체/원거리/마법/근접) + `%WeaponRarityFilter`(전체/커먼/…) + `%WeaponOption` + **Equip** → `Player.clear_weapons()` 후 `add_weapon` |
 | | 필터 결과 0개 → `%StatusLabel` `"조건에 맞는 무기가 없습니다."` |
@@ -226,7 +248,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 
 **가만히 서 있어도 맞는 이유**
 
-1. 몹은 `Player/Path2D`의 `%PathFollow2D`에 스폰된 뒤 플레이어를 추적합니다.
+1. 몹은 `%MapArena` 직사각형 경계 안에서 스폰된 뒤 플레이어를 추적합니다(벽은 `MapArena`의 `StaticBody2D`).
 2. `mob.gd`는 중심 간 거리가 `attack_distance`(기본 **85**) 이하이면 `velocity = 0`으로 정지합니다.
 3. 정지 거리(중심↔중심)와 충돌체 크기는 별개입니다. 기본 몹 원형 충돌 **r≈67**(Y 오프셋 -28) + HurtBox 사각형이면, 85px에서 멈춰도 **HurtBox와 물리 겹침이 남아** 접촉 피해가 계속됩니다.
 4. 스폰 타이머가 돌면 주변에 몹이 쌓이고, 겹친 수만큼 피해량이 배수됩니다.
@@ -371,7 +393,8 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | 작업 | 파일 |
 |------|------|
 | 오브젝트 풀 | `game/pool/scene_pool.gd`, `pool_util.gd`, `survivors_game.tscn` (`ObjectPools`) |
-| 스폰·시간·UI | `game/game.gd`, `survivors_game.tscn` |
+| 스폰·시간·UI | `game/game.gd`, `survivors_game.tscn`, `world/map_arena/map_arena.gd` (`%MapArena`) |
+| 맵 경계·벽·스폰 영역 | `world/map_arena/map_arena.gd`, `map_arena.tscn`, `survivors_game.tscn` / `test_arena.tscn` (`arena_rect`, `spawn_margin`) |
 | 무기별 피해·게임오버 통계 | `game/weapon_damage_tracker.gd`, `game/game.gd` (`register_weapon_damage`, `_populate_game_over_weapon_damage`), `entities/mob/mob.gd` (`apply_weapon_damage`, `apply_poison`), `survivors_game.tscn` (`%WeaponDamageList`) |
 | 난이도 곡선·타임라인·클리어 | `default_balance_table.tres`, `default_balance_timeline.tres`, `balance_table.gd`, `balance_timeline*.gd`, `game.gd` (`_trigger_stage_clear`, `_tick_balance_timeline`) |
 | 몹 타입 추가 | `mob.gd`, `mob_spawn_selector.gd`, `mob_*.tscn`, balance `.tres` (메인 스폰 시). 테스트 전용만이면 `MOB_DUMMY`처럼 상수+prewarm+`test_arena` `MOB_OPTIONS` |
@@ -409,5 +432,5 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 
 - Do not rename root `Game` or `%` nodes without repo-wide path updates.
 - Do not change group `mobs` or per-variant mob scripts.
-- Spawn only via `Game.spawn_mob()` → `Mob` + `initialize_spawn_health`.
+- Spawn only via `Game.spawn_mob()` → `%MapArena.get_random_spawn_position()` → `Mob` + `initialize_spawn_health`.
 - Do not start spawn `Timer` before `_ensure_game_started()`.

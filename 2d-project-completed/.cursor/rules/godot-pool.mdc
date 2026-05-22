@@ -24,7 +24,7 @@ alwaysApply: false
 
 ## Must (spawn callers)
 
-- Mobs: `Game.spawn_mob()` → `ScenePool.acquire` → set `global_position` → `initialize_spawn_health`.
+- Mobs: `Game.spawn_mob()` → `ScenePool.acquire` → `%MapArena.get_random_spawn_position()` → `initialize_spawn_health`.
 - Exp orbs: `mob.gd` `_die()` → `acquire(EXP_ORB_SCENE, parent)` → set position.
 - Projectiles / orbit magic: `gun.gd` `_spawn_from_pool` → setup → `PoolUtil.release_node` on end.
 - Area damage (연금 착지 등): `concoction.gd` → `ScenePool.acquire(AREA_DAMAGE_ZONE_SCENE)` → `setup_circle` → `PoolUtil.release_node` on zone lifetime end. Prewarm: `prewarm_area_damage_zones`.
