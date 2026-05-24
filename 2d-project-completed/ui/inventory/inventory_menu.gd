@@ -1,8 +1,5 @@
 extends CanvasLayer
 
-## true면 빈 세이브에 테스트용 데모 장비 주입(F6 테스트 아레나 등).
-@export var seed_demo_on_empty := false
-
 const SLOT_SCENE := preload("res://ui/inventory/inventory_slot.tscn")
 const _LoadoutSeed := preload("res://inventory/inventory_loadout_seed.gd")
 
@@ -125,8 +122,11 @@ func _ensure_service() -> void:
 		service.registry.register_all_catalogs()
 		return
 	var state := InventorySave.load_state()
-	if seed_demo_on_empty and _LoadoutSeed.is_loadout_empty(state):
-		_LoadoutSeed.apply_demo(state)
+	if _LoadoutSeed.is_loadout_empty(state):
+		var seed_registry := ItemRegistry.new()
+		seed_registry.register_all_catalogs()
+		_LoadoutSeed.apply_random_starter(state, seed_registry)
+		InventorySave.save_state(state)
 	service = InventoryService.new(null, state)
 	service.registry.register_all_catalogs()
 
@@ -361,12 +361,8 @@ func _show_detail_for_item(item_id: String) -> void:
 
 
 func _build_gear_tooltip(gear: GearData) -> String:
-	var lines: PackedStringArray = []
-	lines.append("[color=#ffdd55]%s[/color]" % gear.get_display_name_localized())
-	lines.append(UiLocale.t(&"inventory.gear_slot") % String(EQUIP_LABELS.get(gear.gear_slot, gear.gear_slot)))
-	for stat_key in gear.stat_modifiers:
-		lines.append("%s: %s" % [stat_key, str(gear.stat_modifiers[stat_key])])
-	return "\n".join(lines)
+	var slot_label := String(EQUIP_LABELS.get(gear.gear_slot, gear.gear_slot))
+	return GearStatDisplay.build_gear_tooltip(gear, slot_label)
 
 
 func _show_error(err: StringName) -> void:

@@ -2,6 +2,8 @@ extends RefCounted
 
 ## 장비 카탈로그 — GearData .tres·코드 엔트리를 등록할 때 사용.
 
+const _GearCatalogEntries: GDScript = preload("res://inventory/gear_catalog_entries.gd")
+
 const TEXTURE := preload("res://art/shared/pistol.png")
 
 static var _cache: Array[GearData] = []
@@ -14,29 +16,8 @@ static func get_all() -> Array[GearData]:
 
 
 static func _build_cache() -> void:
-	_cache = [
-		_create_gear(
-			"wooden_shield",
-			"Wooden Shield",
-			"나무 방패",
-			EquipSlots.OFFHAND,
-			{"armor": 8}
-		),
-		_create_gear(
-			"leather_tunic",
-			"Leather Tunic",
-			"가죽 튜닉",
-			EquipSlots.ARMOR,
-			{"armor": 12}
-		),
-		_create_gear(
-			"traveler_boots",
-			"Traveler Boots",
-			"여행자 부츠",
-			EquipSlots.BOOTS,
-			{"move_speed_mult": 1.05}
-		),
-	]
+	_cache = []
+	_GearCatalogEntries.append_all(_cache, Callable(_create_gear))
 
 
 static func _create_gear(
@@ -44,7 +25,10 @@ static func _create_gear(
 	name_en: String,
 	name_ko: String,
 	slot: StringName,
-	stats: Dictionary
+	stats: Dictionary,
+	effect_en: String = "",
+	effect_ko: String = "",
+	attunement: int = 1
 ) -> GearData:
 	var gear := GearData.new()
 	gear.item_id = id
@@ -53,6 +37,9 @@ static func _create_gear(
 	gear.gear_slot = slot
 	gear.equip_slots = PackedStringArray([EquipSlots.slot_key_to_string(slot)])
 	gear.stat_modifiers = stats
+	gear.effect = effect_en
+	gear.effect_ko = effect_ko
+	gear.attunement = attunement
 	gear.texture = TEXTURE
 	gear.rarity = "Common"
 	return gear

@@ -502,11 +502,12 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 
 ## 인벤토리·장비 (설계)
 
-**상태:** Phase **0~2·4~6** ✅ · Phase **3** 🔶(활성 `weapon`→Player, F6 on). Phase **7** ⬜(방어구 스탯·offhand 비주얼). — [`Docs/Architecture_Inventory.md` §구현 단계](Docs/Architecture_Inventory.md#구현-단계)
+**상태:** Phase **0~2·4~6·3(최소)** ✅ · Phase **7** ⬜(스탯→Player·offhand 패시브). — [`Docs/Architecture_Inventory.md` §구현 단계](Docs/Architecture_Inventory.md#구현-단계)
 
 | 항목 | 내용 |
 |------|------|
 | 가방 | **8슬롯** · **우클릭**·**더블클릭(좌)** → `try_equip_from_bag_smart` (무기·offhand=활성 세트, 방어구=`sets[0]`) |
+| 장비 카탈로그 | **Common 73종** — `gear_catalog_entries.gd` · 툴팁 `GearStatDisplay` · 합산 `GearStatMerge` |
 | 장비 세트 | **2세트**×**7슬롯** · UI **무기·offhand 4칸** 동시 표시 |
 | 세트 전환 | **W**(`swap_combat_set`)·닫힌 **RMB**·비활성 무기/offhand **좌클릭** · HUD `%CombatSetLabel` |
 | 편집 탭 | **편집 1/2** — `edit_set_index`·탭 강조만, **전투 세트·방어구 데이터 불변** |

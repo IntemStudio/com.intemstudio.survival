@@ -1,0 +1,78 @@
+[gd_scene format=3 uid="uid://32nyi42pe4b5"]
+
+[ext_resource type="Script" path="res://ui/lobby/game_lobby.gd" id="1_lobby"]
+[ext_resource type="Script" path="res://ui/ui_viewport_layout.gd" id="2_ui_viewport_layout"]
+
+[node name="GameLobby" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_lobby")
+
+[node name="MenuOverlay" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+script = ExtResource("2_ui_viewport_layout")
+align_mode = 1
+pass_mouse_to_game = false
+
+[node name="Background" type="ColorRect" parent="MenuOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.06, 0.07, 0.1, 1)
+
+[node name="CenterContainer" type="CenterContainer" parent="MenuOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="LobbyContent" type="VBoxContainer" parent="MenuOverlay/CenterContainer"]
+layout_mode = 2
+theme_override_constants/separation = 48
+alignment = 1
+
+[node name="LobbyTitleLabel" type="Label" parent="MenuOverlay/CenterContainer/LobbyContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 96
+text = "Survival"
+horizontal_alignment = 1
+
+[node name="Buttons" type="VBoxContainer" parent="MenuOverlay/CenterContainer/LobbyContent"]
+layout_mode = 2
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="StartGameButton" type="Button" parent="MenuOverlay/CenterContainer/LobbyContent/Buttons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 64)
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "게임 시작"
+
+[node name="QuitButton" type="Button" parent="MenuOverlay/CenterContainer/LobbyContent/Buttons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 64)
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "게임 종료"
+
+[connection signal="pressed" from="MenuOverlay/CenterContainer/LobbyContent/Buttons/StartGameButton" to="." method="_on_start_game_button_pressed"]
+[connection signal="pressed" from="MenuOverlay/CenterContainer/LobbyContent/Buttons/QuitButton" to="." method="_on_quit_button_pressed"]

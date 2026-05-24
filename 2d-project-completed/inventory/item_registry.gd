@@ -122,13 +122,5 @@ func sum_stat_modifiers_for_set(set_dict: Dictionary) -> Dictionary:
 		var gear := resolve_gear(item_id)
 		if gear == null:
 			continue
-		for stat_key in gear.stat_modifiers:
-			var value: Variant = gear.stat_modifiers[stat_key]
-			if totals.has(stat_key):
-				if value is int or value is float:
-					totals[stat_key] = totals[stat_key] + value
-				else:
-					totals[stat_key] = value
-			else:
-				totals[stat_key] = value
+		GearStatMerge.merge_into(totals, gear.stat_modifiers)
 	return totals

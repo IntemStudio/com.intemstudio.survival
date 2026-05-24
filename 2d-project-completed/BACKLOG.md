@@ -57,7 +57,7 @@
 - [ ] **무기 합성·진화** — 두 무기 조합, 최대 레벨 후 상위 무기 등 없음.
 - [ ] **패시브·액세서리** — 이동속도·픽업 범위·최대 체력·재생 등 레벨업 외 성장 슬롯 없음.
 - [ ] **인벤토리 Epic** — [`Docs/Architecture_Inventory.md`](Docs/Architecture_Inventory.md)
-  - [x] Phase 0~2 — 데이터·`InventoryService`·`GearData`
+  - [x] Phase 0~2 — 데이터·`InventoryService`·`GearData`·Common 장비 73종·`GearStatMerge`/`GearStatDisplay`
   - [x] Phase 4~5 — UI v2(4칸 전투 슬롯)·드래그·`InventoryGameBridge`·**I**
   - [x] Phase 3 (최소) — `InventoryCombatBridge` · F6 `use_inventory_loadout`
   - [x] Phase 6 — W·RMB 스왑·HUD `%CombatSetLabel`·가방 RMB/더블클릭 장착·`try_equip_from_bag_smart`·편집 탭 분리·`UiLocale`

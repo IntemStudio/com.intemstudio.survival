@@ -39,7 +39,6 @@ unique_name_in_owner = true
 
 [node name="InventoryMenu" parent="." instance=ExtResource("9_inventory")]
 unique_name_in_owner = true
-seed_demo_on_empty = true
 
 [node name="BackgroundLayer" type="CanvasLayer" parent="." unique_id=768122036]
 layer = -32
