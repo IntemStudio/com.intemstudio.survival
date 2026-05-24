@@ -137,12 +137,14 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | Basic ~ Special B | 메인과 동일 7변종 |
 | **Dummy (static)** | `movement_enabled`·`combat_enabled` = false — 이동·원거리 공격 없음. **메인 `pick_scene`·밸런스 스폰에는 미포함**(테스트·풀 prewarm만) |
 
-**더미 주의:** 접촉 DPS(`%HurtBox`)는 그대로 — 완전 무피해 허수아비가 필요하면 `mob_kind`/collision 별도 정책 필요.
+**더미 주의:** `movement_enabled`·`combat_enabled` = false면 접촉·원거리 공격 모두 없음. 완전 무피해 허수아비가 필요하면 `mob_kind`/collision 별도 정책.
 
 ### `mob.gd` export (변종·더미 공용)
 
 - `movement_enabled` — false면 추적·몹 분리 이동 없음, 슬라임 `play_idle()`
 - `combat_enabled` — false면 원거리 텔레그래프/발사 없음
+- `contact_attack_interval` — 근접 범위 공격 간격(초, 기본 **1.0** = 1초에 1회)
+- `contact_attack_damage` — 근접 범위 공격 1회 피해(기본 **1**)
 
 ### 플레이어 (`player.gd` 연동)
 
@@ -206,13 +208,25 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | 열기·닫기 | **Esc** — `game.show_pause_menu()` / `resume_game()`. 무기 선택·게임오버·클리어 중에는 `pause_menu.gd`가 입력 무시 |
 | 메인 버튼 | **계속하기** → `resume_game()` · **설정** → `%SettingsPanel` · **다시하기** → `_restart_game()` · **게임 종료** → `get_tree().quit()` |
 | 보유 무기 | `%PauseMainContent` / `%PauseOwnedWeaponsList` — `refresh_owned_weapons()` (`show_pause_menu()` 직전) |
-| 설정 | `%SettingsPanel` — **언어**(`LocaleSettings`, `user://locale_settings.cfg`, ko/en) · 화면·오디오 · `%GameplaySettings` · 소나무. `UiLocale` + `ui_locale_refresh` 그룹 `refresh_locale()` |
+| 설정 | `%SettingsPanel` — **언어**(`LocaleSettings`) · 화면·오디오 · **게임 플레이**(`GameplaySettings`, `user://gameplay_settings.cfg`) · 소나무. `UiLocale` + `ui_locale_refresh` 그룹 `refresh_locale()` |
 | 설정 닫기 | **돌아가기** · 설정 화면에서 **Esc** → 메인 일시정지(`%PauseMainContent`). 메인에서 Esc → 게임 재개 |
 | 메뉴 닫힘 | `visibility_changed` → `_close_settings_view()` — 재개·`hide()` 시 설정 패널 초기화 |
 
 **Must not:** `CanvasLayer`에서 네이티브 `hide()`/`show()` **오버라이드 금지**(Godot 4 — 엔진 미호출·경고-as-error). 닫힘 처리는 `visibility_changed` 또는 `game.gd`에서 명시 호출.
 
 **튜닝·확장 시:** 새 설정 항목은 `%SettingsPanel/SettingsCenter/SettingsVBox`에 추가. `load_and_apply` 정책 — **Display**: 저장 없으면 `project.godot` 유지 · **Locale/Audio/Gameplay**: 저장 없으면 기본값 apply · 저장 실패는 `SettingsSaveUtil`. 언어 2차 범위는 `BACKLOG.md` §UI 다국어 2차. 화면 — [`Docs/AGENTS_Display_UI.md`](Docs/AGENTS_Display_UI.md). 사운드 — `AudioStreamPlayer.bus` `"BGM"`/`"SFX"`. 소나무 — [`Docs/AGENTS_MapArena.md`](Docs/AGENTS_MapArena.md).
+
+### 게임 플레이 설정 (`GameplaySettings`)
+
+`ui/settings/gameplay_settings.gd` · UI `gameplay_settings_ui.gd` · 저장 `user://gameplay_settings.cfg`. 변경 시 `apply()` → 필드 몹 `refresh_attack_range_ring()` / `refresh_health_bar_visibility()`, 플레이어 `refresh_primary_weapon_range_ring()`.
+
+| 키 | 기본 | 동작 |
+|----|------|------|
+| `show_ranged_attack_range` | ON | 원거리 몹 `AttackRangeRing` (`attack_distance`) |
+| `show_melee_attack_range` | ON | 근접 몹 범위 링 — `_get_contact_standoff_distance()` 반경(씬에 없으면 런타임 생성) |
+| `show_primary_weapon_range` | ON | 플레이어 `%PrimaryWeaponRangeRing` (슬롯 0 무기 사거리) |
+| `show_floating_damage` | ON | `FloatingDamageText` |
+| `show_mob_health_bar` | ON | 몹 `%HealthBar` (피해 후 표시) |
 
 ---
 
@@ -242,7 +256,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | API | `mob.gd` `set_targeted(active)` — ON 시 표시 + `_process`에서 **스케일 펄스**·**약한 회전** |
 | 조준 선정 | `gun.gd` `_get_current_target()` — **몹 루트 `global_position`** 기준 최근접(사거리 내). FX 위치와 무관 |
 | 호출 | `gun.gd` `_update_target_display()` — 사거리 내 최근접 1마리만 `_current_target`, 교체·사망 시 `set_targeted(false)` (`pool_reset`·`_request_die`에서도 해제) |
-| 씬 | 모든 플레이 몹 변종·`mob.tscn`에 `%TargetIndicator` 유지 (`godot-mobs.mdc`). `mob_ranged`의 `AttackRangeRing`만 `circle.png` `Sprite2D` 유지 |
+| 씬 | 모든 플레이 몹 변종·`mob.tscn`에 `%TargetIndicator` 유지 (`godot-mobs.mdc`). `mob_ranged`는 씬 자식 `AttackRangeRing`; 근접 몹은 필요 시 `mob.gd`가 `circle.png` 링을 런타임 생성 |
 
 **튜닝·확장 시:** 링 두께·브래킷은 `target_indicator_ring.gd` export(`ring_radius`, `ring_width`, `bracket_arm`, `show_corner_brackets`). 위치·크기·색은 각 `mob_*.tscn`의 `TargetIndicator` `position`·`scale`·`modulate`.
 
@@ -269,7 +283,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | 자석 아이템 | `_die()`에서 `randf() < 0.01` → `magnet_pickup.tscn` `instantiate` | `%PickupRange` → `collect(player)` | `exp_orbs` 그룹 전원 `start_magnet(player)` 후 `queue_free` |
 | 체력 아이템 | `_die()`에서 `randf() < 0.01` → `health_pickup.tscn` `instantiate` | `%PickupRange` → `collect(player)` | `heal_health(heal_amount)` (기본 30, 최대 체력까지) 후 `queue_free` |
 
-- **물리:** 픽업·오브·자석 모두 `Area2D`, `collision_layer = 4`. 플레이어 `PickupRange`는 `collision_mask = 4`.
+- **물리:** 픽업·오브·자석 — `PhysicsLayers.apply_pickup` (`collision_layer = 4`). 플레이어 `PickupRange` — `MASK_PLAYER_PICKUP` (4).
 - **범위 반경:** `player.gd` `@export pickup_range` (기본 **150**). `_ready`에서 `%PickupRange` `CircleShape2D` 반경과 동기화. `exp_orb.gd`는 플레이어 중심 거리 `<= player.pickup_range`일 때 자석 시작(Area 진입과 별도).
 - **범위 표시:** `player.tscn` `%PickupRange` 자식 `%PickupRangeRing` — `art/shared/fx/circle.png` `Sprite2D`, `modulate` 알파 **0.28**·연한 파랑. `player.gd` `_sync_pickup_range_visual()`가 `pickup_range`와 링 스케일을 맞춤(몹 `AttackRangeRing`과 동일 tex 반경÷스케일 방식). `z_index = -10`으로 캐릭터 뒤.
 - **비주얼:** 오브 scale `0.35`(파란), 자석·체력 `0.7`(주황·초록, 오브의 2배).
@@ -318,23 +332,24 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 
 ---
 
-## 플레이어 접촉 피해
+## 플레이어 접촉 피해 (근접 몹)
 
-플레이어 이동·대시와 무관하게, `%HurtBox`와 겹친 몹 `CharacterBody2D`가 있으면 매 프레임 체력이 깎입니다 (`player.gd` `_physics_process`). **게임 시작 전·무기 선택 중**에는 `set_contact_damage_enabled(false)`로 `%HurtBox.monitoring`을 끕니다(`game.gd` `_ensure_game_started`에서 true).
+**원거리 몹**(`ranged_attack_enabled`)은 접촉 피해 없음 — `Mob.is_contact_damage_active()` = false, **발사체만** 피해. 근접 몹만 `player.gd` `_apply_contact_damage()` (`_physics_process`). **게임 시작 전·무기 선택 중**에는 `set_contact_damage_enabled(false)`로 `%HurtBox.monitoring`을 끕니다(`game.gd` `_ensure_game_started`에서 true).
 
 | 항목 | 값·위치 |
 |------|---------|
-| 판정 | `%HurtBox.get_overlapping_bodies()` — `collision_mask = 2` (몹 레이어) |
-| 충돌 박스 | `GroundShadowFootprint` — Slime/HappyBoo 자식 `GroundShadow` 스프라이트 글로벌 스케일 → **사각형** `CollisionShape2D`·`%HurtBox` (`TEXTURE_SIZE` 84×52 기준). `pool_on_acquire` / `_ready`에서 동기화 |
-| 몹 정지 거리 | `_get_contact_standoff_distance()` = `max(attack_distance, 발밑 AABB 비겹침 거리 + CONTACT_STANDOFF_PADDING 6)`. 기본 `mob.tscn` `attack_distance` **150** |
+| 대상 | `ranged_attack_enabled == false`인 몹만 |
+| 범위 공격 | 플레이어·몹 **중심 간 거리** ≤ `get_contact_attack_distance()` (= `_get_contact_standoff_distance()`). 몹별 `tick_contact_attack(delta)` — `contact_attack_interval`(기본 **1.0**초)마다 `contact_attack_damage`(기본 **1**) |
+| 충돌 1 피해 | `%HurtBox`가 몹 `CharacterBody2D`와 **처음 겹칠 때** `CONTACT_COLLISION_BUMP_DAMAGE`(**1**) — 공격 간격과 무관, 겹침 유지 중 반복 없음(빠져나왔다 다시 겹치면 다시 1) |
+| 몹 정지 거리 | `_get_contact_standoff_distance()` = `max(attack_distance, 발밑 AABB 비겹침 + CONTACT_STANDOFF_PADDING 6)`. 범위 링·범위 공격 판정과 동일 |
 | 분리 보정 | `_clamp_velocity_away_from_player()` — 몹 분리력이 standoff 안으로 밀어넣지 않도록 접근 속도 제거 |
-| 초당 피해 | `DAMAGE_RATE = 6.0` × **겹친 몹 수** |
-| 플로팅 숫자 | `DAMAGE_FLOAT_INTERVAL = 0.2`초마다, `maxi(int(누적), 1)` → 화면 **최소 1** (실제 DPS와 체감이 다를 수 있음) |
+| 충돌 박스 | `GroundShadowFootprint` — 발밑 `GroundShadow` → 몹 `CollisionShape2D`·플레이어 `%HurtBox` (`TEXTURE_SIZE` 84×52 기준) |
+| 플로팅 숫자 | `DAMAGE_FLOAT_INTERVAL = 0.2`초마다 누적 표시, `maxi(int(누적), 1)` |
 | 피격 깜박임 | 플로팅 숫자와 **동일 0.2초 간격**으로 `HitFlash` ([피격 깜박임](#피격-깜박임-hitflash) 참고) |
 
-**왜 standoff를 쓰는지:** 접촉 DPS는 `get_overlapping_bodies()`(물리 겹침)이고, 몹 추적 정지는 중심 간 거리입니다. 예전에는 `attack_distance`만으로 멈춰 HurtBox와 몹 충돌이 겹친 채 DPS가 남는 경우가 많았습니다. 지금은 발밑 그림자 footprint로 양쪽 박스가 맞닿기 전에 멈추도록 맞춥니다.
+**왜 standoff를 쓰는지:** 몹은 standoff에서 멈추고, 범위 공격은 **중심 거리**로 판정합니다(예전 HurtBox 겹침 연속 DPS 제거). 발밑 footprint로 물리 박스가 겹치기 전에 멈추되, 링 안에서는 주기 공격이 들어갑니다.
 
-**튜닝 시 같이 볼 것:** `mob.gd` `attack_distance`·`CONTACT_STANDOFF_PADDING`, `%Slime`/`%HappyBoo`의 `GroundShadow` 스케일·위치, `player.gd` `get_contact_hurtbox_half_extents()`, `DAMAGE_RATE` / `DAMAGE_FLOAT_INTERVAL`. 슬라임 스케일을 바꾸면 `pool_on_acquire`의 `_sync_body_collision_to_shadow()`가 다시 맞춥니다.
+**튜닝 시 같이 볼 것:** `mob.gd` `attack_distance`·`contact_attack_interval`·`contact_attack_damage`·`CONTACT_STANDOFF_PADDING`, `%Slime` `GroundShadow` 스케일, `player.gd` `CONTACT_COLLISION_BUMP_DAMAGE`·`DAMAGE_FLOAT_INTERVAL`. 변종별 공격 속도는 씬 export만 바꿔도 됨.
 
 ---
 
@@ -349,7 +364,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | 몹 호출 | `mob.gd` `_play_hit_flash()` ← `take_damage`, `apply_weapon_damage`, 독 틱 `_apply_poison_tick` |
 | 몹 추가 연출 | 기존 `%Slime.play_hurt()` 애니(얼굴·몸 hurt 스프라이트)와 **병행** |
 | 플레이어 대상 | `%HappyBoo/Colorizer` — `_ready`에서 `modulate` 캐시 후 복구 |
-| 플레이어 호출 | `apply_mob_projectile_damage` 1회당 1회; 접촉 DPS는 플로팅 숫자와 같이 **0.2초마다** 1회 |
+| 플레이어 호출 | `apply_mob_projectile_damage` 1회당 1회; 근접 접촉·범위 공격 피해는 `_apply_contact_damage` 누적 후 플로팅 숫자 **0.2초마다** 1회 |
 | 풀 반환 | `mob.gd` `pool_reset` → `HitFlash.cancel(%Slime, slime_tint)` (트윈·색 초기화) |
 | 연타 | 같은 `target`에 새 `play` 시 기존 트윈 `kill` 후 재시작 |
 
@@ -384,15 +399,17 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 
 | 항목 | 값·경로 |
 |------|---------|
-| 투사체 피해 | `player.apply_mob_projectile_damage` — `take_damage`/`WeaponDamageTracker` **미경유** |
-| 접촉 DPS | `%HurtBox` 기존과 **동시 가능** (가까이 붙으면 둘 다) |
-| 투사체 물리(A안) | `mob_projectile` `collision_mask = 1`; `body == Player`만 피해, `StaticBody2D`(소나무)는 탄 소멸 |
+| 투사체 피해 | `player.apply_mob_projectile_damage` — `take_damage`/`WeaponDamageTracker` **미경유** (유일한 원거리 피해 경로) |
+| 접촉 피해 | **없음** — `ranged_attack_enabled` 몹은 `is_contact_damage_active()` = false |
+| 투사체 물리 | `mob_projectile` — `PhysicsLayers.apply_mob_projectile` (`mask=9` = 환경+플레이어). `body_entered` / sweep → `StaticBody2D`면 탄 소멸, `Player`면 피해 |
+| 탄 비주얼·히트 | `bullet_2d`와 동일 — `projectile.png`, 스프라이트 스케일 **1.0**, 오프셋 `(-11,-1)`, 원형 반경 **15.0333** |
 | 탄 비행 | `ranged_max_distance` 900, `ranged_projectile_speed` 520 (발사 거리 ≠ `attack_distance`) |
+| 조준·스폰 | 몹·플레이어 **발밑 그림자 중심** (`get_footprint_global_center` / `GroundShadowFootprint.get_combat_target_center`) — 몹 탄 스폰·방향, 플레이어 무기 조준 |
 
 ### 비주얼
 
 - 보라 슬라임 `slime_tint`, HP 바 보라.
-- `AttackRangeRing` — `attack_distance` 반경 링 (`_sync_attack_range_ring`, `pool_on_acquire` 시 갱신). 표시 여부: 일시정지 **게임 플레이** → `GameplaySettings` (`user://gameplay_settings.cfg`, 기본 ON).
+- `AttackRangeRing` — `attack_distance` 반경 링 (`_sync_attack_range_ring`, `pool_on_acquire` 시 갱신). 표시: `GameplaySettings.is_ranged_attack_range_visible()` (기본 ON).
 - 예고 마크 — 주황빛 `circle.png`, 슬라임 tint 기반.
 
 ### 풀 (`ObjectPools`)
@@ -408,7 +425,35 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 
 `attack_distance`, `ranged_attack_enabled`, `ranged_cooldown`, `ranged_damage_min/max`, `ranged_projectile_speed`, `ranged_max_distance`, `ranged_spawn_offset`, `ranged_telegraph_delay`, `ranged_attack_mark_offset`.
 
-**튜닝 시:** 몹 `collision_layer` 2 유지. 투사체 전용 레이어(B안)는 `godot-core.mdc` 물리 mask 일괄 변경 필요 — 현재 미적용.
+**튜닝 시:** 몹·발사체 레이어는 `game/physics_layers.gd`만 수정하고 `godot-core.mdc` 표와 함께 weapon/mob 씬·`pool_on_acquire`를 일괄 갱신.
+
+---
+
+## 2D 물리 레이어·마스크
+
+**단일 정의:** `game/physics_layers.gd` (`class_name PhysicsLayers`) · `project.godot` `[layer_names]` 2d_physics.
+
+| 슬롯 | 비트 | 이름 | `collision_layer` 용도 |
+|------|------|------|------------------------|
+| 1 | 1 | environment | 소나무·벽 `StaticBody2D` |
+| 2 | 2 | mobs | 몹 `CharacterBody2D` |
+| 3 | 4 | pickup | 경험치·자석·체력 `Area2D` |
+| 4 | 8 | player | 플레이어 `CharacterBody2D` |
+
+| 역할 | 적용 API | mask | 감지 대상 |
+|------|-----------|------|-----------|
+| 장애물 | `apply_environment_body` | 0 | — |
+| 플레이어 이동 | `apply_player_body` | 1 | environment |
+| 몹 본체 | `apply_mob_body` | 2 | mobs (몹끼리만 밀림) |
+| 플레이어 HurtBox | `apply_player_hurtbox` | 2 | mobs |
+| 플레이어 PickupRange | `apply_player_pickup_range` | 4 | pickup |
+| 플레이어 발사체·투척·마법 탄 | `apply_player_projectile` | 3 | environment + mobs |
+| 플레이어 지면 영역(연금 등) | `apply_player_area_zone` | 2 | mobs |
+| Gun 조준 | 씬 `mask=2` | 2 | mobs |
+| 몹 발사체 | `apply_mob_projectile` | 9 | environment + player |
+
+- 런타임 동기화: `player.gd` `_sync_physics_layers()`, 몹·발사체 `pool_on_acquire`, `map_arena` 벽 스폰.
+- 새 스크립트에 레이어 정수 하드코딩 금지 — `PhysicsLayers` 상수·`apply_*` 사용.
 
 ---
 
@@ -500,7 +545,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | 경험치·픽업 아이템 | `effects/exp_orb/exp_orb.gd`, `effects/magnet_pickup/`, `effects/health_pickup/`, `entities/player/player.gd` (`pickup_range`, `_sync_pickup_range_visual`, `heal_health`), `entities/player/player.tscn` (`%PickupRange`, `%PickupRangeRing`), `entities/mob/mob.gd` (드랍 확률) |
 | 대시·쿨다운 UI | `entities/player/player.gd`, `entities/player/player.tscn` (`%DashCooldownBar`), `project.godot` (`dash` 입력) |
 | 자동 공격 토글·HUD | `player.gd` (`toggle_auto_attack`, `set_auto_attack_enabled`), `gun.gd` (`refresh_auto_attack`), `king_bible_orb.gd`, `survivors_game.tscn` (`%AutoAttackLabel`), `project.godot` |
-| 접촉 피해·충돌 정렬 | `characters/shared/ground_shadow_footprint.gd`, `player.gd` (`_sync_collision_to_ground_shadow`, `set_contact_damage_enabled`), `mob.gd` (`_get_contact_standoff_distance`, `_sync_body_collision_to_shadow`), `floating_damage_text.gd`, `effects/hit_flash/hit_flash.gd`; 원거리 탄환은 `apply_mob_projectile_damage` |
+| 접촉 피해·충돌 정렬 | `ground_shadow_footprint.gd`, `player.gd` (`_apply_contact_damage`, `set_contact_damage_enabled`), `mob.gd` (`contact_attack_interval`/`contact_attack_damage`, `get_contact_attack_distance`, `tick_contact_attack`, standoff), `gameplay_settings.gd`; 원거리는 `mob_projectile`·`apply_mob_projectile_damage` |
 | 조준 링 | `gun.gd` (`_update_target_display`, `_set_targeted`), `mob.gd` (`set_targeted`), `target_indicator_ring.gd`, 몹 `.tscn` `%TargetIndicator` |
 | 몹 체력바 | `mob.gd` (`_hide_health_bar`, `_reveal_health_bar`, `_sync_health_bar`), 몹 `.tscn` `%HealthBar` |
 | 피격 깜박임 | `effects/hit_flash/hit_flash.gd`, `mob.gd` (`_play_hit_flash`, `pool_reset`), `player.gd` (`_play_hit_flash`, `HappyBoo/Colorizer`) |

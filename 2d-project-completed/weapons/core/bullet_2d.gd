@@ -3,21 +3,30 @@ extends Area2D
 var _weapon: WeaponData
 var _damage := 0
 var _travelled_distance := 0.0
+var _hit_mob_ids: Dictionary = {}
 
 
 func pool_reset() -> void:
 	_weapon = null
 	_damage = 0
 	_travelled_distance = 0.0
+	_hit_mob_ids.clear()
 
 
 func pool_on_acquire() -> void:
-	pass
+	PhysicsLayers.apply_player_projectile(self)
 
 
 func setup(weapon_data: WeaponData, spawn_transform: Transform2D) -> void:
+	if not WeaponData.is_valid_projectile_pierce_count(weapon_data.projectile_pierce_count):
+		push_error(
+			"Bullet2D: projectile_pierce_count가 0입니다 (무기=%s)." % weapon_data.get_unique_key()
+		)
+		PoolUtil.release_node(self)
+		return
 	_weapon = weapon_data
 	_damage = weapon_data.roll_damage()
+	_hit_mob_ids.clear()
 	global_transform = spawn_transform
 	if has_node("Sprite"):
 		$Sprite.modulate = weapon_data.get_element_color()
@@ -42,12 +51,27 @@ func _on_body_entered(body: Node) -> void:
 	if not body.is_in_group("mobs"):
 		return
 
+	var mob_id: int = body.get_instance_id()
+	if _hit_mob_ids.has(mob_id):
+		return
+	_hit_mob_ids[mob_id] = true
+
 	if _weapon and _weapon.is_explosion_ranged():
 		_explode_at(global_position)
-	else:
-		_hit_mob(body)
+		call_deferred(&"_return_to_pool")
+		return
 
-	call_deferred(&"_return_to_pool")
+	_hit_mob(body)
+	if _should_end_after_hit():
+		call_deferred(&"_return_to_pool")
+
+
+func _should_end_after_hit() -> bool:
+	if not _weapon:
+		return true
+	if _weapon.has_unlimited_projectile_pierce():
+		return false
+	return _hit_mob_ids.size() >= _weapon.get_projectile_pierce_count_safe()
 
 
 func _return_to_pool() -> void:
@@ -73,7 +97,7 @@ func _explode_at(center: Vector2) -> void:
 		if not is_instance_valid(mob) or mob is not Node2D:
 			continue
 		var mob_node := mob as Node2D
-		if mob_node.global_position.distance_to(center) > radius:
+		if GroundShadowFootprint.get_combat_target_center(mob_node).distance_to(center) > radius:
 			continue
 		var damage := _weapon.roll_damage()
 		if mob.has_method("apply_weapon_damage"):

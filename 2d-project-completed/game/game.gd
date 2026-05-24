@@ -169,6 +169,11 @@ func get_current_balance_phase() -> BalancePhase:
 	return _query_balance_phase()
 
 
+# 몹 처치 XP·골드(예정) — KillRewards 단일 계산 경로.
+func get_kill_rewards_for_mob(mob_kind: StringName) -> Dictionary:
+	return KillRewards.compute(mob_kind, get_current_balance_phase())
+
+
 func _query_balance_phase() -> BalancePhase:
 	if not balance_table:
 		return BalancePhase.new()

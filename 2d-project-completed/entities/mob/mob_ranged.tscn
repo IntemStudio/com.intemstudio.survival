@@ -13,7 +13,7 @@ bg_color = Color(0.75, 0.45, 0.95, 1)
 
 [node name="MobRanged" type="CharacterBody2D"]
 collision_layer = 2
-collision_mask = 3
+collision_mask = 2
 script = ExtResource("1_mob")
 mob_kind = &"ranged"
 attack_distance = 360.0
@@ -26,7 +26,7 @@ ranged_damage_min = 6
 ranged_damage_max = 10
 ranged_projectile_speed = 520.0
 ranged_max_distance = 900.0
-ranged_spawn_offset = Vector2(0, -40)
+ranged_spawn_offset = Vector2(0, 0)
 
 [node name="AttackRangeRing" type="Sprite2D" parent="."]
 z_index = -10

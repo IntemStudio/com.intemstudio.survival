@@ -428,6 +428,32 @@ theme_override_font_sizes/font_size = 18
 text = "원거리 몬스터 공격 범위 표시"
 button_pressed = true
 
+[node name="MeleeRangeRow" type="HBoxContainer" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/GameplaySettingsGui/GameplaySettingsUi"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="ShowMeleeAttackRangeToggle" type="CheckButton" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/GameplaySettingsGui/GameplaySettingsUi/MeleeRangeRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.84, 0.9, 1)
+theme_override_font_sizes/font_size = 18
+text = "근거리 몬스터 공격 범위 표시"
+button_pressed = true
+
+[node name="PrimaryWeaponRangeRow" type="HBoxContainer" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/GameplaySettingsGui/GameplaySettingsUi"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="ShowPrimaryWeaponRangeToggle" type="CheckButton" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/GameplaySettingsGui/GameplaySettingsUi/PrimaryWeaponRangeRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.84, 0.9, 1)
+theme_override_font_sizes/font_size = 18
+text = "첫 번째 무기 사거리 표시"
+button_pressed = true
+
 [node name="FloatingDamageRow" type="HBoxContainer" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/GameplaySettingsGui/GameplaySettingsUi"]
 layout_mode = 2
 theme_override_constants/separation = 12
@@ -452,6 +478,32 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.8, 0.84, 0.9, 1)
 theme_override_font_sizes/font_size = 18
 text = "몬스터 체력 게이지 표시"
+button_pressed = true
+
+[node name="DefaultAutoTargetRow" type="HBoxContainer" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/GameplaySettingsGui/GameplaySettingsUi"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="ShowDefaultAutoTargetToggle" type="CheckButton" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/GameplaySettingsGui/GameplaySettingsUi/DefaultAutoTargetRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.84, 0.9, 1)
+theme_override_font_sizes/font_size = 18
+text = "자동 타겟 (게임 시작 시)"
+button_pressed = true
+
+[node name="DefaultAutoAttackRow" type="HBoxContainer" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/GameplaySettingsGui/GameplaySettingsUi"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="ShowDefaultAutoAttackToggle" type="CheckButton" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/GameplaySettingsGui/GameplaySettingsUi/DefaultAutoAttackRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.84, 0.9, 1)
+theme_override_font_sizes/font_size = 18
+text = "자동 공격 (게임 시작 시)"
 button_pressed = true
 
 [node name="TreeDensityGui" type="PanelContainer" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox"]

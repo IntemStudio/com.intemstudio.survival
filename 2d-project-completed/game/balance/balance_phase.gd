@@ -5,6 +5,8 @@ class_name BalancePhase
 
 @export_range(0.0, 60.0, 0.1, "or_greater") var minute: float = 0.0
 @export_range(0.1, 10.0, 0.01, "or_greater") var hp_multiplier: float = 1.0
+## 처치 XP·골드 배율(시간 키프레임 보간). HP와 분리해 루트 성장만 튜닝합니다.
+@export_range(0.1, 5.0, 0.01, "or_greater") var loot_multiplier: float = 1.0
 @export_range(0.1, 5.0, 0.01, "or_greater") var spawn_density: float = 1.0
 @export_range(0.0, 5.0, 0.01, "or_greater") var threat: float = 1.0
 

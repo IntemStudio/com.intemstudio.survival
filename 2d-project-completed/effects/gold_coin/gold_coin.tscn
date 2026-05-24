@@ -1,0 +1,30 @@
+[gd_scene load_steps=4 format=3 uid="uid://cgoldcoinpick01"]
+
+[ext_resource type="Script" path="res://effects/gold_coin/gold_coin.gd" id="1_gold"]
+[ext_resource type="Texture2D" path="res://art/shared/fx/circle.png" id="2_gold"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_gold"]
+radius = 14.0
+
+[node name="GoldCoin" type="Area2D"]
+collision_layer = 4
+collision_mask = 0
+monitorable = true
+script = ExtResource("1_gold")
+
+[node name="MagnetTrail" type="Line2D" parent="."]
+z_index = -1
+width = 12.0
+default_color = Color(1, 1, 1, 1)
+joint_mode = 2
+begin_cap_mode = 2
+end_cap_mode = 2
+antialiased = true
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+modulate = Color(1, 0.82, 0.22, 1)
+scale = Vector2(0.35, 0.35)
+texture = ExtResource("2_gold")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_gold")

@@ -6,6 +6,13 @@ alwaysApply: false
 
 # Weapons & player
 
+## Physics (2D)
+
+- Layer/mask rules: `game/physics_layers.gd` — see `godot-core.mdc` table.
+- Player projectiles: `PhysicsLayers.apply_player_projectile` in `pool_on_acquire` (`mask=3` = environment + mobs).
+- Ground AoE (`area_damage_zone`): `apply_player_area_zone` (`mask=2` = mobs only).
+- Gun targeting `Area2D`: `mask=2` (mobs only) — not a projectile.
+
 ## When adding a new weapon, you must
 
 1. Define stats on `WeaponData` (`weapons/data/weapon_data.gd`) via `.tres` or a catalog entry in `weapons/catalogs/`.
@@ -26,10 +33,11 @@ Skipping step 2 makes the weapon invisible in level-up selection.
 
 ## Auto attack toggle
 
-- Default: `Player.auto_attack_enabled` is true; `toggle_auto_attack` (F) toggles it.
-- `gun.gd` must respect `Player.is_auto_attack_enabled()` for timer start, `_on_timer_timeout`, and `refresh_auto_attack()`; orbit damage in `king_bible_orb.gd` must use the same check.
+- Default: `Player.auto_target_enabled` / `auto_attack_enabled` from `GameplaySettings` on spawn; `toggle_auto_target` (F) and `toggle_auto_attack` (G) toggle at runtime.
+- `gun.gd` must respect `Player.is_auto_attack_enabled()` for `refresh_auto_attack()`, `_on_timer_timeout`, and timer start; orbit damage in `king_bible_orb.gd` must use the same check.
+- `gun.gd` must respect `Player.is_auto_target_enabled()` for `_update_target_display()` / targeting rings.
 - Do not bypass the toggle by calling `shoot()` from new code without an explicit design (e.g. manual attack key).
-- HUD: keep `%AutoAttackLabel` in sync via `Player._update_auto_attack_hud()` when changing toggle behavior or copy.
+- HUD: keep `%AutoTargetLabel` and `%AutoAttackLabel` in sync via `Player._update_auto_target_hud()` / `_update_auto_attack_hud()`.
 
 ## Must (player / game flow)
 

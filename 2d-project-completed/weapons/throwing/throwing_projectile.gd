@@ -18,7 +18,7 @@ func pool_reset() -> void:
 
 
 func pool_on_acquire() -> void:
-	pass
+	PhysicsLayers.apply_player_projectile(self)
 
 
 func setup_weapon(thrower: Node2D, direction: Vector2, weapon_data: WeaponData) -> void:

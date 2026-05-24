@@ -22,6 +22,24 @@ static func footprint_half_extents_from_visual(root: Node) -> Vector2:
 	return footprint_size_from_visual(root) * 0.5
 
 
+static func footprint_center_global(visual_root: Node) -> Vector2:
+	var shadow := find_shadow_sprite(visual_root)
+	if shadow != null:
+		return shadow.global_position
+	if visual_root is Node2D:
+		return (visual_root as Node2D).global_position
+	return Vector2.ZERO
+
+
+# 플레이어·몹 등 전투 판정·조준에 쓸 발밑 중심(그림자 우선).
+static func get_combat_target_center(target: Node2D) -> Vector2:
+	if target != null and target.has_method(&"get_footprint_global_center"):
+		return target.call(&"get_footprint_global_center") as Vector2
+	if target != null:
+		return target.global_position
+	return Vector2.ZERO
+
+
 static func apply_rectangle_collision(shape_node: CollisionShape2D, footprint: Vector2) -> void:
 	if footprint == Vector2.ZERO:
 		return
@@ -31,6 +49,21 @@ static func apply_rectangle_collision(shape_node: CollisionShape2D, footprint: V
 		shape_node.shape = rect
 	rect.size = footprint
 	shape_node.position = Vector2.ZERO
+
+
+# 발밑 그림자 중심·크기에 맞춰 충돌 박스 위치·크기를 맞춥니다.
+static func sync_collision_shape_to_shadow(
+	body: Node2D,
+	shape_node: CollisionShape2D,
+	visual_root: Node
+) -> void:
+	var footprint := footprint_size_from_visual(visual_root)
+	if footprint == Vector2.ZERO:
+		return
+	apply_rectangle_collision(shape_node, footprint)
+	var shadow := find_shadow_sprite(visual_root)
+	if shadow != null:
+		shape_node.position = body.to_local(shadow.global_position)
 
 
 # 두 발밑 AABB(중심 정렬)가 겹치지 않는 보수적 중심 간 최소 거리

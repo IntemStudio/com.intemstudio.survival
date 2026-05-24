@@ -9,18 +9,20 @@ const THROWING_PROJECTILE_SCENE := preload("res://weapons/throwing/throwing_proj
 const BOOMERANG_SCENE := preload("res://weapons/boomerang/boomerang.tscn")
 const KING_BIBLE_ORB_SCENE := preload("res://weapons/magic/king_bible_orb.tscn")
 const EXP_ORB_SCENE := preload("res://effects/exp_orb/exp_orb.tscn")
+const GOLD_COIN_SCENE := preload("res://effects/gold_coin/gold_coin.tscn")
 const MOB_PROJECTILE_SCENE := preload("res://entities/mob/mob_projectile.tscn")
 const MOB_ATTACK_MARK_SCENE := preload("res://entities/mob/mob_attack_mark.tscn")
 
 @export_range(1, 1000, 1) var default_max_per_scene: int = 200
 @export_range(0, 200, 1) var prewarm_bullets: int = 40
 @export_range(0, 200, 1) var prewarm_magic_bolts: int = 24
-@export_range(0, 200, 1) var prewarm_melee_projectiles: int = 24
+@export_range(0, 200, 1) var prewarm_melee_projectiles: int = 32
 @export_range(0, 200, 1) var prewarm_area_damage_zones: int = 12
 @export_range(0, 200, 1) var prewarm_throwing: int = 24
 @export_range(0, 200, 1) var prewarm_boomerangs: int = 12
 @export_range(0, 20, 1) var prewarm_king_bible_orbs: int = 2
 @export_range(0, 500, 1) var prewarm_exp_orbs: int = 80
+@export_range(0, 500, 1) var prewarm_gold_coins: int = 80
 @export_range(0, 100, 1) var prewarm_mobs_per_type: int = 14
 @export_range(0, 200, 1) var prewarm_mob_projectiles: int = 32
 @export_range(0, 100, 1) var prewarm_mob_attack_marks: int = 20
@@ -38,6 +40,7 @@ func _ready() -> void:
 	_prewarm_scene(BOOMERANG_SCENE, prewarm_boomerangs)
 	_prewarm_scene(KING_BIBLE_ORB_SCENE, prewarm_king_bible_orbs)
 	_prewarm_scene(EXP_ORB_SCENE, prewarm_exp_orbs)
+	_prewarm_scene(GOLD_COIN_SCENE, prewarm_gold_coins)
 	_prewarm_scene(MOB_PROJECTILE_SCENE, prewarm_mob_projectiles)
 	_prewarm_scene(MOB_ATTACK_MARK_SCENE, prewarm_mob_attack_marks)
 	# MobSpawnSelector 상수는 몹 씬→mob.gd를 끌어오므로, ScenePool 등록 후 _ready에서만 prewarm합니다.
@@ -132,9 +135,8 @@ func release(node: Node) -> void:
 		node.queue_free()
 		return
 
-	_attach_to_pool_storage(node)
-	arr.append(node)
-	_inactive[key] = arr
+	# Gun._exit_tree 등 부모가 자식 추가/제거 중일 때 동기 remove_child가 실패하므로 지연 저장
+	_store_inactive_deferred(node, key)
 
 
 func _prewarm_scene(scene: PackedScene, count: int) -> void:
@@ -200,6 +202,35 @@ func _scene_key(scene: PackedScene) -> String:
 	return scene.resource_path
 
 
+func _store_inactive_deferred(node: Node, key: String) -> void:
+	call_deferred(&"_store_inactive_impl", node, key)
+
+
+func _store_inactive_impl(node: Node, key: String) -> void:
+	if not is_instance_valid(node):
+		return
+	if node.get_meta(&"_pooled_active", false):
+		if node.has_meta(&"_pool_return_pending"):
+			node.remove_meta(&"_pool_return_pending")
+		return
+	var id := node.get_instance_id()
+	if not _source_scenes.has(id):
+		if node.has_meta(&"_pool_return_pending"):
+			node.remove_meta(&"_pool_return_pending")
+		return
+
+	_attach_to_pool_storage(node)
+
+	var arr: Array = _inactive.get(key, [])
+	for entry in arr:
+		if entry == node:
+			if node.has_meta(&"_pool_return_pending"):
+				node.remove_meta(&"_pool_return_pending")
+			return
+	arr.append(node)
+	_inactive[key] = arr
+
+
 func _attach_to_pool_storage(node: Node) -> void:
 	if node.get_parent() == self:
 		return
@@ -214,8 +245,8 @@ func _activate(node: Node) -> void:
 		node.visible = true
 	if node is Area2D:
 		var area := node as Area2D
-		area.set_deferred(&"monitoring", true)
-		area.set_deferred(&"monitorable", true)
+		area.monitoring = true
+		area.monitorable = true
 
 
 func _deactivate(node: Node) -> void:

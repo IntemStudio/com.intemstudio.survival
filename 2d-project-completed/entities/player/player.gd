@@ -11,10 +11,12 @@ const DASH_COOLDOWN := 0.5
 @export var pickup_range := 150.0
 @export var base_exp_to_level := 5
 const DAMAGE_FLOAT_INTERVAL := 0.2
+const CONTACT_COLLISION_BUMP_DAMAGE := 1
 
 var health = 100.0
 var level := 1
 var experience := 0
+var gold := 0
 var _owned_weapons: Array[WeaponData] = []
 var _damage_float_accumulator := 0.0
 var _damage_float_timer := 0.0
@@ -22,8 +24,10 @@ var _last_move_direction := Vector2.RIGHT
 var _dash_direction := Vector2.ZERO
 var _dash_time_remaining := 0.0
 var _dash_cooldown_remaining := 0.0
+var auto_target_enabled := true
 var auto_attack_enabled := true
 var _health_depleted_emitted := false
+var _hurtbox_overlap_mob_ids: Dictionary = {}
 var _hit_flash_target: CanvasItem
 var _hit_flash_base_modulate := Color.WHITE
 
@@ -32,13 +36,23 @@ func _ready() -> void:
 	add_to_group(UiLocale.GROUP_REFRESH)
 	_hit_flash_target = %HappyBoo.get_node("Colorizer") as CanvasItem
 	_hit_flash_base_modulate = _hit_flash_target.modulate
+	_sync_physics_layers()
 	_sync_collision_to_ground_shadow()
 	_sync_pickup_range_visual()
+	refresh_primary_weapon_range_ring()
 	%PickupRange.area_entered.connect(_on_pickup_range_area_entered)
 	%DashCooldownBar.visible = false
 	set_contact_damage_enabled(false)
 	_update_experience_hud()
-	_update_auto_attack_hud()
+	_update_gold_hud()
+	call_deferred("_apply_gameplay_combat_defaults")
+
+
+# 물리 레이어·마스크 — PhysicsLayers 단일 정의와 동기화.
+func _sync_physics_layers() -> void:
+	PhysicsLayers.apply_player_body(self)
+	PhysicsLayers.apply_player_hurtbox(%HurtBox)
+	PhysicsLayers.apply_player_pickup_range(%PickupRange)
 
 
 # 접촉 DPS Area 감시 — 게임 시작 전·무기 선택 중에는 끕니다.
@@ -51,11 +65,17 @@ func _sync_collision_to_ground_shadow() -> void:
 	var footprint := GroundShadowFootprint.footprint_size_from_visual(%HappyBoo)
 	if footprint == Vector2.ZERO:
 		return
-	GroundShadowFootprint.apply_rectangle_collision($CollisionShape2D, footprint)
-	GroundShadowFootprint.apply_rectangle_collision(
+	GroundShadowFootprint.sync_collision_shape_to_shadow(self, $CollisionShape2D, %HappyBoo)
+	GroundShadowFootprint.sync_collision_shape_to_shadow(
+		self,
 		%HurtBox.get_node("CollisionShape2D") as CollisionShape2D,
-		footprint
+		%HappyBoo
 	)
+
+
+# 조준·접촉·몹 추적에 쓰는 발밑 그림자 중심.
+func get_footprint_global_center() -> Vector2:
+	return GroundShadowFootprint.footprint_center_global(%HappyBoo)
 
 
 # 몹 접촉 거리 계산용 HurtBox 반경(그림자 발밑 박스 기준)
@@ -64,6 +84,42 @@ func get_contact_hurtbox_half_extents() -> Vector2:
 	if hurt_shape:
 		return hurt_shape.size * 0.5
 	return GroundShadowFootprint.footprint_half_extents_from_visual(%HappyBoo)
+
+
+# 범위 공격(몹별 쿨다운) + HurtBox 겹침 진입 시 충돌 1 피해.
+func _apply_contact_damage(delta: float) -> void:
+	if _health_depleted_emitted or not %HurtBox.monitoring:
+		return
+
+	var damage := 0
+	var current_overlap_ids: Dictionary = {}
+
+	for body in %HurtBox.get_overlapping_bodies():
+		if not body is Mob:
+			continue
+		var mob := body as Mob
+		if not mob.is_contact_damage_active():
+			continue
+		var mob_id := mob.get_instance_id()
+		current_overlap_ids[mob_id] = true
+		if not _hurtbox_overlap_mob_ids.has(mob_id):
+			damage += CONTACT_COLLISION_BUMP_DAMAGE
+
+	_hurtbox_overlap_mob_ids = current_overlap_ids
+
+	for node in get_tree().get_nodes_in_group("mobs"):
+		if node is Mob:
+			var mob := node as Mob
+			if mob.is_player_in_contact_attack_range(get_footprint_global_center()):
+				damage += mob.tick_contact_attack(delta)
+
+	if damage <= 0:
+		return
+
+	health -= damage
+	%HealthBar.value = health
+	_damage_float_accumulator += damage
+	_try_emit_health_depleted()
 
 
 # PickupRange 충돌·반투명 링을 pickup_range 반경에 맞춥니다.
@@ -80,11 +136,60 @@ func _sync_pickup_range_visual() -> void:
 	ring.scale = Vector2(ring_scale, ring_scale)
 
 
+# 첫 번째 무기(슬롯 0) 공격 사거리 링 — GameplaySettings·무기 변경 시 갱신.
+func refresh_primary_weapon_range_ring() -> void:
+	var ring := get_node_or_null("%PrimaryWeaponRangeRing") as Sprite2D
+	if not ring:
+		return
+	var guns := %Weapons.get_children()
+	if guns.is_empty():
+		ring.visible = false
+		return
+	var gun := guns[0]
+	if not gun.has_method("get_display_attack_range"):
+		ring.visible = false
+		return
+	var attack_range: float = gun.get_display_attack_range()
+	if attack_range <= 0.0 or not is_finite(attack_range):
+		ring.visible = false
+		return
+	if not ring.texture:
+		ring.visible = false
+		return
+	var tex_radius := maxf(ring.texture.get_width(), ring.texture.get_height()) * 0.5
+	if tex_radius <= 0.0:
+		ring.visible = false
+		return
+	var ring_scale := attack_range / tex_radius
+	ring.scale = Vector2(ring_scale, ring_scale)
+	ring.visible = GameplaySettings.is_primary_weapon_range_visible()
+
+
+# Game._ready 설정 로드 이후 게임플레이 기본값(자동 타겟·공격)을 적용합니다.
+func _apply_gameplay_combat_defaults() -> void:
+	set_auto_target_enabled(GameplaySettings.is_default_auto_target_enabled())
+	set_auto_attack_enabled(GameplaySettings.is_default_auto_attack_enabled())
+
+
+func is_auto_target_enabled() -> bool:
+	return auto_target_enabled
+
+
+# 기존 호출부 호환용.
 func is_auto_attack_enabled() -> bool:
 	return auto_attack_enabled
 
 
-# F키 등으로 자동 공격 on/off를 전환합니다.
+# F키로 자동 타겟 on/off를 전환합니다.
+func set_auto_target_enabled(enabled: bool) -> void:
+	if auto_target_enabled == enabled:
+		return
+	auto_target_enabled = enabled
+	_apply_auto_target_to_weapons()
+	_update_auto_target_hud()
+
+
+# G키·설정 기본값으로 자동 공격 on/off를 전환합니다.
 func set_auto_attack_enabled(enabled: bool) -> void:
 	if auto_attack_enabled == enabled:
 		return
@@ -93,8 +198,18 @@ func set_auto_attack_enabled(enabled: bool) -> void:
 	_update_auto_attack_hud()
 
 
+func toggle_auto_target() -> void:
+	set_auto_target_enabled(not auto_target_enabled)
+
+
 func toggle_auto_attack() -> void:
 	set_auto_attack_enabled(not auto_attack_enabled)
+
+
+func _apply_auto_target_to_weapons() -> void:
+	for gun in %Weapons.get_children():
+		if gun.has_method("refresh_targeting_mode"):
+			gun.refresh_targeting_mode()
 
 
 func _apply_auto_attack_to_weapons() -> void:
@@ -120,6 +235,7 @@ func clear_weapons() -> void:
 	for gun in %Weapons.get_children():
 		gun.free()
 	_owned_weapons.clear()
+	refresh_primary_weapon_range_ring()
 
 
 func add_weapon(weapon_data: WeaponData) -> void:
@@ -131,7 +247,10 @@ func add_weapon(weapon_data: WeaponData) -> void:
 	var gun: Area2D = GUN_SCENE.instantiate()
 	%Weapons.add_child(gun)
 	gun.equip_weapon(weapon_data)
+	if gun.has_method("refresh_auto_attack"):
+		gun.refresh_auto_attack()
 	_rearrange_weapons()
+	refresh_primary_weapon_range_ring()
 
 
 func _rearrange_weapons() -> void:
@@ -156,15 +275,18 @@ func _play_hit_flash() -> void:
 		HitFlash.play(_hit_flash_target, _hit_flash_base_modulate)
 
 
-# 몹 원거리 투사체 1발 피해 (접촉 DPS와 별도).
-func apply_mob_projectile_damage(amount: int) -> void:
-	if amount <= 0 or _health_depleted_emitted:
-		return
+# 몹 원거리 투사체 1발 피해. 성공 시 "" 반환, 스킵 시 사유 문자열(디버그 로그용).
+func apply_mob_projectile_damage(amount: int) -> String:
+	if amount <= 0:
+		return "damage_amount<=0 (value=%d)" % amount
+	if _health_depleted_emitted:
+		return "player_health_depleted (health=%.1f)" % health
 	_play_hit_flash()
 	health -= float(amount)
 	%HealthBar.value = health
 	FloatingDamageText.spawn_player_damage(global_position, amount)
 	_try_emit_health_depleted()
+	return ""
 
 
 # 체력 회복 아이템 등에서 호출합니다.
@@ -185,6 +307,13 @@ func gain_experience(amount: int) -> void:
 	_update_experience_hud()
 
 
+func gain_gold(amount: int) -> void:
+	if amount <= 0:
+		return
+	gold += amount
+	_update_gold_hud()
+
+
 func _update_experience_hud() -> void:
 	var hud := get_node_or_null("/root/Game/HUD")
 	if not hud:
@@ -198,8 +327,31 @@ func _update_experience_hud() -> void:
 	hud_root.get_node("ExpLabel").text = "%d / %d" % [experience, exp_to_level]
 
 
+func _update_gold_hud() -> void:
+	var hud := get_node_or_null("/root/Game/HUD")
+	if not hud:
+		return
+	var label: Label = hud.get_node_or_null("HUDRoot/GoldLabel") as Label
+	if not label:
+		return
+	label.text = "골드: %d" % gold
+
+
 func refresh_locale() -> void:
+	_update_auto_target_hud()
 	_update_auto_attack_hud()
+
+
+func _update_auto_target_hud() -> void:
+	var label := get_node_or_null("%AutoTargetLabel") as Label
+	if not label:
+		return
+	if auto_target_enabled:
+		label.text = UiLocale.t(&"hud.auto_target_on")
+		label.add_theme_color_override("font_color", Color(0.1, 0.45, 0.15))
+	else:
+		label.text = UiLocale.t(&"hud.auto_target_off")
+		label.add_theme_color_override("font_color", Color(0.55, 0.12, 0.12))
 
 
 func _update_auto_attack_hud() -> void:
@@ -214,7 +366,7 @@ func _update_auto_attack_hud() -> void:
 		label.add_theme_color_override("font_color", Color(0.55, 0.12, 0.12))
 
 
-func _is_auto_attack_input_blocked() -> bool:
+func _is_combat_input_blocked() -> bool:
 	var game := get_node_or_null("/root/Game")
 	if not game:
 		return false
@@ -224,12 +376,16 @@ func _is_auto_attack_input_blocked() -> bool:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if _is_auto_attack_input_blocked():
+	if _is_combat_input_blocked():
 		return
-	if not event.is_action_pressed("toggle_auto_attack") or event.echo:
+	if event is InputEventKey and event.echo:
 		return
-	toggle_auto_attack()
-	get_viewport().set_input_as_handled()
+	if event.is_action_pressed("toggle_auto_target"):
+		toggle_auto_target()
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("toggle_auto_attack"):
+		toggle_auto_attack()
+		get_viewport().set_input_as_handled()
 
 
 # 대시 쿨다운 중에만 발밑 게이지를 표시합니다.
@@ -284,20 +440,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		%HappyBoo.play_idle_animation()
 	
-	# Taking damage
-	if not _health_depleted_emitted and %HurtBox.monitoring:
-		const DAMAGE_RATE = 6.0
-		var overlapping_count := 0
-		for body in %HurtBox.get_overlapping_bodies():
-			if not body is CharacterBody2D or not body.is_in_group("mobs"):
-				continue
-			overlapping_count += 1
-		if overlapping_count > 0:
-			var damage_this_frame: float = DAMAGE_RATE * overlapping_count * delta
-			health -= damage_this_frame
-			%HealthBar.value = health
-			_damage_float_accumulator += damage_this_frame
-			_try_emit_health_depleted()
+	_apply_contact_damage(delta)
 
 	_damage_float_timer -= delta
 	if _damage_float_accumulator > 0.0 and _damage_float_timer <= 0.0:

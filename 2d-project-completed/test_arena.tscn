@@ -7,6 +7,7 @@
 [ext_resource type="PackedScene" path="res://world/map_arena/map_arena.tscn" id="5_map_arena"]
 [ext_resource type="Script" path="res://ui/ui_viewport_layout.gd" id="6_ui_viewport_layout"]
 [ext_resource type="PackedScene" uid="uid://pausemenuov01" path="res://ui/pause_menu_overlay.tscn" id="7_pause_menu"]
+[ext_resource type="Script" path="res://game/speed_cheat.gd" id="8_speed_cheat"]
 
 [node name="Game" type="Node2D" unique_id=1822041146]
 y_sort_enabled = true
@@ -15,6 +16,9 @@ script = ExtResource("1_test_arena")
 [node name="ObjectPools" type="Node" parent="." unique_id=2091482327]
 unique_name_in_owner = true
 script = ExtResource("2_scene_pool")
+
+[node name="SpeedCheat" type="Node" parent="."]
+script = ExtResource("8_speed_cheat")
 
 [node name="PlayerSpawnPoint" type="Marker2D" parent="." unique_id=1701849454]
 unique_name_in_owner = true
@@ -65,7 +69,7 @@ offset_top = 16.0
 offset_right = 760.0
 offset_bottom = 56.0
 theme_override_font_sizes/font_size = 17
-text = "Test Arena (F6) — ESC: pause · Mob / Weapon panels below."
+text = "Test Arena (F6) — ESC: pause · Shift+0~5: game speed · Mob / Weapon panels below."
 
 [node name="StatusLabel" type="Label" parent="TestUI/TestUILayout" unique_id=1555637677]
 unique_name_in_owner = true
@@ -133,7 +137,7 @@ text = "무기"
 offset_left = 16.0
 offset_top = 264.0
 offset_right = 560.0
-offset_bottom = 388.0
+offset_bottom = 720.0
 
 [node name="WeaponVBox" type="VBoxContainer" parent="TestUI/TestUILayout/WeaponPanel" unique_id=1539226539]
 layout_mode = 2
@@ -174,6 +178,66 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(120, 36)
 layout_mode = 2
 text = "Equip"
+
+[node name="WeaponDescLabel" type="RichTextLabel" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox" unique_id=2847193056]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+theme_override_colors/default_color = Color(0.88, 0.88, 0.92, 1)
+theme_override_font_sizes/normal_font_size = 14
+bbcode_enabled = true
+fit_content = true
+scroll_active = true
+autowrap_mode = 3
+
+[node name="ProjectileTuningLabel" type="Label" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "발사체 튜닝"
+
+[node name="ProjectileTuningStatusLabel" type="Label" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.75, 0.95, 1)
+theme_override_font_sizes/font_size = 13
+text = "무기를 선택하세요."
+
+[node name="ProjectileMovementRow" type="HBoxContainer" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ProjectileMovementLabel" type="Label" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox/ProjectileMovementRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(120, 0)
+theme_override_font_sizes/font_size = 13
+text = "움직임"
+
+[node name="ProjectileMovementOption" type="OptionButton" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox/ProjectileMovementRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ProjectileTuningFields" type="VBoxContainer" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="ProjectileTuningButtons" type="HBoxContainer" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SaveProjectileTuningButton" type="Button" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox/ProjectileTuningButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 32)
+layout_mode = 2
+text = "저장"
+
+[node name="ResetProjectileTuningButton" type="Button" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox/ProjectileTuningButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 32)
+layout_mode = 2
+text = "초기화"
 
 [connection signal="pressed" from="PauseMenu/MenuOverlay/CenterContainer/PauseMainContent/Buttons/ContinueButton" to="." method="_on_pause_continue_pressed"]
 [connection signal="pressed" from="PauseMenu/MenuOverlay/CenterContainer/PauseMainContent/Buttons/SettingsButton" to="PauseMenu" method="_on_settings_button_pressed"]

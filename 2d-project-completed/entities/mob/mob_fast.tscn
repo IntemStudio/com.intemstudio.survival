@@ -12,7 +12,7 @@ bg_color = Color(0.35, 0.75, 1, 1)
 
 [node name="MobFast" type="CharacterBody2D"]
 collision_layer = 2
-collision_mask = 3
+collision_mask = 2
 script = ExtResource("1_mob")
 mob_kind = &"fast"
 speed_min = 280.0

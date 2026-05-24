@@ -128,6 +128,7 @@ func _compute_phases_cache_key() -> int:
 			cache_key,
 			phase.minute,
 			phase.hp_multiplier,
+			phase.loot_multiplier,
 			phase.spawn_density,
 			phase.fast_spawn_ratio,
 			phase.ranged_spawn_ratio,
@@ -144,6 +145,7 @@ func _lerp_phases(lower: BalancePhase, upper: BalancePhase, weight: float) -> Ba
 	var result := lower.duplicate_phase()
 	result.minute = lerpf(lower.minute, upper.minute, weight)
 	result.hp_multiplier = lerpf(lower.hp_multiplier, upper.hp_multiplier, weight)
+	result.loot_multiplier = lerpf(lower.loot_multiplier, upper.loot_multiplier, weight)
 	result.spawn_density = lerpf(lower.spawn_density, upper.spawn_density, weight)
 	result.threat = lerpf(lower.threat, upper.threat, weight)
 	result.fast_spawn_ratio = lerpf(lower.fast_spawn_ratio, upper.fast_spawn_ratio, weight)

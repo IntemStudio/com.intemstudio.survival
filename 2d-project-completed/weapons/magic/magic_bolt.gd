@@ -4,6 +4,7 @@ var _weapon: WeaponData
 var _damage := 0
 var _travelled_distance := 0.0
 var _homing_strength := 0.0
+var _hit_mob_ids: Dictionary = {}
 
 
 func pool_reset() -> void:
@@ -11,16 +12,24 @@ func pool_reset() -> void:
 	_damage = 0
 	_travelled_distance = 0.0
 	_homing_strength = 0.0
+	_hit_mob_ids.clear()
 
 
 func pool_on_acquire() -> void:
-	pass
+	PhysicsLayers.apply_player_projectile(self)
 
 
 func setup(weapon_data: WeaponData, spawn_transform: Transform2D) -> void:
+	if not WeaponData.is_valid_projectile_pierce_count(weapon_data.projectile_pierce_count):
+		push_error(
+			"MagicBolt: projectile_pierce_count가 0입니다 (무기=%s)." % weapon_data.get_unique_key()
+		)
+		PoolUtil.release_node(self)
+		return
 	_weapon = weapon_data
 	_damage = weapon_data.roll_damage()
 	_homing_strength = weapon_data.homing_strength
+	_hit_mob_ids.clear()
 	global_transform = spawn_transform
 
 	if $Sprite:
@@ -47,7 +56,9 @@ func _apply_homing(delta: float) -> void:
 	var target := _find_nearest_mob()
 	if not target:
 		return
-	var desired_angle := global_position.angle_to_point(target.global_position)
+	var desired_angle := global_position.angle_to_point(
+		GroundShadowFootprint.get_combat_target_center(target)
+	)
 	rotation = lerp_angle(rotation, desired_angle, _homing_strength * delta)
 
 
@@ -58,7 +69,9 @@ func _find_nearest_mob() -> Node2D:
 		if not is_instance_valid(mob) or mob is not Node2D:
 			continue
 		var mob_node := mob as Node2D
-		var distance_sq := global_position.distance_squared_to(mob_node.global_position)
+		var distance_sq := global_position.distance_squared_to(
+			GroundShadowFootprint.get_combat_target_center(mob_node)
+		)
 		if distance_sq < nearest_distance_sq:
 			nearest_distance_sq = distance_sq
 			nearest = mob_node
@@ -68,8 +81,26 @@ func _find_nearest_mob() -> Node2D:
 func _on_body_entered(body: Node) -> void:
 	if not body.is_in_group("mobs"):
 		return
+
+	var mob_id: int = body.get_instance_id()
+	if _hit_mob_ids.has(mob_id):
+		return
+	_hit_mob_ids[mob_id] = true
+
 	_apply_hit(body)
-	call_deferred(&"_return_to_pool")
+	if _weapon and _weapon.magic_attack_style == "Explosion":
+		call_deferred(&"_return_to_pool")
+		return
+	if _should_end_after_hit():
+		call_deferred(&"_return_to_pool")
+
+
+func _should_end_after_hit() -> bool:
+	if not _weapon:
+		return true
+	if _weapon.has_unlimited_projectile_pierce():
+		return false
+	return _hit_mob_ids.size() >= _weapon.get_projectile_pierce_count_safe()
 
 
 func _return_to_pool() -> void:
@@ -100,7 +131,7 @@ func _spawn_explosion(center: Vector2) -> void:
 		if not is_instance_valid(mob) or mob is not Node2D:
 			continue
 		var mob_node := mob as Node2D
-		if mob_node.global_position.distance_to(center) > radius:
+		if GroundShadowFootprint.get_combat_target_center(mob_node).distance_to(center) > radius:
 			continue
 		var damage := _weapon.roll_damage()
 		if mob.has_method("apply_weapon_damage"):

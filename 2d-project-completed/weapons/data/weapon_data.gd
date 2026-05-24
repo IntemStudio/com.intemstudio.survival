@@ -16,6 +16,28 @@ const PROJECTILE_RANGE_BY_TYPE := {
 	"Very Far": 1400.0,
 }
 
+const PROJECTILE_MOVEMENT_STRAIGHT := "Straight"
+const PROJECTILE_MOVEMENT_STRAIGHT_PIERCE := "StraightPierce"
+const PROJECTILE_MOVEMENT_RETURN := "Return"
+const PROJECTILE_MOVEMENT_HOMING := "Homing"
+const PROJECTILE_MOVEMENT_ARC := "Arc"
+const PROJECTILE_MOVEMENT_ORBIT := "Orbit"
+
+const PROJECTILE_MOVEMENT_LABELS_KO := {
+	"Straight": "직선",
+	"StraightPierce": "직선 관통",
+	"Return": "왕복",
+	"Homing": "유도",
+	"Arc": "포물선",
+	"Orbit": "궤도",
+}
+
+const PROJECTILE_MOVEMENT_OPTIONS_BY_TYPE := {
+	"Melee": ["StraightPierce", "Return"],
+	"Ranged": ["Straight", "Return", "Arc"],
+	"Magic": ["Straight", "Homing", "Orbit"],
+}
+
 @export var weapon_id := ""
 @export var display_name := ""
 @export var display_name_ko := ""
@@ -42,10 +64,16 @@ const PROJECTILE_RANGE_BY_TYPE := {
 @export var burst_count := 1
 @export var burst_interval := 0.08
 @export var hit_count := 1
+## 서로 다른 몹 관통 수. 1=기본, -1=무제한, 0=설정 불가
+@export var projectile_pierce_count := 1
 @export var magic_attack_style := "Projectile"
 @export var damage_element := ""
 @export var projectile_speed := 900.0
 @export var melee_projectile_speed := 1000.0
+## 근접 관통탄 1회 공격당 동시 발사 수 (1이면 단발)
+@export var melee_spread_count := 1
+## 부채꼴 전체 각도(도). 조준 방향을 중심으로 좌우 분배
+@export var melee_spread_angle_deg := 0.0
 @export var homing_strength := 0.0
 @export var applies_nettles := false
 @export var nettles_duration := 8.0
@@ -54,6 +82,12 @@ const PROJECTILE_RANGE_BY_TYPE := {
 @export var uses_arc_throw := false
 ## Projectile = 탄·비행체, AreaZone = 짧은 고정 히트존(연금 착지 등)
 @export var attack_delivery := "Projectile"
+## 발사체 비행 패턴 — Straight / StraightPierce / Return / Homing / Arc / Orbit
+@export var projectile_movement := "Straight"
+## 궤도 마법(왕의 성경 등) 회전 속도(라디안/초)
+@export var orbit_speed := 2.8
+## 궤도 반경 = get_melee_range() + orbit_radius_extra
+@export var orbit_radius_extra := 30.0
 
 
 func get_unique_key() -> String:
@@ -97,6 +131,9 @@ func _build_select_tooltip_bbcode_ko() -> String:
 		lines.append("연사: %d발" % burst_count)
 	if hit_count > 1:
 		lines.append("타격 횟수: %d회" % hit_count)
+	var pierce_label := get_projectile_pierce_label_ko()
+	if not pierce_label.is_empty():
+		lines.append(pierce_label)
 	lines.append("사거리: %s (%d)" % [_range_type_ko(), int(_get_attack_range())])
 	if is_area_zone_attack() and aoe_radius > 0.0:
 		lines.append("영역 반경: %d" % int(aoe_radius))
@@ -106,10 +143,12 @@ func _build_select_tooltip_bbcode_ko() -> String:
 		lines.append("독 피해: %d-%d (%.1f초)" % [poison_damage_min, poison_damage_max, poison_duration])
 	if applies_nettles:
 		lines.append("쐐기: %.1f초" % nettles_duration)
-	if returns_to_owner:
-		lines.append("투척 후 복귀")
+	if not get_projectile_movement_label_ko().is_empty():
+		lines.append("움직임: %s" % get_projectile_movement_label_ko())
 	if is_melee():
 		lines.append("공격 방식: 관통 탄")
+	if has_melee_spread():
+		lines.append("탄막: %d발 (부채꼴 %.0f°)" % [get_melee_spread_count(), melee_spread_angle_deg])
 	if is_area_zone_attack():
 		lines.append("공격 방식: 영역")
 	if is_orbit_magic():
@@ -140,6 +179,9 @@ func _build_select_tooltip_bbcode_en() -> String:
 		lines.append("Burst: %d shots" % burst_count)
 	if hit_count > 1:
 		lines.append("Hits: %d" % hit_count)
+	var pierce_label_en := get_projectile_pierce_label_en()
+	if not pierce_label_en.is_empty():
+		lines.append(pierce_label_en)
 	lines.append("Range: %s (%d)" % [_range_type_en(), int(_get_attack_range())])
 	if is_area_zone_attack() and aoe_radius > 0.0:
 		lines.append("Area radius: %d" % int(aoe_radius))
@@ -149,10 +191,12 @@ func _build_select_tooltip_bbcode_en() -> String:
 		lines.append("Poison: %d-%d (%.1fs)" % [poison_damage_min, poison_damage_max, poison_duration])
 	if applies_nettles:
 		lines.append("Nettles: %.1fs" % nettles_duration)
-	if returns_to_owner:
-		lines.append("Returns to owner")
+	if not get_projectile_movement_label_ko().is_empty():
+		lines.append("Movement: %s" % projectile_movement)
 	if is_melee():
 		lines.append("Delivery: piercing projectile")
+	if has_melee_spread():
+		lines.append("Volley: %d projectiles (%.0f° fan)" % [get_melee_spread_count(), melee_spread_angle_deg])
 	if is_area_zone_attack():
 		lines.append("Delivery: area zone")
 	if is_orbit_magic():
@@ -307,6 +351,104 @@ func get_melee_projectile_speed() -> float:
 	if melee_projectile_speed > 0.0:
 		return melee_projectile_speed
 	return 1000.0
+
+
+func get_orbit_radius() -> float:
+	return get_melee_range() + orbit_radius_extra
+
+
+func has_melee_spread() -> bool:
+	return is_melee() and melee_spread_count > 1
+
+
+func get_melee_spread_count() -> int:
+	return maxi(melee_spread_count, 1)
+
+
+static func is_valid_projectile_pierce_count(value: int) -> bool:
+	return value != 0
+
+
+func has_unlimited_projectile_pierce() -> bool:
+	return projectile_pierce_count < 0
+
+
+func get_projectile_pierce_count_safe() -> int:
+	if projectile_pierce_count == 0:
+		push_error(
+			"WeaponData '%s': projectile_pierce_count는 0일 수 없습니다 (1 이상 또는 -1)." % get_unique_key()
+		)
+		return 1
+	return projectile_pierce_count
+
+
+func get_projectile_pierce_label_ko() -> String:
+	if projectile_pierce_count == -1:
+		return "관통: 무제한"
+	if projectile_pierce_count == 1:
+		return ""
+	return "관통: %d체" % projectile_pierce_count
+
+
+func get_projectile_pierce_label_en() -> String:
+	if projectile_pierce_count == -1:
+		return "Pierce: unlimited"
+	if projectile_pierce_count == 1:
+		return ""
+	return "Pierce: %d" % projectile_pierce_count
+
+
+func get_projectile_movement_options() -> Array[String]:
+	var options: Array = PROJECTILE_MOVEMENT_OPTIONS_BY_TYPE.get(weapon_type, ["Straight"])
+	var result: Array[String] = []
+	for entry in options:
+		result.append(str(entry))
+	return result
+
+
+func get_projectile_movement_label_ko() -> String:
+	return PROJECTILE_MOVEMENT_LABELS_KO.get(projectile_movement, projectile_movement)
+
+
+func should_projectile_return() -> bool:
+	return projectile_movement == PROJECTILE_MOVEMENT_RETURN or returns_to_owner
+
+
+# projectile_movement에 맞춰 returns_to_owner·uses_arc_throw 등 레거시 플래그를 맞춥니다.
+func apply_projectile_movement_side_effects() -> void:
+	match projectile_movement:
+		PROJECTILE_MOVEMENT_RETURN:
+			returns_to_owner = true
+		PROJECTILE_MOVEMENT_ARC:
+			returns_to_owner = false
+			uses_arc_throw = true
+		PROJECTILE_MOVEMENT_ORBIT:
+			returns_to_owner = false
+			magic_attack_style = "Orbit"
+		PROJECTILE_MOVEMENT_HOMING:
+			returns_to_owner = false
+			magic_attack_style = "Projectile"
+			if homing_strength <= 0.0:
+				homing_strength = 6.0
+		_:
+			returns_to_owner = false
+			if is_magic() and projectile_movement == PROJECTILE_MOVEMENT_STRAIGHT:
+				magic_attack_style = "Projectile"
+
+
+func normalize_projectile_movement_from_legacy() -> void:
+	if projectile_movement != PROJECTILE_MOVEMENT_STRAIGHT:
+		return
+	if returns_to_owner:
+		projectile_movement = PROJECTILE_MOVEMENT_RETURN
+	elif is_melee():
+		projectile_movement = PROJECTILE_MOVEMENT_STRAIGHT_PIERCE
+	elif uses_arc_throw:
+		projectile_movement = PROJECTILE_MOVEMENT_ARC
+	elif is_orbit_magic():
+		projectile_movement = PROJECTILE_MOVEMENT_ORBIT
+	elif homing_strength > 0.0:
+		projectile_movement = PROJECTILE_MOVEMENT_HOMING
 
 
 func get_projectile_range() -> float:

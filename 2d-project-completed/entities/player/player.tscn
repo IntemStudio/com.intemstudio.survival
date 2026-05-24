@@ -71,6 +71,13 @@ z_index = -10
 modulate = Color(0.35, 0.72, 1, 0.28)
 texture = ExtResource("3_ring")
 
+[node name="PrimaryWeaponRangeRing" type="Sprite2D" parent="."]
+unique_name_in_owner = true
+visible = false
+z_index = -9
+modulate = Color(0.95, 0.82, 0.35, 0.28)
+texture = ExtResource("3_ring")
+
 [node name="HealthBar" type="ProgressBar" parent="." unique_id=384523252]
 unique_name_in_owner = true
 z_index = 100

@@ -23,7 +23,7 @@ func pool_reset() -> void:
 
 
 func pool_on_acquire() -> void:
-	pass
+	PhysicsLayers.apply_player_projectile(self)
 
 
 func setup(thrower: Node2D, direction: Vector2, dmg: int, range_dist: float, move_speed: float) -> void:

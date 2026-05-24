@@ -11,7 +11,7 @@ alwaysApply: false
 1. Add `mob_<name>.tscn` that uses script `res://entities/mob/mob.gd` and `class_name Mob`.
 2. Add a `PackedScene` constant and branch in `game/balance/mob_spawn_selector.gd` (`MobSpawnSelector.pick_scene`).
 3. Update `game/balance/default_balance_table.tres` (or the active `BalanceTable`) so spawn ratios / flags can select the new mob.
-4. Keep `collision_layer = 2` and `collision_mask = 3` unless you also update all weapon hit masks.
+4. Keep mob body `PhysicsLayers.apply_mob_body` (`layer=2`, `mask=2`) unless you also update `game/physics_layers.gd` and all weapon/projectile masks.
 5. Append the scene to `ScenePool.MOB_SCENES` in `game/pool/scene_pool.gd` for prewarm.
 
 If you skip step 2 or 3, the mob will never spawn in play.
@@ -30,14 +30,15 @@ If you skip step 2 or 3, the mob will never spawn in play.
 - Every play mob scene must include `%TargetIndicator` (`Node2D` + `target_indicator_ring.gd`, default hidden) for `gun.gd` `set_targeted`. Do not revert to `circle.png` `Sprite2D` for targeting FX.
 - Mob `%HealthBar` must start hidden per spawn (`initialize_spawn_health` / `pool_reset`); reveal on damage via `_reveal_health_bar`; hide on `_request_die` (pool reuse — do not `queue_free` the bar).
 - Mob `CollisionShape2D` size is driven at runtime by `GroundShadowFootprint` from `%Slime` child `GroundShadow` (`pool_on_acquire` → `_sync_body_collision_to_shadow`). Do not rely on a static circle-only shape for contact standoff.
-- When changing `attack_distance`, `CONTACT_STANDOFF_PADDING`, or `GroundShadow` scale, verify contact DPS vs stop distance — player damage uses `get_overlapping_bodies()`; stop uses `_get_contact_standoff_distance()` (see `AGENTS.md` contact damage).
+- When changing `attack_distance`, `contact_attack_interval`, `contact_attack_damage`, `CONTACT_STANDOFF_PADDING`, or `GroundShadow` scale, verify range attacks vs stop distance — player damage uses center distance ≤ `get_contact_attack_distance()` and `tick_contact_attack()`; stop uses `_get_contact_standoff_distance()` (see `AGENTS.md` contact damage). Ranged mobs (`ranged_attack_enabled`) must not deal contact damage.
 
 ## Must (ranged — `mob_ranged.tscn`)
 
 - Set `ranged_attack_enabled = true` on the scene only; do not add a separate mob AI script.
 - Optional child nodes: `AttackRangeRing` (visual), telegraph uses pooled `mob_attack_mark` (not a permanent scene child).
 - Ranged attack flow lives in `mob.gd`: windup mark → `ranged_telegraph_delay` → `mob_projectile`; cancel mark on `pool_reset` / `_request_die`.
-- Player hit uses `player.apply_mob_projectile_damage`, not `Mob.apply_weapon_damage`.
+- Player hit uses `player.apply_mob_projectile_damage`, not `Mob.apply_weapon_damage`. Do not re-enable contact damage for ranged mobs (`is_contact_damage_active` excludes `ranged_attack_enabled`).
+- `mob_projectile`: `PhysicsLayers.apply_mob_projectile` (`mask=9` = environment + player). Do not set mask to environment only — player is on layer 8.
 - Spawn requires `ranged_spawn_ratio` in active `BalanceTable` (default table: from minute 8, VS형 A).
 
 ## When editing balance-driven spawn

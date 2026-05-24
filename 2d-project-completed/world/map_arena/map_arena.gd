@@ -5,7 +5,7 @@ class_name MapArena
 
 const SPAWN_TEST_RADIUS := 52.0
 const SPAWN_CLEAR_ATTEMPTS := 12
-const ENVIRONMENT_COLLISION_MASK := 1
+const ENVIRONMENT_COLLISION_MASK := PhysicsLayers.MASK_ENVIRONMENT
 ## Poisson 간격 기본값 — 슬라이더·인스펙터는 tree_spacing_dense/sparse export 사용.
 const TREE_SPACING_DENSE_DEFAULT := 50.0
 const TREE_SPACING_SPARSE_DEFAULT := 960.0
@@ -325,6 +325,7 @@ func _add_wall_segment(parent: Node, segment_name: String, center: Vector2, size
 	var body := StaticBody2D.new()
 	body.name = segment_name
 	body.position = center
+	PhysicsLayers.apply_environment_body(body)
 	parent.add_child(body)
 
 	var collision := CollisionShape2D.new()

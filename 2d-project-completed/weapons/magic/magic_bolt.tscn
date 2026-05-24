@@ -9,7 +9,7 @@ radius = 12.0
 [node name="MagicBolt" type="Area2D"]
 top_level = true
 collision_layer = 0
-collision_mask = 2
+collision_mask = 3
 monitorable = false
 script = ExtResource("1_bolt")
 

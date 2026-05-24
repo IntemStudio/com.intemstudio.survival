@@ -4,6 +4,8 @@ class_name Mob
 signal died
 
 @export var attack_distance := 150.0
+@export var contact_attack_interval := 1.0
+@export var contact_attack_damage := 1
 @export var movement_enabled := true
 @export var combat_enabled := true
 @export var base_max_health := 200
@@ -17,7 +19,8 @@ signal died
 @export var ranged_damage_max := 10
 @export var ranged_projectile_speed := 520.0
 @export var ranged_max_distance := 900.0
-@export var ranged_spawn_offset := Vector2(0, -40)
+## (레거시) 발사체 스폰은 get_footprint_global_center() — 씬 호환용으로만 유지
+@export var ranged_spawn_offset := Vector2.ZERO
 @export var ranged_telegraph_delay := 0.5
 @export var ranged_attack_mark_offset := Vector2(0, -72)
 
@@ -32,18 +35,21 @@ var _target_pulse := 0.0
 var _is_dying := false
 var _stage_clear_death := false
 var _ranged_cooldown_remaining := 0.0
+var _contact_attack_cooldown_remaining := 0.0
 var _ranged_windup_active := false
 var _pending_ranged_direction := Vector2.RIGHT
 var _active_attack_mark: Node2D = null
 
 const TARGET_INDICATOR_BASE_SCALE := Vector2(2.4, 2.4)
 const EXP_ORB_SCENE := preload("res://effects/exp_orb/exp_orb.tscn")
+const GOLD_COIN_SCENE := preload("res://effects/gold_coin/gold_coin.tscn")
+const GOLD_DROP_OFFSET := Vector2(12.0, -8.0)
 const MOB_PROJECTILE_SCENE := preload("res://entities/mob/mob_projectile.tscn")
 const MOB_ATTACK_MARK_SCENE := preload("res://entities/mob/mob_attack_mark.tscn")
-const MOB_COLLISION_LAYER := 2
-const MOB_COLLISION_MASK := 3
 const POOL_STORAGE_POSITION := Vector2(-50000.0, -50000.0)
 const CONTACT_STANDOFF_PADDING := 6.0
+const ATTACK_RANGE_RING_TEXTURE := preload("res://art/shared/fx/circle.png")
+const MELEE_ATTACK_RANGE_RING_COLOR := Color(0.95, 0.4, 0.32, 0.28)
 
 @onready var player: Node2D = get_node("/root/Game/Player")
 @onready var _target_indicator: Node2D = %TargetIndicator
@@ -69,6 +75,7 @@ func pool_reset() -> void:
 	_is_targeted = false
 	_target_pulse = 0.0
 	_ranged_cooldown_remaining = 0.0
+	_contact_attack_cooldown_remaining = 0.0
 	_cancel_ranged_telegraph()
 	velocity = Vector2.ZERO
 	collision_layer = 0
@@ -85,8 +92,7 @@ func pool_reset() -> void:
 
 
 func pool_on_acquire() -> void:
-	collision_layer = MOB_COLLISION_LAYER
-	collision_mask = MOB_COLLISION_MASK
+	PhysicsLayers.apply_mob_body(self)
 	speed = randf_range(speed_min, speed_max)
 	add_to_group("mobs")
 	%Slime.modulate = slime_tint
@@ -96,6 +102,11 @@ func pool_on_acquire() -> void:
 		%Slime.play_idle()
 	if ranged_attack_enabled and combat_enabled:
 		_ranged_cooldown_remaining = randf_range(0.0, ranged_cooldown * 0.5)
+	if combat_enabled and (ranged_attack_enabled or movement_enabled):
+		if not ranged_attack_enabled:
+			_contact_attack_cooldown_remaining = randf_range(
+				0.0, maxf(contact_attack_interval, 0.01) * 0.5
+			)
 		_sync_attack_range_ring()
 	else:
 		_set_attack_range_ring_visible(false)
@@ -139,8 +150,9 @@ func refresh_health_bar_visibility() -> void:
 		%HealthBar.visible = false
 
 
-# 원거리 몹 전용 AttackRangeRing — attack_distance(중심 간 거리) 반경으로 맞춥니다.
+# AttackRangeRing — 원거리는 attack_distance, 근거리는 접촉 정지 거리(standoff) 반경.
 func _sync_attack_range_ring() -> void:
+	_ensure_attack_range_ring()
 	if not _attack_range_ring:
 		return
 	var tex := _attack_range_ring.texture
@@ -150,23 +162,49 @@ func _sync_attack_range_ring() -> void:
 	var tex_radius := maxf(tex.get_width(), tex.get_height()) * 0.5
 	if tex_radius <= 0.0:
 		return
-	var ring_scale := attack_distance / tex_radius
+	var display_radius := attack_distance
+	if not ranged_attack_enabled:
+		display_radius = _get_contact_standoff_distance()
+	var ring_scale := display_radius / tex_radius
 	_attack_range_ring.scale = Vector2(ring_scale, ring_scale)
 	_set_attack_range_ring_visible(true)
 
 
-# 설정·스폰 상태에 맞춰 원거리 공격 범위 링 표시를 갱신합니다.
+# 근거리 몹은 씬에 링이 없을 수 있어 런타임에 생성합니다.
+func _ensure_attack_range_ring() -> void:
+	if _attack_range_ring:
+		return
+	_attack_range_ring = Sprite2D.new()
+	_attack_range_ring.name = &"AttackRangeRing"
+	_attack_range_ring.z_index = -10
+	_attack_range_ring.texture = ATTACK_RANGE_RING_TEXTURE
+	if ranged_attack_enabled:
+		var ranged_color := slime_tint
+		ranged_color.a = 0.28
+		_attack_range_ring.modulate = ranged_color
+	else:
+		_attack_range_ring.modulate = MELEE_ATTACK_RANGE_RING_COLOR
+	add_child(_attack_range_ring)
+
+
+# 설정·스폰 상태에 맞춰 공격 범위 링 표시를 갱신합니다.
 func refresh_attack_range_ring() -> void:
-	if ranged_attack_enabled and combat_enabled:
+	if combat_enabled and (ranged_attack_enabled or movement_enabled):
 		_sync_attack_range_ring()
 	else:
 		_set_attack_range_ring_visible(false)
 
 
+func _is_attack_range_ring_setting_enabled() -> bool:
+	if ranged_attack_enabled:
+		return GameplaySettings.is_ranged_attack_range_visible()
+	return GameplaySettings.is_melee_attack_range_visible()
+
+
 func _set_attack_range_ring_visible(visible_state: bool) -> void:
 	if _attack_range_ring:
 		_attack_range_ring.visible = (
-			visible_state and GameplaySettings.is_ranged_attack_range_visible()
+			visible_state and _is_attack_range_ring_setting_enabled()
 		)
 
 
@@ -193,7 +231,10 @@ func _physics_process(delta: float) -> void:
 		_ranged_cooldown_remaining = maxf(_ranged_cooldown_remaining - delta, 0.0)
 
 	if movement_enabled:
-		var offset: Vector2 = player.global_position - global_position
+		var offset: Vector2 = (
+			GroundShadowFootprint.get_combat_target_center(player as Node2D)
+			- get_footprint_global_center()
+		)
 		var distance: float = offset.length()
 		var stop_distance := _get_contact_standoff_distance()
 
@@ -237,6 +278,40 @@ func _apply_mob_separation() -> void:
 		velocity = velocity.normalized() * speed
 
 
+# 접촉 공격 판정·범위 링에 쓰는 중심 간 거리(플레이어 global_position 기준).
+func get_contact_attack_distance() -> float:
+	if not is_node_ready():
+		return attack_distance
+	return _get_contact_standoff_distance()
+
+
+# 근접 접촉·범위 DPS — 원거리 몹은 발사체만 피해.
+func is_contact_damage_active() -> bool:
+	return not _is_dying and is_in_group("mobs") and not ranged_attack_enabled
+
+
+func is_player_in_contact_attack_range(player_global_position: Vector2) -> bool:
+	if not is_contact_damage_active():
+		return false
+	var attack_dist := get_contact_attack_distance()
+	return (
+		global_position.distance_squared_to(player_global_position)
+		<= attack_dist * attack_dist
+	)
+
+
+# 공격 범위 안에서 contact_attack_interval마다 contact_attack_damage를 반환합니다.
+func tick_contact_attack(delta: float) -> int:
+	if not is_contact_damage_active() or contact_attack_damage <= 0:
+		return 0
+	var interval := maxf(contact_attack_interval, 0.01)
+	_contact_attack_cooldown_remaining -= delta
+	if _contact_attack_cooldown_remaining > 0.0:
+		return 0
+	_contact_attack_cooldown_remaining = interval
+	return contact_attack_damage
+
+
 # 발밑 그림자 충돌 박스·플레이어 HurtBox가 겹치지 않는 중심 간 최소 거리
 func _get_contact_standoff_distance() -> float:
 	var mob_half := GroundShadowFootprint.footprint_half_extents_from_visual(%Slime)
@@ -253,13 +328,20 @@ func _get_contact_standoff_distance() -> float:
 
 # Slime 자식 GroundShadow 글로벌 스케일에 맞춰 몹 이동 충돌체를 맞춥니다.
 func _sync_body_collision_to_shadow() -> void:
-	var footprint := GroundShadowFootprint.footprint_size_from_visual(%Slime)
-	GroundShadowFootprint.apply_rectangle_collision($CollisionShape2D, footprint)
+	GroundShadowFootprint.sync_collision_shape_to_shadow(self, $CollisionShape2D, %Slime)
+
+
+# 조준·발사체·접촉 거리에 쓰는 발밑 그림자 중심.
+func get_footprint_global_center() -> Vector2:
+	return GroundShadowFootprint.footprint_center_global(%Slime)
 
 
 # 몹 분리력이 플레이어 접촉 거리 안으로 밀어넣지 않도록 접근 속도를 제거합니다.
 func _clamp_velocity_away_from_player() -> void:
-	var to_player := player.global_position - global_position
+	var to_player := (
+		GroundShadowFootprint.get_combat_target_center(player as Node2D)
+		- get_footprint_global_center()
+	)
 	var distance := to_player.length()
 	var stop_distance := _get_contact_standoff_distance()
 	if distance >= stop_distance or distance < 0.01:
@@ -298,7 +380,13 @@ func _on_ranged_telegraph_timeout() -> void:
 func _complete_ranged_telegraph() -> void:
 	_release_attack_mark()
 	_ranged_windup_active = false
-	_fire_ranged_projectile(_pending_ranged_direction)
+	var from_center := get_footprint_global_center()
+	var to_center := GroundShadowFootprint.get_combat_target_center(player as Node2D)
+	var aim := to_center - from_center
+	if aim.length_squared() > 0.01:
+		_fire_ranged_projectile(aim.normalized())
+	elif _pending_ranged_direction.length_squared() > 0.01:
+		_fire_ranged_projectile(_pending_ranged_direction)
 
 
 func _cancel_ranged_telegraph() -> void:
@@ -327,11 +415,11 @@ func _release_attack_mark() -> void:
 	_active_attack_mark = null
 
 
-# 풀링 탄환을 발사합니다(예고 종료 후 호출).
-func _fire_ranged_projectile(offset: Vector2) -> void:
-	var direction := offset.normalized()
+# 풀링 탄환을 발사합니다(예고 종료 후 호출). 스폰·방향은 발밑 그림자 중심 기준.
+func _fire_ranged_projectile(direction: Vector2) -> void:
+	var aim_dir := direction.normalized()
 	var damage := randi_range(ranged_damage_min, ranged_damage_max)
-	var spawn_pos := global_position + ranged_spawn_offset
+	var spawn_pos := get_footprint_global_center()
 
 	var game := get_node_or_null("/root/Game")
 	var spawn_parent := get_parent()
@@ -347,7 +435,7 @@ func _fire_ranged_projectile(offset: Vector2) -> void:
 	if projectile.has_method(&"setup"):
 		projectile.setup(
 			player as CharacterBody2D,
-			direction,
+			aim_dir,
 			damage,
 			ranged_projectile_speed,
 			ranged_max_distance,
@@ -506,14 +594,27 @@ func _die() -> void:
 		game.register_kill()
 
 	var spawn_parent := get_parent()
-	var exp_orb: Node2D
 	var pool: Node = game.get_node_or_null("ObjectPools") if game else null
-	if pool and pool.has_method(&"acquire"):
-		exp_orb = pool.acquire(EXP_ORB_SCENE, spawn_parent) as Node2D
-	else:
-		exp_orb = EXP_ORB_SCENE.instantiate()
-		spawn_parent.add_child(exp_orb)
-	exp_orb.global_position = global_position
+	var rewards: Dictionary = _compute_kill_rewards(game)
+	if int(rewards.get(&"xp", 0)) > 0:
+		var exp_orb: Node2D
+		if pool and pool.has_method(&"acquire"):
+			exp_orb = pool.acquire(EXP_ORB_SCENE, spawn_parent) as Node2D
+		else:
+			exp_orb = EXP_ORB_SCENE.instantiate()
+			spawn_parent.add_child(exp_orb)
+		exp_orb.global_position = global_position
+		exp_orb.experience_value = int(rewards[&"xp"])
+
+	if int(rewards.get(&"gold", 0)) > 0:
+		var gold_coin: Node2D
+		if pool and pool.has_method(&"acquire"):
+			gold_coin = pool.acquire(GOLD_COIN_SCENE, spawn_parent) as Node2D
+		else:
+			gold_coin = GOLD_COIN_SCENE.instantiate()
+			spawn_parent.add_child(gold_coin)
+		gold_coin.global_position = global_position + GOLD_DROP_OFFSET
+		gold_coin.gold_value = int(rewards[&"gold"])
 
 	const MAGNET_DROP_CHANCE := 0.01
 	if randf() < MAGNET_DROP_CHANCE:
@@ -530,3 +631,10 @@ func _die() -> void:
 		health_pickup.global_position = global_position + Vector2(randf_range(-24.0, 24.0), randf_range(-24.0, 24.0))
 
 	PoolUtil.release_node(self)
+
+
+# 처치 보상 — Game 밸런스 시계가 있으면 현재 페이즈, 없으면 loot 1.0.
+func _compute_kill_rewards(game: Node) -> Dictionary:
+	if game and game.has_method(&"get_kill_rewards_for_mob"):
+		return game.get_kill_rewards_for_mob(mob_kind)
+	return KillRewards.compute(mob_kind, BalancePhase.new())

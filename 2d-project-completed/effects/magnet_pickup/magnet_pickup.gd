@@ -16,5 +16,8 @@ func collect(player: Node2D) -> void:
 	for orb in get_tree().get_nodes_in_group("exp_orbs"):
 		if is_instance_valid(orb) and orb.has_method("start_magnet"):
 			orb.start_magnet(player)
+	for coin in get_tree().get_nodes_in_group("gold_coins"):
+		if is_instance_valid(coin) and coin.has_method("start_magnet"):
+			coin.start_magnet(player)
 
 	queue_free()

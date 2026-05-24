@@ -17,7 +17,7 @@ func pool_reset() -> void:
 
 
 func pool_on_acquire() -> void:
-	pass
+	PhysicsLayers.apply_player_area_zone(self)
 
 
 # 착지·투척 등 원형 영역 피해(연금 물약 등)
@@ -170,10 +170,7 @@ func _collect_hit_bodies_by_distance(collision: CollisionShape2D) -> Array[Node]
 
 
 func _get_mob_hit_center(mob: Node2D) -> Vector2:
-	var mob_collision := mob.get_node_or_null("CollisionShape2D") as CollisionShape2D
-	if mob_collision:
-		return mob_collision.global_position
-	return mob.global_position
+	return GroundShadowFootprint.get_combat_target_center(mob)
 
 
 func _get_mob_hit_radius(mob: Node2D) -> float:

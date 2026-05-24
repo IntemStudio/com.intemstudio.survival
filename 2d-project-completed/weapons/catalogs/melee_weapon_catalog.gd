@@ -21,7 +21,7 @@ static func _build_cache() -> void:
 		{"id": "hand_axe", "en": "Hand Axe", "ko": "손도끼", "subtype": "Axe", "hand": 1, "min": 100, "max": 200, "aps": 2.0, "range": "Medium", "effect": "Primary attack deals slashing damage."},
 		{"id": "sickles", "en": "Sickles", "ko": "낫", "subtype": "Sickles", "hand": 2, "min": 30, "max": 65, "aps": 3.0, "range": "Medium", "effect": "Primary attacks deal slashing damage and can hit multiple times.", "hits": 3},
 		{"id": "club", "en": "Club", "ko": "곤봉", "subtype": "Mace", "hand": 1, "min": 105, "max": 215, "aps": 2.0, "range": "Short", "effect": "Primary attack deals striking damage."},
-		{"id": "crop_scythe", "en": "Crop Scythe", "ko": "작물 낫", "subtype": "Scythe", "hand": 2, "min": 65, "max": 150, "aps": 2.0, "range": "Medium", "effect": "Primary attack deals slashing damage."},
+		{"id": "crop_scythe", "en": "Crop Scythe", "ko": "작물 낫", "subtype": "Scythe", "hand": 2, "min": 65, "max": 150, "aps": 2.0, "range": "Medium", "effect": "Primary attack deals slashing damage.", "spread": 1, "spread_angle": 0.0, "movement": "Return"},
 		{"id": "spear", "en": "Spear", "ko": "창", "subtype": "Spear", "hand": 2, "min": 100, "max": 210, "aps": 2.0, "range": "Medium", "effect": "Primary attack deals thrusting damage."},
 		{"id": "broadsword", "en": "Broadsword", "ko": "브로드소드", "subtype": "One Handed Sword", "hand": 1, "min": 80, "max": 165, "aps": 2.5, "range": "Short", "effect": "Primary attack deals slashing damage."},
 		{"id": "shortsword", "en": "Shortsword", "ko": "숏소드", "subtype": "One Handed Sword", "hand": 1, "min": 80, "max": 165, "aps": 2.5, "range": "Short", "effect": "Primary attack deals slashing damage."},
@@ -34,7 +34,7 @@ static func _build_cache() -> void:
 		{"id": "crusader_mace", "en": "Crusader Mace", "ko": "크루세이더 철퇴", "subtype": "Mace", "hand": 1, "min": 105, "max": 245, "aps": 2.0, "range": "Short", "effect": "Primary attack deals striking damage."},
 		{"id": "side_sword", "en": "Side Sword", "ko": "사이드 소드", "subtype": "One Handed Sword", "hand": 1, "min": 75, "max": 170, "aps": 2.5, "range": "Medium", "effect": "Primary attack deals thrusting damage."},
 		{"id": "rapier", "en": "Rapier", "ko": "레이피어", "subtype": "One Handed Sword", "hand": 1, "min": 115, "max": 240, "aps": 2.0, "range": "Medium", "effect": "On combat start, grants En Garde."},
-		{"id": "bastard_sword", "en": "Bastard Sword", "ko": "바스타드 소드", "subtype": "Two Handed Sword", "hand": 2, "min": 95, "max": 200, "aps": 2.0, "range": "Far", "effect": "Primary attack deals slashing damage."},
+		{"id": "bastard_sword", "en": "Bastard Sword", "ko": "바스타드 소드", "subtype": "Two Handed Sword", "hand": 2, "min": 95, "max": 200, "aps": 2.0, "range": "Far", "effect": "Primary attack deals slashing damage.", "spread": 3, "spread_angle": 50.0, "movement": "Return"},
 		{"id": "cutlass", "en": "Cutlass", "ko": "커틀러스", "subtype": "One Handed Sword", "hand": 1, "min": 60, "max": 125, "aps": 2.5, "range": "Medium", "effect": "Primary attack deals slashing damage."},
 		{"id": "draco_spear", "en": "Draco Spear", "ko": "드라코 스피어", "subtype": "Spear", "hand": 2, "min": 80, "max": 180, "aps": 2.0, "range": "Medium", "effect": "Primary attack deals thrusting damage."},
 	]
@@ -61,6 +61,16 @@ static func _create_weapon(entry: Dictionary) -> WeaponData:
 	weapon.max_damage = entry["max"]
 	weapon.attacks_per_second = entry["aps"]
 	weapon.hit_count = entry.get("hits", 1)
+	weapon.melee_spread_count = entry.get("spread", 1)
+	weapon.melee_spread_angle_deg = entry.get("spread_angle", 0.0)
+	weapon.projectile_pierce_count = entry.get("pierce", -1)
+	if entry.has("movement"):
+		weapon.projectile_movement = entry["movement"]
+	elif entry.get("returns", false):
+		weapon.projectile_movement = "Return"
+	else:
+		weapon.projectile_movement = "StraightPierce"
+	weapon.apply_projectile_movement_side_effects()
 	return weapon
 
 

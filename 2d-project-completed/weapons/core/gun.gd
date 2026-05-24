@@ -30,7 +30,8 @@ func equip_weapon(new_weapon: WeaponData) -> void:
 	_apply_weapon_data()
 	if weapon.is_orbit_magic():
 		_spawn_orbit_companion()
-	call_deferred("_start_shooting")
+	call_deferred("_reset_fire_state")
+	call_deferred("refresh_auto_attack")
 
 
 func arrange_slot(slot_index: int, total_slots: int) -> void:
@@ -52,30 +53,30 @@ func _apply_weapon_data() -> void:
 	_match_two_handed_scale()
 
 
-func _start_shooting() -> void:
+func _reset_fire_state() -> void:
 	if not weapon or not is_inside_tree():
-		return
-	if weapon.is_orbit_magic():
-		return
-	if not _is_auto_attack_enabled():
 		return
 	_shoot_timer.stop()
-	if weapon.has_burst():
-		_begin_burst()
-	else:
-		shoot()
-		_shoot_timer.start()
+	_burst_shots_remaining = 0
 
 
-# 플레이어 자동 공격 토글 시 타이머를 멈추거나 재개합니다.
+func refresh_targeting_mode() -> void:
+	_update_target_display()
+
+
+# 플레이어 자동 공격 토글(G)에 맞춰 타이머를 켜거나 끕니다.
 func refresh_auto_attack() -> void:
-	if not weapon or not is_inside_tree():
-		return
-	if weapon.is_orbit_magic():
+	if not weapon or not is_inside_tree() or weapon.is_orbit_magic():
 		return
 	if _is_auto_attack_enabled():
-		_start_shooting()
-	else:
+		if _shoot_timer.time_left <= 0.0 and not _is_manual_fire_pressed():
+			if weapon.has_burst():
+				_begin_burst()
+			else:
+				shoot()
+				_shoot_timer.wait_time = 1.0 / weapon.attacks_per_second
+				_shoot_timer.start()
+	elif not _is_manual_fire_pressed():
 		_shoot_timer.stop()
 		_burst_shots_remaining = 0
 
@@ -84,6 +85,13 @@ func _is_auto_attack_enabled() -> bool:
 	var player := _get_player()
 	if player and player.has_method("is_auto_attack_enabled"):
 		return player.is_auto_attack_enabled()
+	return true
+
+
+func _is_auto_target_enabled() -> bool:
+	var player := _get_player()
+	if player and player.has_method("is_auto_target_enabled"):
+		return player.is_auto_target_enabled()
 	return true
 
 
@@ -109,11 +117,16 @@ func _match_two_handed_scale() -> void:
 
 
 func _get_attack_range() -> float:
+	return get_display_attack_range()
+
+
+# UI·사거리 링에 쓸 공격 사거리(투척·궤도 마법 포함).
+func get_display_attack_range() -> float:
 	if not weapon:
-		return INF
-	if weapon.is_melee():
-		return weapon.get_melee_range()
-	return weapon.get_projectile_range()
+		return 0.0
+	if weapon.is_orbit_magic():
+		return weapon.get_orbit_radius()
+	return weapon._get_attack_range()
 
 
 func _get_nearest_enemy(enemies: Array, from_position: Vector2, max_range: float = INF) -> Node2D:
@@ -124,7 +137,9 @@ func _get_nearest_enemy(enemies: Array, from_position: Vector2, max_range: float
 		if not is_instance_valid(body) or body is not Node2D:
 			continue
 		var enemy := body as Node2D
-		var distance_sq := from_position.distance_squared_to(enemy.global_position)
+		var distance_sq := from_position.distance_squared_to(
+			GroundShadowFootprint.get_combat_target_center(enemy)
+		)
 		if distance_sq > max_range_sq:
 			continue
 		if distance_sq < nearest_distance_sq:
@@ -151,6 +166,11 @@ func _set_targeted(enemy, active: bool) -> void:
 func _update_target_display() -> void:
 	if not is_instance_valid(_current_target):
 		_current_target = null
+	if not _is_auto_target_enabled():
+		if is_instance_valid(_current_target):
+			_set_targeted(_current_target, false)
+		_current_target = null
+		return
 
 	var new_target := _get_current_target()
 	if new_target == _current_target:
@@ -166,7 +186,50 @@ func _update_target_display() -> void:
 func _process(_delta: float) -> void:
 	_update_target_display()
 	if is_instance_valid(_current_target):
-		look_at(_current_target.global_position)
+		look_at(_get_target_aim_position(_current_target))
+	else:
+		look_at(get_global_mouse_position())
+	_handle_auto_attack()
+	_handle_manual_fire_input()
+
+
+# 자동 공격 ON이면 타이머로 연속 발사합니다(마우스 불필요).
+func _handle_auto_attack() -> void:
+	if not weapon or weapon.is_orbit_magic():
+		return
+	if not _is_auto_attack_enabled() or _is_manual_fire_pressed():
+		return
+	if _shoot_timer.time_left > 0.0:
+		return
+	if weapon.has_burst():
+		_begin_burst()
+	else:
+		shoot()
+		_shoot_timer.wait_time = 1.0 / weapon.attacks_per_second
+		_shoot_timer.start()
+
+
+# 마우스 좌클릭을 누르고 있는 동안 공격 속도에 맞춰 발사합니다.
+func _handle_manual_fire_input() -> void:
+	if not weapon or weapon.is_orbit_magic():
+		return
+	if not _is_manual_fire_pressed():
+		# 자동 공격 타이머는 유지 — OFF일 때만 정지
+		if not _is_auto_attack_enabled() and not weapon.has_burst():
+			_shoot_timer.stop()
+		return
+	if _shoot_timer.time_left > 0.0:
+		return
+	if weapon.has_burst():
+		_begin_burst()
+	else:
+		shoot()
+		_shoot_timer.wait_time = 1.0 / weapon.attacks_per_second
+		_shoot_timer.start()
+
+
+func _is_manual_fire_pressed() -> bool:
+	return Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
 
 
 func shoot() -> void:
@@ -187,17 +250,24 @@ func _refresh_current_target() -> void:
 	_update_target_display()
 
 
+func _get_target_aim_position(target: Node2D) -> Vector2:
+	return GroundShadowFootprint.get_combat_target_center(target)
+
+
 func _get_shoot_direction() -> Vector2:
 	if is_instance_valid(_current_target):
-		return _shooting_point.global_position.direction_to(_current_target.global_position)
+		return _shooting_point.global_position.direction_to(
+			_get_target_aim_position(_current_target)
+		)
 	return Vector2.RIGHT.rotated(_shooting_point.global_rotation)
 
 
 func _get_throw_aim_position() -> Vector2:
 	var origin := _shooting_point.global_position
 	if is_instance_valid(_current_target):
-		var to_target := origin.direction_to(_current_target.global_position)
-		var distance := minf(origin.distance_to(_current_target.global_position), weapon.throw_range)
+		var target_pos := _get_target_aim_position(_current_target)
+		var to_target := origin.direction_to(target_pos)
+		var distance := minf(origin.distance_to(target_pos), weapon.throw_range)
 		return origin + to_target * distance
 	return origin + _get_shoot_direction() * weapon.throw_range
 
@@ -264,8 +334,32 @@ func _shoot_melee_projectile() -> void:
 		return
 
 	_refresh_current_target()
+	var owner := _get_player()
+	var base_transform := _get_spawn_transform()
+	var spread_count := weapon.get_melee_spread_count()
+	if spread_count <= 1:
+		_spawn_melee_projectile(game, weapon, base_transform, owner)
+		return
+
+	var origin := base_transform.origin
+	var base_angle := base_transform.get_rotation()
+	var half_spread := deg_to_rad(weapon.melee_spread_angle_deg) * 0.5
+	var last_index := spread_count - 1
+	for index in spread_count:
+		var t := float(index) / float(last_index)
+		var angle := base_angle - half_spread + t * half_spread * 2.0
+		var spread_transform := Transform2D(angle, origin)
+		_spawn_melee_projectile(game, weapon, spread_transform, owner)
+
+
+func _spawn_melee_projectile(
+	game: Node,
+	weapon_data: WeaponData,
+	spawn_transform: Transform2D,
+	owner: Node2D
+) -> void:
 	var projectile: Area2D = _spawn_from_pool(game, MELEE_PROJECTILE_SCENE) as Area2D
-	projectile.setup(weapon, _get_spawn_transform())
+	projectile.setup(weapon_data, spawn_transform, owner)
 
 
 func _shoot_bullet() -> void:
@@ -324,8 +418,11 @@ func _on_timer_timeout() -> void:
 	if weapon.is_orbit_magic():
 		return
 
-	if not _is_auto_attack_enabled():
+	var auto_attack := _is_auto_attack_enabled()
+	var manual := _is_manual_fire_pressed()
+	if not auto_attack and not manual:
 		_shoot_timer.stop()
+		_burst_shots_remaining = 0
 		return
 
 	if weapon.has_burst():
@@ -337,3 +434,5 @@ func _on_timer_timeout() -> void:
 			_begin_burst()
 	else:
 		shoot()
+		_shoot_timer.wait_time = 1.0 / weapon.attacks_per_second
+		_shoot_timer.start()
