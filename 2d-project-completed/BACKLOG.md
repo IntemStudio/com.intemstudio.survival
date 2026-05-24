@@ -3,7 +3,7 @@
 **용도:** 다음에 손댈 작업·아이디어를 모아 두는 살아 있는 목록입니다.  
 **규칙:** 여기 적혀 있다고 반드시 구현하지 않습니다. 개발 중 기각·완료·범위 변경 시 항목을 **삭제·수정**해도 됩니다.
 
-**관련 문서:** 진입 [`AGENTS.md`](AGENTS.md) · 도메인 상세 [`Docs/AGENTS_MapArena.md`](Docs/AGENTS_MapArena.md), [`Docs/AGENTS_Display_UI.md`](Docs/AGENTS_Display_UI.md) · 에이전트 must [`.cursor/rules/`](.cursor/rules/)
+**관련 문서:** 진입 [`AGENTS.md`](AGENTS.md) · 도메인 상세 [`Docs/AGENTS_MapArena.md`](Docs/AGENTS_MapArena.md), [`Docs/AGENTS_Display_UI.md`](Docs/AGENTS_Display_UI.md) · 설계 [`Docs/Architecture_Inventory.md`](Docs/Architecture_Inventory.md) · 에이전트 must [`.cursor/rules/`](.cursor/rules/)
 
 ---
 
@@ -56,6 +56,13 @@
 - [ ] **보유 무기 강화(레벨업)** — 레벨업 시 “신규 무기만” 3택1. 이미 가진 무기의 데미지·APS·범위 상승 없음.
 - [ ] **무기 합성·진화** — 두 무기 조합, 최대 레벨 후 상위 무기 등 없음.
 - [ ] **패시브·액세서리** — 이동속도·픽업 범위·최대 체력·재생 등 레벨업 외 성장 슬롯 없음.
+- [ ] **인벤토리 Epic** — [`Docs/Architecture_Inventory.md`](Docs/Architecture_Inventory.md)
+  - [x] Phase 0~2 — 데이터·`InventoryService`·`GearData`
+  - [x] Phase 4~5 — UI v2(4칸 전투 슬롯)·드래그·`InventoryGameBridge`·**I**
+  - [x] Phase 3 (최소) — `InventoryCombatBridge` · F6 `use_inventory_loadout`
+  - [x] Phase 6 — W·RMB 스왑·HUD `%CombatSetLabel`·가방 RMB/더블클릭 장착·`try_equip_from_bag_smart`·편집 탭 분리·`UiLocale`
+  - [ ] Phase 3 (잔여) — F5+레벨업 무기 공존 정책
+  - [ ] Phase 7 — `sum_stat_modifiers_for_set`→Player·offhand 비주얼·퀵슬롯 4칸
 - [ ] **승리 조건** — 생존 시간 목표·웨이브 클리어·보스 처치 승리 없음(현재는 사망만).
 - [ ] **경험치 보상 스케일** — `exp_orb` 기본값 1 고정. 몹 종류·페이즈·엘리트/보스별 차등 없음.
 - [ ] **캐릭터 선택** — HappyBoo 고정. 시작 전 캐릭터·스탯 프리셋 없음.

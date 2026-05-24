@@ -67,6 +67,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if game.has_method("is_weapon_select_open") and game.is_weapon_select_open():
 		return
+	if game.has_method("is_inventory_open") and game.is_inventory_open():
+		return
 
 	if visible:
 		if _settings_panel.visible:

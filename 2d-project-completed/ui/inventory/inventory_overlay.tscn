@@ -1,0 +1,194 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://ui/inventory/inventory_menu.gd" id="1_menu"]
+[ext_resource type="Script" path="res://ui/ui_viewport_layout.gd" id="2_ui_layout"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.1, 0.11, 0.14, 0.96)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.28, 0.32, 0.4, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+content_margin_left = 20.0
+content_margin_top = 16.0
+content_margin_right = 20.0
+content_margin_bottom = 16.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_detail"]
+bg_color = Color(0.12, 0.12, 0.14, 0.92)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.35, 0.4, 0.48, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 12.0
+content_margin_bottom = 10.0
+
+[node name="InventoryMenu" type="CanvasLayer"]
+layer = 19
+process_mode = 3
+visible = false
+script = ExtResource("1_menu")
+
+[node name="MenuOverlay" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 3
+anchors_preset = 0
+offset_right = 1920.0
+offset_bottom = 1080.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 0
+script = ExtResource("2_ui_layout")
+align_mode = 1
+pass_mouse_to_game = false
+
+[node name="ColorRect" type="ColorRect" parent="MenuOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.45)
+
+[node name="CenterContainer" type="CenterContainer" parent="MenuOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MainPanel" type="PanelContainer" parent="MenuOverlay/CenterContainer"]
+custom_minimum_size = Vector2(1680, 920)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="MainVBox" type="VBoxContainer" parent="MenuOverlay/CenterContainer/MainPanel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="HeaderHBox" type="HBoxContainer" parent="MenuOverlay/CenterContainer/MainPanel/MainVBox"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="TitleLabel" type="Label" parent="MenuOverlay/CenterContainer/MainPanel/MainVBox/HeaderHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 28
+text = "인벤토리"
+
+[node name="EditSetTab0" type="Button" parent="MenuOverlay/CenterContainer/MainPanel/MainVBox/HeaderHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "세트 1"
+
+[node name="EditSetTab1" type="Button" parent="MenuOverlay/CenterContainer/MainPanel/MainVBox/HeaderHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "세트 2"
+
+[node name="CloseButton" type="Button" parent="MenuOverlay/CenterContainer/MainPanel/MainVBox/HeaderHBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "닫기"
+
+[node name="ContentHBox" type="HBoxContainer" parent="MenuOverlay/CenterContainer/MainPanel/MainVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 24
+
+[node name="EquipColumn" type="VBoxContainer" parent="MenuOverlay/CenterContainer/MainPanel/MainVBox/ContentHBox"]
+custom_minimum_size = Vector2(360, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="EquipTitle" type="Label" parent="MenuOverlay/CenterContainer/MainPanel/MainVBox/ContentHBox/EquipColumn"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "장비"
+
+[node name="EquipArmorTitle" type="Label" parent="MenuOverlay/CenterContainer/MainPanel/MainVBox/ContentHBox/EquipColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.6, 0.68, 0.78, 1)
+text = "방어구 · 세트 1"
+
+[node name="EquipPanel" type="Control" parent="MenuOverlay/CenterContainer/MainPanel/MainVBox/ContentHBox/EquipColumn"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(340, 340)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ActiveSetLabel" type="Label" parent="MenuOverlay/CenterContainer/MainPanel/MainVBox/ContentHBox/EquipColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.45, 0.9, 0.55, 1)
+text = "전투 세트: 1"
+
+[node name="RightColumn" type="VBoxContainer" parent="MenuOverlay/CenterContainer/MainPanel/MainVBox/ContentHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="BagTitleLabel" type="Label" parent="MenuOverlay/CenterContainer/MainPanel/MainVBox/ContentHBox/RightColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "소지품"
+
+[node name="BagGrid" type="GridContainer" parent="MenuOverlay/CenterContainer/MainPanel/MainVBox/ContentHBox/RightColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 10
+columns = 4
+
+[node name="DetailPanel" type="PanelContainer" parent="MenuOverlay/CenterContainer/MainPanel/MainVBox/ContentHBox/RightColumn"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_detail")
+
+[node name="DetailLabel" type="RichTextLabel" parent="MenuOverlay/CenterContainer/MainPanel/MainVBox/ContentHBox/RightColumn/DetailPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 280)
+bbcode_enabled = true
+fit_content = true
+scroll_active = true
+text = "아이템에 마우스를 올리세요."
+
+[node name="FooterVBox" type="VBoxContainer" parent="MenuOverlay/CenterContainer/MainPanel/MainVBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="HintLabel" type="Label" parent="MenuOverlay/CenterContainer/MainPanel/MainVBox/FooterVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.7, 0.72, 0.78, 1)
+text = "더블클릭: 가방에서 장착 · 우클릭: 해제 · 드래그: 이동"
+
+[node name="StatusLabel" type="Label" parent="MenuOverlay/CenterContainer/MainPanel/MainVBox/FooterVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(1, 0.55, 0.45, 1)

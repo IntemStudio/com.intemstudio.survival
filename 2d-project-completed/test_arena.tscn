@@ -7,6 +7,7 @@
 [ext_resource type="PackedScene" path="res://world/map_arena/map_arena.tscn" id="5_map_arena"]
 [ext_resource type="Script" path="res://ui/ui_viewport_layout.gd" id="6_ui_viewport_layout"]
 [ext_resource type="PackedScene" uid="uid://pausemenuov01" path="res://ui/pause_menu_overlay.tscn" id="7_pause_menu"]
+[ext_resource type="PackedScene" path="res://ui/inventory/inventory_overlay.tscn" id="9_inventory"]
 [ext_resource type="Script" path="res://game/speed_cheat.gd" id="8_speed_cheat"]
 
 [node name="Game" type="Node2D" unique_id=1822041146]
@@ -35,6 +36,10 @@ unique_name_in_owner = true
 
 [node name="PauseMenu" type="CanvasLayer" parent="." instance=ExtResource("7_pause_menu")]
 unique_name_in_owner = true
+
+[node name="InventoryMenu" parent="." instance=ExtResource("9_inventory")]
+unique_name_in_owner = true
+seed_demo_on_empty = true
 
 [node name="BackgroundLayer" type="CanvasLayer" parent="." unique_id=768122036]
 layer = -32
@@ -79,6 +84,23 @@ offset_right = 760.0
 offset_bottom = 88.0
 theme_override_colors/font_color = Color(0.75, 0.15, 0.12, 1)
 theme_override_font_sizes/font_size = 16
+
+[node name="CombatSetLabel" type="Label" parent="TestUI/TestUILayout"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -104.0
+offset_right = 220.0
+offset_bottom = -76.0
+grow_vertical = 0
+theme_override_colors/font_color = Color(0.92, 0.82, 0.38, 1)
+theme_override_font_sizes/font_size = 20
+text = "전투 세트 1"
+vertical_alignment = 1
 
 [node name="MobSectionLabel" type="Label" parent="TestUI/TestUILayout" unique_id=1076228592]
 offset_left = 16.0

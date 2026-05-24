@@ -366,11 +366,47 @@ func _update_auto_attack_hud() -> void:
 		label.add_theme_color_override("font_color", Color(0.55, 0.12, 0.12))
 
 
-func _is_combat_input_blocked() -> bool:
+func _get_move_direction() -> Vector2:
+	if _uses_inventory_loadout_for_movement():
+		return _move_vector_excluding_physical_key(KEY_W)
+	return Input.get_vector("move_left", "move_right", "move_up", "move_down")
+
+
+func _get_game_root() -> Node:
 	var game := get_node_or_null("/root/Game")
-	if not game:
+	if game != null:
+		return game
+	return get_tree().current_scene
+
+
+func _uses_inventory_loadout_for_movement() -> bool:
+	var game := _get_game_root()
+	if game == null:
 		return false
-	if game.is_weapon_select_open() or game.is_pause_menu_open() or game.is_game_over():
+	return bool(game.get("use_inventory_loadout"))
+
+
+func _move_vector_excluding_physical_key(exclude: Key) -> Vector2:
+	var x := Input.get_axis("move_left", "move_right")
+	var y := 0.0
+	if Input.is_action_pressed("move_down"):
+		y += 1.0
+	if Input.is_action_pressed("move_up") and not Input.is_physical_key_pressed(exclude):
+		y -= 1.0
+	return Vector2(x, y)
+
+
+func _is_combat_input_blocked() -> bool:
+	var game := _get_game_root()
+	if game == null:
+		return false
+	if game.has_method("is_weapon_select_open") and game.call("is_weapon_select_open"):
+		return true
+	if game.has_method("is_pause_menu_open") and game.call("is_pause_menu_open"):
+		return true
+	if game.has_method("is_inventory_open") and game.call("is_inventory_open"):
+		return true
+	if game.has_method("is_game_over") and game.call("is_game_over"):
 		return true
 	return false
 
@@ -409,7 +445,7 @@ func _on_pickup_range_area_entered(area: Area2D) -> void:
 
 func _physics_process(delta: float) -> void:
 	const SPEED := 600.0
-	var direction := Input.get_vector("move_left", "move_right", "move_up", "move_down")
+	var direction := _get_move_direction()
 	if direction.length_squared() > 0.01:
 		_last_move_direction = direction.normalized()
 

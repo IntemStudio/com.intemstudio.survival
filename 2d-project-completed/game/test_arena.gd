@@ -49,6 +49,8 @@ const MOB_OPTIONS: Array[Dictionary] = [
 
 @export var mob_respawn_enabled := false
 @export_range(0.0, 30.0, 0.1, "or_greater") var mob_respawn_delay := 2.0
+## true면 인벤 활성 세트 weapon + 투사체 튜닝 스냅샷으로 장착합니다.
+@export var use_inventory_loadout := true
 
 var _all_weapon_options: Array[WeaponData] = []
 var _available_rarities: Array[String] = []
@@ -67,12 +69,16 @@ var _tuning_spin_rows: Array[Dictionary] = []
 var _tuning_ui_refreshing := false
 
 var _pause_menu: CanvasLayer
+var _inventory_menu: CanvasLayer
 
 
 func _ready() -> void:
 	_pause_menu = get_node_or_null("PauseMenu") as CanvasLayer
+	_inventory_menu = get_node_or_null("InventoryMenu") as CanvasLayer
 	if _pause_menu == null:
 		push_error("TestArena: PauseMenu missing — check pause_menu_overlay.tscn.")
+	if _inventory_menu == null:
+		push_error("TestArena: InventoryMenu missing — check inventory_overlay.tscn.")
 	LocaleSettings.load_and_apply()
 	DisplaySettings.load_and_apply()
 	AudioSettings.load_and_apply()
@@ -84,7 +90,10 @@ func _ready() -> void:
 	_setup_mob_type_option()
 	_setup_weapon_filters()
 	_setup_projectile_tuning_ui()
-	_equip_weapon(START_WEAPON)
+	if not use_inventory_loadout:
+		_equip_weapon(START_WEAPON)
+	else:
+		call_deferred("apply_inventory_loadout_to_player")
 	%SpawnMobButton.pressed.connect(_on_spawn_mob_button_pressed)
 	%EquipWeaponButton.pressed.connect(_on_equip_weapon_button_pressed)
 	%WeaponOption.item_selected.connect(_on_weapon_option_selected)
@@ -107,6 +116,10 @@ func is_pause_menu_open() -> bool:
 	return _pause_menu != null and _pause_menu.visible
 
 
+func is_inventory_open() -> bool:
+	return InventoryGameBridge.is_inventory_open(_inventory_menu)
+
+
 func is_game_over() -> bool:
 	return _player_is_dead
 
@@ -120,7 +133,7 @@ func get_weapon_damage_display_rows() -> Array[Dictionary]:
 
 
 func show_pause_menu() -> void:
-	if is_weapon_select_open() or _pause_menu == null:
+	if is_weapon_select_open() or is_inventory_open() or _pause_menu == null:
 		return
 	_pause_menu.refresh_owned_weapons()
 	_pause_menu.show()
@@ -131,8 +144,50 @@ func resume_game() -> void:
 	if _pause_menu == null:
 		return
 	_pause_menu.hide()
-	if not is_game_over():
+	if not is_game_over() and not is_inventory_open():
 		get_tree().paused = false
+
+
+func show_inventory() -> void:
+	InventoryGameBridge.show_inventory(self, _inventory_menu)
+
+
+func hide_inventory() -> void:
+	InventoryGameBridge.hide_inventory(self, _inventory_menu)
+
+
+func toggle_inventory() -> void:
+	InventoryGameBridge.toggle_inventory(self, _inventory_menu)
+
+
+func show_inventory_swap_toast(message: String) -> void:
+	if has_node("%StatusLabel"):
+		%StatusLabel.text = message
+
+
+func apply_inventory_loadout_to_player() -> void:
+	if not use_inventory_loadout or _inventory_menu == null:
+		InventoryGameBridge.refresh_combat_set_hud(self, _inventory_menu)
+		return
+	var menu_service: InventoryService = _inventory_menu.get_service()
+	if menu_service == null:
+		InventoryGameBridge.refresh_combat_set_hud(self, _inventory_menu)
+		return
+	var weapon_id := InventoryCombatBridge.get_active_weapon_id(menu_service.loadout)
+	if weapon_id.is_empty():
+		%Player.clear_weapons()
+		_equipped_weapon_id = ""
+		InventoryGameBridge.refresh_combat_set_hud(self, _inventory_menu)
+		return
+	var weapon := menu_service.registry.resolve_weapon(weapon_id)
+	if weapon:
+		_equip_weapon(weapon)
+	InventoryGameBridge.refresh_combat_set_hud(self, _inventory_menu)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if InventoryGameBridge.handle_inventory_input(self, _inventory_menu, event):
+		get_viewport().set_input_as_handled()
 
 
 func _on_pause_continue_pressed() -> void:

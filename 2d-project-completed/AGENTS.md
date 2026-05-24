@@ -20,6 +20,7 @@
 - [원거리 몹](#원거리-몹-mob_ranged)
 - [밸런스 모델](#밸런스-모델-왜-이렇게-동작하는지)
 - [디스플레이·카메라·UI](#디스플레이카메라ui) · 상세 [`Docs/AGENTS_Display_UI.md`](Docs/AGENTS_Display_UI.md)
+- [인벤토리·장비 (설계)](#인벤토리장비-설계) · 상세 [`Docs/Architecture_Inventory.md`](Docs/Architecture_Inventory.md)
 - [자주 쓰는 Godot 패턴](#자주-쓰는-godot-패턴)
 - [오브젝트 풀](#오브젝트-풀-scenepool)
 - [작업별로 먼저 볼 파일](#작업별로-먼저-볼-파일)
@@ -35,6 +36,7 @@
 | `.cursor/rules/*.mdc` | **영어** (짧은 must/must not) | 에이전트 **실행 규칙** — authoritative |
 | `AGENTS.md` (이 파일) | **한국어** + 경로·타입명 영어 | **지도·흐름·이유** — 단일 진입점 |
 | `Docs/AGENTS_*.md` | **한국어** | 도메인별 상세(맵·UI 등). 루트에는 요약만 |
+| `Docs/Architecture_*.md` | **한국어** | 기능 단위 아키텍처(인벤토리 등). 루트에는 요약만 |
 | `Docs/Plan_*.md` | **한국어** | 설계·체크리스트·Epic |
 | `BACKLOG.md` | **한국어** | 미구현·후속 작업 |
 | 코드 주석 (`.gd`) | **한국어** 한 줄 목적 | 비즈니스 맥락; must 문장은 `.mdc`에만 |
@@ -78,6 +80,8 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | `effects/magnet_pickup/` | 자석 아이템 (1% 드랍, 풀 미적용) |
 | `effects/health_pickup/` | 체력 회복 아이템 (1% 드랍, +30 HP, 풀 미적용) |
 | `effects/hit_flash/` | `HitFlash` — 피격 시 `CanvasItem.modulate` 짧은 깜박임(풀·씬 없음, 정적 API) |
+| `inventory/` | `InventoryService`, `InventoryCombatBridge`, `InventoryGameBridge`, `ItemRegistry`, `InventorySave` — [`Docs/Architecture_Inventory.md`](Docs/Architecture_Inventory.md) |
+| `ui/inventory/` | `inventory_menu.gd`, `inventory_slot.gd`, `inventory_overlay.tscn` — FHD 인벤 UI v2 |
 | `effects/` (기타) | 데미지 텍스트, 사망 연기 등 |
 | `characters/` | Slime / HappyBoo 비주얼 + `shared/ground_shadow_footprint.gd` (`GroundShadowFootprint`) |
 | `world/trees/` | `pine_tree.tscn` — `StaticBody2D` 장애물(레이어 1). `poisson_sampler.gd` + `MapArena._rebuild_trees()`로 절차 배치. 튜닝: [`Docs/AGENTS_MapArena.md`](Docs/AGENTS_MapArena.md) §소나무 |
@@ -496,6 +500,26 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 
 ---
 
+## 인벤토리·장비 (설계)
+
+**상태:** Phase **0~2·4~6** ✅ · Phase **3** 🔶(활성 `weapon`→Player, F6 on). Phase **7** ⬜(방어구 스탯·offhand 비주얼). — [`Docs/Architecture_Inventory.md` §구현 단계](Docs/Architecture_Inventory.md#구현-단계)
+
+| 항목 | 내용 |
+|------|------|
+| 가방 | **8슬롯** · **우클릭**·**더블클릭(좌)** → `try_equip_from_bag_smart` (무기·offhand=활성 세트, 방어구=`sets[0]`) |
+| 장비 세트 | **2세트**×**7슬롯** · UI **무기·offhand 4칸** 동시 표시 |
+| 세트 전환 | **W**(`swap_combat_set`)·닫힌 **RMB**·비활성 무기/offhand **좌클릭** · HUD `%CombatSetLabel` |
+| 편집 탭 | **편집 1/2** — `edit_set_index`·탭 강조만, **전투 세트·방어구 데이터 불변** |
+| 방어구 | 항상 `sets[0]` (`SHARED_ARMOR_SET_INDEX`) |
+| UI | **I** · 3×3 · 가방 2×4 · `InventoryGameBridge` |
+| 전투 플래그 | F5 `use_inventory_loadout` **false** · F6 **true** · on 시 **W**≠위 이동(**↑** 사용) |
+| 데이터 | `inventory/*` · `user://player_loadout.cfg` |
+| 서바이버 무기 | `_owned_weapons`·레벨업 3택 — 플래그 off면 인벤과 **분리** |
+
+**상세 (슬롯·UI·Phase 0~7):** [`Docs/Architecture_Inventory.md`](Docs/Architecture_Inventory.md)
+
+---
+
 ## 자주 쓰는 Godot 패턴
 
 - 메인 씬 스크립트에서 `%UniqueNode` 참조
@@ -551,6 +575,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | 피격 깜박임 | `effects/hit_flash/hit_flash.gd`, `mob.gd` (`_play_hit_flash`, `pool_reset`), `player.gd` (`_play_hit_flash`, `HappyBoo/Colorizer`) |
 | 뷰포트·UI 스케일 | [`Docs/AGENTS_Display_UI.md`](Docs/AGENTS_Display_UI.md), `project.godot` `[display]`, `ui/ui_resolution_config.gd`, `ui/ui_viewport_layout.gd`, `survivors_game.tscn` (`HUDRoot`·`MenuOverlay`×3), `test_arena.tscn` (`TestUILayout`) |
 | 카메라 줌·바닥 | [`Docs/AGENTS_Display_UI.md`](Docs/AGENTS_Display_UI.md) §카메라, `entities/player/player.tscn` (`Camera2D`), `world/floor/checker_background.gd` |
+| 인벤토리·장비 | [`Docs/Architecture_Inventory.md`](Docs/Architecture_Inventory.md), `inventory/*.gd`, `ui/inventory/*`, `game/game.gd`, `game/test_arena.gd` (`apply_inventory_loadout_to_player`) |
 
 ---
 

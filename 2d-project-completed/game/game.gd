@@ -8,6 +8,8 @@ const RUN_CLEAR_CURVE_MINUTES := 30.0
 @export var balance_timeline: BalanceTimeline
 @export_range(0.05, 2.0, 0.01, "or_greater") var base_spawn_interval := 0.3
 @export_range(1, 500, 1) var max_alive_mobs := 100
+## true면 인벤 활성 세트 weapon만 Player에 반영(서바이버 레벨업 무기와 분리).
+@export var use_inventory_loadout := false
 
 var _elapsed_seconds := 0.0
 var _last_spawn_density := -1.0
@@ -23,6 +25,7 @@ var _density_event_remaining := 0.0
 
 var _pause_menu: CanvasLayer
 var _weapon_select_menu: CanvasLayer
+var _inventory_menu: CanvasLayer
 
 
 func _ready() -> void:
@@ -56,6 +59,10 @@ func is_pause_menu_open() -> bool:
 	return _pause_menu != null and _pause_menu.visible
 
 
+func is_inventory_open() -> bool:
+	return InventoryGameBridge.is_inventory_open(_inventory_menu)
+
+
 func show_weapon_select(title_key: StringName = &"weapon_select.level_up") -> bool:
 	if _weapon_select_menu == null:
 		push_error("Game: WeaponSelectMenu node missing.")
@@ -86,8 +93,11 @@ func on_weapon_chosen(weapon: WeaponData) -> void:
 func _bind_ui_nodes() -> void:
 	_pause_menu = get_node_or_null("PauseMenu") as CanvasLayer
 	_weapon_select_menu = get_node_or_null("WeaponSelectMenu") as CanvasLayer
+	_inventory_menu = get_node_or_null("InventoryMenu") as CanvasLayer
 	if _pause_menu == null:
 		push_error("Game: PauseMenu missing — check res://ui/pause_menu_overlay.tscn loads in survivors_game.tscn.")
+	if _inventory_menu == null:
+		push_error("Game: InventoryMenu missing — check res://ui/inventory/inventory_overlay.tscn.")
 
 
 func _ensure_game_started() -> void:
@@ -132,6 +142,7 @@ func get_weapon_damage_display_rows() -> Array[Dictionary]:
 func refresh_locale() -> void:
 	_update_kill_count_hud()
 	_update_time_hud()
+	InventoryGameBridge.refresh_combat_set_hud(self, _inventory_menu)
 	%WeaponDamageTitle.text = UiLocale.t(&"gameover.weapon_damage")
 	%GameOverRestartButton.text = UiLocale.t(&"gameover.restart")
 	%GameOverQuitButton.text = UiLocale.t(&"pause.quit")
@@ -326,7 +337,7 @@ func _show_stage_clear() -> void:
 
 
 func show_pause_menu() -> void:
-	if is_weapon_select_open() or _pause_menu == null:
+	if is_weapon_select_open() or is_inventory_open() or _pause_menu == null:
 		return
 	_pause_menu.refresh_owned_weapons()
 	_pause_menu.show()
@@ -337,8 +348,45 @@ func resume_game() -> void:
 	if _pause_menu == null:
 		return
 	_pause_menu.hide()
-	if not is_game_over():
+	if not is_game_over() and not is_inventory_open():
 		get_tree().paused = false
+
+
+func show_inventory() -> void:
+	InventoryGameBridge.show_inventory(self, _inventory_menu)
+
+
+func hide_inventory() -> void:
+	InventoryGameBridge.hide_inventory(self, _inventory_menu)
+
+
+func toggle_inventory() -> void:
+	InventoryGameBridge.toggle_inventory(self, _inventory_menu)
+
+
+func show_inventory_swap_toast(message: String) -> void:
+	%BalanceNoticeBanner.show_timeline_alert(message, 2.0)
+
+
+func apply_inventory_loadout_to_player() -> void:
+	if not use_inventory_loadout or _inventory_menu == null:
+		InventoryGameBridge.refresh_combat_set_hud(self, _inventory_menu)
+		return
+	var menu_service: InventoryService = _inventory_menu.get_service()
+	if menu_service == null:
+		InventoryGameBridge.refresh_combat_set_hud(self, _inventory_menu)
+		return
+	InventoryCombatBridge.apply_active_weapon_to_player(
+		%Player,
+		menu_service.registry,
+		menu_service.loadout
+	)
+	InventoryGameBridge.refresh_combat_set_hud(self, _inventory_menu)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if InventoryGameBridge.handle_inventory_input(self, _inventory_menu, event):
+		get_viewport().set_input_as_handled()
 
 
 func _on_player_health_depleted():
