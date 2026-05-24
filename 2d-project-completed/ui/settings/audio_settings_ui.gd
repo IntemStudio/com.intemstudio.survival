@@ -2,12 +2,12 @@ extends VBoxContainer
 
 ## 일시정지 설정 — Master·BGM·SFX 볼륨 슬라이더.
 
-@onready var _master_slider: HSlider = %MasterVolumeSlider
-@onready var _bgm_slider: HSlider = %BgmVolumeSlider
-@onready var _sfx_slider: HSlider = %SfxVolumeSlider
-@onready var _master_label: Label = %MasterVolumeLabel
-@onready var _bgm_label: Label = %BgmVolumeLabel
-@onready var _sfx_label: Label = %SfxVolumeLabel
+@onready var _master_slider: HSlider = $MasterVolumeRow/MasterVolumeSlider
+@onready var _bgm_slider: HSlider = $BgmVolumeRow/BgmVolumeSlider
+@onready var _sfx_slider: HSlider = $SfxVolumeRow/SfxVolumeSlider
+@onready var _master_label: Label = $MasterVolumeRow/MasterVolumeLabel
+@onready var _bgm_label: Label = $BgmVolumeRow/BgmVolumeLabel
+@onready var _sfx_label: Label = $SfxVolumeRow/SfxVolumeLabel
 @onready var _audio_title: Label = get_node_or_null("../AudioSettingsTitle") as Label
 @onready var _master_name: Label = get_node_or_null("MasterVolumeRow/MasterVolumeName") as Label
 @onready var _bgm_name: Label = get_node_or_null("BgmVolumeRow/BgmVolumeName") as Label

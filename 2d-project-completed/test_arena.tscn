@@ -6,6 +6,7 @@
 [ext_resource type="Script" uid="uid://8eenh1tol2s4" path="res://world/floor/checker_background.gd" id="4_checker_bg"]
 [ext_resource type="PackedScene" path="res://world/map_arena/map_arena.tscn" id="5_map_arena"]
 [ext_resource type="Script" path="res://ui/ui_viewport_layout.gd" id="6_ui_viewport_layout"]
+[ext_resource type="PackedScene" uid="uid://pausemenuov01" path="res://ui/pause_menu_overlay.tscn" id="7_pause_menu"]
 
 [node name="Game" type="Node2D" unique_id=1822041146]
 y_sort_enabled = true
@@ -26,6 +27,9 @@ position = Vector2(280, 0)
 spawn_trees = false
 
 [node name="Player" parent="." unique_id=1488515798 instance=ExtResource("3_player")]
+unique_name_in_owner = true
+
+[node name="PauseMenu" type="CanvasLayer" parent="." instance=ExtResource("7_pause_menu")]
 unique_name_in_owner = true
 
 [node name="BackgroundLayer" type="CanvasLayer" parent="." unique_id=768122036]
@@ -61,7 +65,7 @@ offset_top = 16.0
 offset_right = 760.0
 offset_bottom = 56.0
 theme_override_font_sizes/font_size = 17
-text = "Test Arena (F6) — Mob / Weapon panels below. No tabs needed."
+text = "Test Arena (F6) — ESC: pause · Mob / Weapon panels below."
 
 [node name="StatusLabel" type="Label" parent="TestUI/TestUILayout" unique_id=1555637677]
 unique_name_in_owner = true
@@ -170,3 +174,9 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(120, 36)
 layout_mode = 2
 text = "Equip"
+
+[connection signal="pressed" from="PauseMenu/MenuOverlay/CenterContainer/PauseMainContent/Buttons/ContinueButton" to="." method="_on_pause_continue_pressed"]
+[connection signal="pressed" from="PauseMenu/MenuOverlay/CenterContainer/PauseMainContent/Buttons/SettingsButton" to="PauseMenu" method="_on_settings_button_pressed"]
+[connection signal="pressed" from="PauseMenu/MenuOverlay/CenterContainer/PauseMainContent/Buttons/RestartButton" to="." method="_on_pause_restart_pressed"]
+[connection signal="pressed" from="PauseMenu/MenuOverlay/CenterContainer/PauseMainContent/Buttons/QuitButton" to="." method="_on_pause_quit_pressed"]
+[connection signal="pressed" from="PauseMenu/MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/SettingsBackButton" to="PauseMenu" method="_on_settings_back_pressed"]

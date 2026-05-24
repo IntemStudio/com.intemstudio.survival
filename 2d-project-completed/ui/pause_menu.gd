@@ -20,10 +20,10 @@ const WEAPON_TYPE_FONT_COLORS := {
 @onready var _settings_back_button: Button = (
 	%SettingsPanel.get_node("SettingsCenter/SettingsVBox/SettingsBackButton") as Button
 )
-@onready var _locale_settings: VBoxContainer = %LocaleSettings
+@onready var _locale_settings: VBoxContainer = %LocaleSettingsUi
 @onready var _video_display_settings: VBoxContainer = %VideoDisplaySettings
-@onready var _audio_settings: VBoxContainer = %AudioSettings
-@onready var _gameplay_settings: VBoxContainer = %GameplaySettings
+@onready var _audio_settings: VBoxContainer = %AudioSettingsUi
+@onready var _gameplay_settings: VBoxContainer = %GameplaySettingsUi
 @onready var _tree_density_settings: VBoxContainer = %TreeDensitySettings
 
 
@@ -57,8 +57,15 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not event.is_action_pressed("pause"):
 		return
 
-	var game := get_parent()
-	if game.is_game_over() or game.is_weapon_select_open():
+	var game := _get_game()
+	if game == null:
+		_toggle_standalone_pause()
+		get_viewport().set_input_as_handled()
+		return
+
+	if game.has_method("is_game_over") and game.is_game_over():
+		return
+	if game.has_method("is_weapon_select_open") and game.is_weapon_select_open():
 		return
 
 	if visible:
@@ -70,6 +77,27 @@ func _unhandled_input(event: InputEvent) -> void:
 		game.show_pause_menu()
 
 	get_viewport().set_input_as_handled()
+
+
+# F5 Game 또는 테스트 아레나 오케스트레이터를 찾습니다(프리팹 단독 실행 시 parent는 Window).
+func _get_game() -> Node:
+	var parent := get_parent()
+	if parent != null and parent.has_method("show_pause_menu"):
+		return parent
+	var scene := get_tree().current_scene
+	if scene != null and scene.has_method("show_pause_menu"):
+		return scene
+	return null
+
+
+# pause_menu_overlay.tscn만 단독 실행할 때 Esc로 표시/숨김.
+func _toggle_standalone_pause() -> void:
+	if visible:
+		hide()
+		get_tree().paused = false
+	else:
+		show()
+		get_tree().paused = true
 
 
 func _on_settings_button_pressed() -> void:
@@ -99,11 +127,11 @@ func _close_settings_view() -> void:
 
 # 일시정지 메뉴를 열 때 보유 무기·누적 피해량 목록을 갱신합니다.
 func refresh_owned_weapons() -> void:
-	var game := get_parent()
+	var game := _get_game()
 	if game == null or not game.has_method("get_weapon_damage_display_rows"):
 		return
 
-	game.populate_weapon_damage_list(
+	WeaponDamageUi.populate_list(
 		_owned_weapons_list,
 		game.get_weapon_damage_display_rows(),
 		UiLocale.t(&"pause.no_weapons"),

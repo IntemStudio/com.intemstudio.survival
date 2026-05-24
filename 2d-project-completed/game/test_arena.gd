@@ -55,9 +55,19 @@ var _saved_player_collision_layer := 0
 var _saved_player_collision_mask := 0
 var _saved_auto_attack_enabled := true
 var _mob_respawn_token := 0
+var _weapon_damage := WeaponDamageTracker.new()
+
+var _pause_menu: CanvasLayer
 
 
 func _ready() -> void:
+	_pause_menu = get_node_or_null("PauseMenu") as CanvasLayer
+	if _pause_menu == null:
+		push_error("TestArena: PauseMenu missing — check pause_menu_overlay.tscn.")
+	LocaleSettings.load_and_apply()
+	DisplaySettings.load_and_apply()
+	AudioSettings.load_and_apply()
+	GameplaySettings.load_and_apply()
 	_place_player_at_spawn()
 	%Player.set_contact_damage_enabled(true)
 	_build_weapon_options()
@@ -79,11 +89,48 @@ func is_weapon_select_open() -> bool:
 
 
 func is_pause_menu_open() -> bool:
-	return false
+	return _pause_menu != null and _pause_menu.visible
 
 
 func is_game_over() -> bool:
 	return _player_is_dead
+
+
+func register_weapon_damage(weapon: WeaponData, amount: int) -> void:
+	_weapon_damage.register(weapon, amount)
+
+
+func get_weapon_damage_display_rows() -> Array[Dictionary]:
+	return _weapon_damage.build_display_rows(%Player.get_owned_weapons())
+
+
+func show_pause_menu() -> void:
+	if is_weapon_select_open() or _pause_menu == null:
+		return
+	_pause_menu.refresh_owned_weapons()
+	_pause_menu.show()
+	get_tree().paused = true
+
+
+func resume_game() -> void:
+	if _pause_menu == null:
+		return
+	_pause_menu.hide()
+	if not is_game_over():
+		get_tree().paused = false
+
+
+func _on_pause_continue_pressed() -> void:
+	resume_game()
+
+
+func _on_pause_restart_pressed() -> void:
+	get_tree().paused = false
+	get_tree().reload_current_scene()
+
+
+func _on_pause_quit_pressed() -> void:
+	get_tree().quit()
 
 
 func _build_weapon_options() -> void:

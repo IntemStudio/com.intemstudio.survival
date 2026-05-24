@@ -2,9 +2,9 @@ extends VBoxContainer
 
 ## 일시정지 설정 — 게임플레이 옵션.
 
-@onready var _ranged_range_toggle: CheckButton = %ShowRangedAttackRangeToggle
-@onready var _floating_damage_toggle: CheckButton = %ShowFloatingDamageToggle
-@onready var _mob_health_bar_toggle: CheckButton = %ShowMobHealthBarToggle
+@onready var _ranged_range_toggle: CheckButton = $RangedRangeRow/ShowRangedAttackRangeToggle
+@onready var _floating_damage_toggle: CheckButton = $FloatingDamageRow/ShowFloatingDamageToggle
+@onready var _mob_health_bar_toggle: CheckButton = $MobHealthBarRow/ShowMobHealthBarToggle
 @onready var _gameplay_title: Label = get_node_or_null("../GameplaySettingsTitle") as Label
 
 var _syncing := false

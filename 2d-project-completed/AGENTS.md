@@ -64,6 +64,8 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | `world/map_arena/` | `MapArena` — 벽·Poisson 소나무(`Obstacles`)·플레이 영역 내부 몹 스폰 좌표 |
 | `game/game.gd` | 스폰 타이머, 밸런스 시계, 처치 HUD, 일시정지/게임오버, 무기 선택, 무기별 피해 집계·게임오버 표시 |
 | `game/weapon_damage_tracker.gd` | `WeaponDamageTracker` — 무기 `get_unique_key()`별 누적 피해, 게임오버 행 목록 생성 |
+| `game/weapon_damage_ui.gd` | `WeaponDamageUi` — 게임오버·일시정지 피해 목록 VBox 채우기·천 단위 포맷 |
+| `ui/pause_menu_overlay.tscn` | F5/F6 공용 `%PauseMenu` 프리팹(설정·소나무 밀도 포함) |
 | `game/pool/` | `ScenePool` (`scene_pool.gd`), `PoolUtil` — 공통 `acquire` / `release` |
 | `game/balance/` | `BalanceTable`, `BalanceTimeline`, phase, `MobSpawnSelector`, `default_balance_table.tres`, `default_balance_timeline.tres` |
 | `test_arena.tscn` | **테스트 전용** 씬: `Game` + `game/test_arena.gd` — 몹/무기 수동 스폰, 리스폰 (`run/main_scene` 아님, **F6**) |
@@ -114,7 +116,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 |------|------|
 | 실행 | Godot에서 `test_arena.tscn` 연 뒤 **F6**(현재 씬 실행). F5는 메인 게임 |
 | 루트 계약 | 노드 이름 **`Game`**, 자식 **`Player`**, **`ObjectPools`**, **`%MapArena`** — `mob.gd`의 `/root/Game/Player`·풀·스폰 경로와 동일해야 함 |
-| 오케스트레이션 | `game/test_arena.gd` (`game.gd` 대체). `is_weapon_select_open` / `is_pause_menu_open` / `is_game_over` 스텁으로 `player.gd` F키·입력 차단과 호환 |
+| 오케스트레이션 | `game/test_arena.gd` (`game.gd` 대체). **Esc** → `%PauseMenu`(`pause_menu_overlay.tscn` 인스턴스). `is_weapon_select_open` 항상 false · `is_pause_menu_open` / `is_game_over`(사망 리스폰 대기)로 `player.gd` F·Esc 게이트 |
 
 ### UI (탭 없음 — `TestUI` 세로 패널)
 
@@ -186,18 +188,18 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | 독 도트 | `apply_poison` 스택에 `weapon` 보관 — 틱 피해도 해당 무기에 귀속 |
 | 게임오버 UI | `survivors_game.tscn` `GameOver/.../WeaponDamagePanel` — `%WeaponDamageList` |
 | 일시정지 UI | `%PauseMenu` — `refresh_owned_weapons()` → `%PauseOwnedWeaponsList`(보유 무기·누적 피해, 타입별 색·합계). `show_pause_menu()` 직전 갱신. **설정** 버튼 → `%SettingsPanel`(소나무 밀도) — §일시정지 메뉴 |
-| 공통 채우기 | `game.gd` `populate_weapon_damage_list(list, rows, empty_text, include_grand_total, weapon_type_font_colors?)` — `get_weapon_damage_display_rows()`·`format_damage_amount()` |
+| 공통 채우기 | `WeaponDamageUi.populate_list(...)` — 행은 `Game.get_weapon_damage_display_rows()` (`WeaponDamageTracker` + `%Player` 보유 무기) |
 | 미집계 | `Mob.take_damage`만 쓰는 폴백 경로(무기 없음), 플레이어·몹 투사체 피해 |
 
 **왜 `apply_weapon_damage` 한곳:** 탄환·근접·마법·연금·독 등 대부분이 이미 이 API를 탐. 새 무기도 `health -=` 대신 이 경로를 쓰면 통계·플로팅 텍스트가 같이 맞춰짐. 플로팅 숫자 표시 여부는 `GameplaySettings` → `FloatingDamageText._spawn` 게이트(일시정지 **게임 플레이**, 기본 ON).
 
-**튜닝·확장 시:** 게임오버에 처치 수·생존 시간·레벨을 붙일 때는 `_on_player_health_depleted` / `_populate_game_over_weapon_damage` 근처에서 HUD 값을 읽어 라벨만 추가. 일시정지 목록도 바꿀 때는 `pause_menu.gd`·`populate_weapon_damage_list` 인자를 같이 맞출 것.
+**튜닝·확장 시:** 게임오버에 처치 수·생존 시간·레벨을 붙일 때는 `_on_player_health_depleted` / `_populate_game_over_weapon_damage` 근처에서 HUD 값을 읽어 라벨만 추가. 일시정지 목록도 바꿀 때는 `pause_menu.gd`·`WeaponDamageUi.populate_list` 인자를 같이 맞출 것.
 
 ---
 
 ## 일시정지 메뉴 (`PauseMenu`)
 
-씬: `survivors_game.tscn` — `PauseMenu` (`CanvasLayer`, `process_mode` ALWAYS). 스크립트: `ui/pause_menu.gd`. 레이아웃: `MenuOverlay` + `UiViewportLayout`(중앙, FHD).
+씬: `ui/pause_menu_overlay.tscn` — F5 `survivors_game.tscn`·F6 `test_arena.tscn`에서 `%PauseMenu`로 인스턴스. 스크립트: `ui/pause_menu.gd`. 레이아웃: `MenuOverlay` + `UiViewportLayout`(중앙, FHD).
 
 | 기능 | 동작 |
 |------|------|
@@ -487,7 +489,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | 오브젝트 풀 | `game/pool/scene_pool.gd`, `pool_util.gd`, `survivors_game.tscn` (`ObjectPools`) |
 | 스폰·시간·UI | `game/game.gd`, `survivors_game.tscn`, `world/map_arena/map_arena.gd` (`%MapArena`) |
 | 맵 경계·벽·소나무·스폰 | [`Docs/AGENTS_MapArena.md`](Docs/AGENTS_MapArena.md), `map_arena.gd`, `poisson_sampler.gd`, **`survivors_game.tscn` `%MapArena` 오버라이드(3×)**, `test_arena.tscn`, `ui/settings/tree_density_settings.gd` |
-| 무기별 피해·게임오버·일시정지 | `weapon_damage_tracker.gd`, `game.gd` (`populate_weapon_damage_list`, `get_weapon_damage_display_rows`), `ui/pause_menu.gd`, `survivors_game.tscn` (`%PauseMainContent`, `%SettingsPanel`, `%PauseOwnedWeaponsList`, `%WeaponDamageList`) |
+| 무기별 피해·게임오버·일시정지 | `weapon_damage_tracker.gd`, `weapon_damage_ui.gd`, `game.gd`·`test_arena.gd` (`get_weapon_damage_display_rows`), `ui/pause_menu.gd`, `ui/pause_menu_overlay.tscn`, `survivors_game.tscn`·`test_arena.tscn` (`%PauseMenu`, `%WeaponDamageList`) |
 | 난이도 곡선·타임라인·클리어 | `default_balance_table.tres`, `default_balance_timeline.tres`, `balance_table.gd`, `balance_timeline*.gd`, `game.gd` (`_trigger_stage_clear`, `_tick_balance_timeline`) |
 | 몹 타입 추가 | `mob.gd`, `mob_spawn_selector.gd`, `mob_*.tscn`, balance `.tres` (메인 스폰 시). 테스트 전용만이면 `MOB_DUMMY`처럼 상수+prewarm+`test_arena` `MOB_OPTIONS` |
 | 테스트 아레나 | `test_arena.tscn`, `game/test_arena.gd`, `MobSpawnSelector`, `scene_pool.gd` prewarm, `player.gd` (`clear_weapons`, `reset_health_depleted_state`) |

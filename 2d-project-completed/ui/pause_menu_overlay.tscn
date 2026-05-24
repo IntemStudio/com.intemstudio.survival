@@ -1,0 +1,514 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://ui/pause_menu.gd" id="1_pause"]
+[ext_resource type="Script" path="res://ui/settings/tree_density_settings.gd" id="2_tree_density"]
+[ext_resource type="Script" path="res://ui/settings/video_display_settings.gd" id="3_video_display"]
+[ext_resource type="Script" path="res://ui/settings/audio_settings_ui.gd" id="4_audio_settings"]
+[ext_resource type="Script" path="res://ui/settings/gameplay_settings_ui.gd" id="5_gameplay_settings"]
+[ext_resource type="Script" path="res://ui/settings/locale_settings_ui.gd" id="6_locale_settings"]
+[ext_resource type="Script" path="res://ui/ui_viewport_layout.gd" id="7_ui_viewport_layout"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_settings_panel"]
+bg_color = Color(0.11, 0.12, 0.15, 0.94)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.28, 0.32, 0.4, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 12.0
+content_margin_bottom = 10.0
+
+[node name="PauseMenu" type="CanvasLayer"]
+layer = 20
+process_mode = 3
+visible = false
+script = ExtResource("1_pause")
+
+[node name="MenuOverlay" type="Control" parent="."]
+process_mode = 3
+layout_mode = 3
+anchors_preset = 0
+offset_right = 1920.0
+offset_bottom = 1080.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 0
+script = ExtResource("7_ui_viewport_layout")
+align_mode = 1
+pass_mouse_to_game = false
+
+[node name="ColorRect" type="ColorRect" parent="MenuOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.439216)
+
+[node name="CenterContainer" type="CenterContainer" parent="MenuOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="PauseMainContent" type="VBoxContainer" parent="MenuOverlay/CenterContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 40
+alignment = 1
+
+[node name="PauseTitleLabel" type="Label" parent="MenuOverlay/CenterContainer/PauseMainContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 96
+text = "일시정지"
+horizontal_alignment = 1
+
+[node name="OwnedWeaponsPanel" type="VBoxContainer" parent="MenuOverlay/CenterContainer/PauseMainContent"]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="OwnedWeaponsTitle" type="Label" parent="MenuOverlay/CenterContainer/PauseMainContent/OwnedWeaponsPanel"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "보유 무기 · 피해량"
+horizontal_alignment = 1
+
+[node name="OwnedWeaponsScroll" type="ScrollContainer" parent="MenuOverlay/CenterContainer/PauseMainContent/OwnedWeaponsPanel"]
+custom_minimum_size = Vector2(520, 160)
+layout_mode = 2
+size_flags_horizontal = 4
+horizontal_scroll_mode = 0
+
+[node name="PauseOwnedWeaponsList" type="VBoxContainer" parent="MenuOverlay/CenterContainer/PauseMainContent/OwnedWeaponsPanel/OwnedWeaponsScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="Buttons" type="VBoxContainer" parent="MenuOverlay/CenterContainer/PauseMainContent"]
+layout_mode = 2
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="ContinueButton" type="Button" parent="MenuOverlay/CenterContainer/PauseMainContent/Buttons"]
+process_mode = 3
+custom_minimum_size = Vector2(280, 56)
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "계속하기"
+
+[node name="SettingsButton" type="Button" parent="MenuOverlay/CenterContainer/PauseMainContent/Buttons"]
+process_mode = 3
+custom_minimum_size = Vector2(280, 56)
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "설정"
+
+[node name="RestartButton" type="Button" parent="MenuOverlay/CenterContainer/PauseMainContent/Buttons"]
+process_mode = 3
+custom_minimum_size = Vector2(280, 56)
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "다시하기"
+
+[node name="QuitButton" type="Button" parent="MenuOverlay/CenterContainer/PauseMainContent/Buttons"]
+process_mode = 3
+custom_minimum_size = Vector2(280, 56)
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "게임 종료"
+
+[node name="SettingsPanel" type="Control" parent="MenuOverlay"]
+unique_name_in_owner = true
+visible = false
+process_mode = 3
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="SettingsDim" type="ColorRect" parent="MenuOverlay/SettingsPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.68)
+
+[node name="SettingsCenter" type="CenterContainer" parent="MenuOverlay/SettingsPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="SettingsVBox" type="VBoxContainer" parent="MenuOverlay/SettingsPanel/SettingsCenter"]
+layout_mode = 2
+theme_override_constants/separation = 24
+alignment = 1
+
+[node name="SettingsTitle" type="Label" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.94, 0.98, 1)
+theme_override_font_sizes/font_size = 72
+text = "설정"
+horizontal_alignment = 1
+
+[node name="LanguageSettingsGui" type="PanelContainer" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(480, 0)
+mouse_filter = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_settings_panel")
+
+[node name="LocaleSettingsUi" type="VBoxContainer" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/LanguageSettingsGui"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+script = ExtResource("6_locale_settings")
+
+[node name="LanguageTitle" type="Label" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/LanguageSettingsGui/LocaleSettingsUi"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.94, 0.98, 1)
+theme_override_font_sizes/font_size = 22
+text = "언어"
+horizontal_alignment = 1
+
+[node name="LanguageRow" type="HBoxContainer" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/LanguageSettingsGui/LocaleSettingsUi"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="LanguageRowLabel" type="Label" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/LanguageSettingsGui/LocaleSettingsUi/LanguageRow"]
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.84, 0.9, 1)
+theme_override_font_sizes/font_size = 18
+text = "언어"
+
+[node name="LanguageOption" type="OptionButton" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/LanguageSettingsGui/LocaleSettingsUi/LanguageRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 18
+
+[node name="VideoDisplayGui" type="PanelContainer" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(480, 0)
+mouse_filter = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_settings_panel")
+
+[node name="VideoDisplaySettings" type="VBoxContainer" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/VideoDisplayGui"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+script = ExtResource("3_video_display")
+
+[node name="VideoDisplayTitle" type="Label" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/VideoDisplayGui/VideoDisplaySettings"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.94, 0.98, 1)
+theme_override_font_sizes/font_size = 22
+text = "화면 / 비디오"
+horizontal_alignment = 1
+
+[node name="ResolutionRow" type="HBoxContainer" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/VideoDisplayGui/VideoDisplaySettings"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="ResolutionLabel" type="Label" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/VideoDisplayGui/VideoDisplaySettings/ResolutionRow"]
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.84, 0.9, 1)
+theme_override_font_sizes/font_size = 18
+text = "해상도"
+
+[node name="ResolutionOption" type="OptionButton" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/VideoDisplayGui/VideoDisplaySettings/ResolutionRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 18
+
+[node name="WindowModeRow" type="HBoxContainer" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/VideoDisplayGui/VideoDisplaySettings"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="WindowModeLabel" type="Label" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/VideoDisplayGui/VideoDisplaySettings/WindowModeRow"]
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.84, 0.9, 1)
+theme_override_font_sizes/font_size = 18
+text = "화면 모드"
+
+[node name="WindowModeOption" type="OptionButton" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/VideoDisplayGui/VideoDisplaySettings/WindowModeRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 18
+
+[node name="VSyncRow" type="HBoxContainer" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/VideoDisplayGui/VideoDisplaySettings"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="VSyncLabel" type="Label" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/VideoDisplayGui/VideoDisplaySettings/VSyncRow"]
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.84, 0.9, 1)
+theme_override_font_sizes/font_size = 18
+text = "VSync"
+
+[node name="VSyncOption" type="OptionButton" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/VideoDisplayGui/VideoDisplaySettings/VSyncRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 18
+
+[node name="AudioSettingsGui" type="PanelContainer" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(480, 0)
+mouse_filter = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_settings_panel")
+
+[node name="AudioSettingsUi" type="VBoxContainer" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/AudioSettingsGui"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+script = ExtResource("4_audio_settings")
+
+[node name="AudioSettingsTitle" type="Label" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/AudioSettingsGui/AudioSettingsUi"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.94, 0.98, 1)
+theme_override_font_sizes/font_size = 22
+text = "오디오"
+horizontal_alignment = 1
+
+[node name="MasterVolumeRow" type="HBoxContainer" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/AudioSettingsGui/AudioSettingsUi"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="MasterVolumeName" type="Label" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/AudioSettingsGui/AudioSettingsUi/MasterVolumeRow"]
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.84, 0.9, 1)
+theme_override_font_sizes/font_size = 18
+text = "전체 (Master)"
+
+[node name="MasterVolumeSlider" type="HSlider" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/AudioSettingsGui/AudioSettingsUi/MasterVolumeRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+value = 100.0
+
+[node name="MasterVolumeLabel" type="Label" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/AudioSettingsGui/AudioSettingsUi/MasterVolumeRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(48, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.68, 0.72, 0.78, 1)
+theme_override_font_sizes/font_size = 17
+text = "100%"
+horizontal_alignment = 2
+
+[node name="BgmVolumeRow" type="HBoxContainer" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/AudioSettingsGui/AudioSettingsUi"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="BgmVolumeName" type="Label" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/AudioSettingsGui/AudioSettingsUi/BgmVolumeRow"]
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.84, 0.9, 1)
+theme_override_font_sizes/font_size = 18
+text = "BGM"
+
+[node name="BgmVolumeSlider" type="HSlider" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/AudioSettingsGui/AudioSettingsUi/BgmVolumeRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+value = 100.0
+
+[node name="BgmVolumeLabel" type="Label" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/AudioSettingsGui/AudioSettingsUi/BgmVolumeRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(48, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.68, 0.72, 0.78, 1)
+theme_override_font_sizes/font_size = 17
+text = "100%"
+horizontal_alignment = 2
+
+[node name="SfxVolumeRow" type="HBoxContainer" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/AudioSettingsGui/AudioSettingsUi"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="SfxVolumeName" type="Label" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/AudioSettingsGui/AudioSettingsUi/SfxVolumeRow"]
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.84, 0.9, 1)
+theme_override_font_sizes/font_size = 18
+text = "SFX"
+
+[node name="SfxVolumeSlider" type="HSlider" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/AudioSettingsGui/AudioSettingsUi/SfxVolumeRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+value = 100.0
+
+[node name="SfxVolumeLabel" type="Label" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/AudioSettingsGui/AudioSettingsUi/SfxVolumeRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(48, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.68, 0.72, 0.78, 1)
+theme_override_font_sizes/font_size = 17
+text = "100%"
+horizontal_alignment = 2
+
+[node name="GameplaySettingsGui" type="PanelContainer" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(480, 0)
+mouse_filter = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_settings_panel")
+
+[node name="GameplaySettingsUi" type="VBoxContainer" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/GameplaySettingsGui"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+script = ExtResource("5_gameplay_settings")
+
+[node name="GameplaySettingsTitle" type="Label" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/GameplaySettingsGui/GameplaySettingsUi"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.94, 0.98, 1)
+theme_override_font_sizes/font_size = 22
+text = "게임 플레이"
+horizontal_alignment = 1
+
+[node name="RangedRangeRow" type="HBoxContainer" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/GameplaySettingsGui/GameplaySettingsUi"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="ShowRangedAttackRangeToggle" type="CheckButton" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/GameplaySettingsGui/GameplaySettingsUi/RangedRangeRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.84, 0.9, 1)
+theme_override_font_sizes/font_size = 18
+text = "원거리 몬스터 공격 범위 표시"
+button_pressed = true
+
+[node name="FloatingDamageRow" type="HBoxContainer" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/GameplaySettingsGui/GameplaySettingsUi"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="ShowFloatingDamageToggle" type="CheckButton" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/GameplaySettingsGui/GameplaySettingsUi/FloatingDamageRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.84, 0.9, 1)
+theme_override_font_sizes/font_size = 18
+text = "플로팅 데미지 표시"
+button_pressed = true
+
+[node name="MobHealthBarRow" type="HBoxContainer" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/GameplaySettingsGui/GameplaySettingsUi"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="ShowMobHealthBarToggle" type="CheckButton" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/GameplaySettingsGui/GameplaySettingsUi/MobHealthBarRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.84, 0.9, 1)
+theme_override_font_sizes/font_size = 18
+text = "몬스터 체력 게이지 표시"
+button_pressed = true
+
+[node name="TreeDensityGui" type="PanelContainer" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(480, 0)
+mouse_filter = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_settings_panel")
+
+[node name="TreeDensitySettings" type="VBoxContainer" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/TreeDensityGui"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 6
+script = ExtResource("2_tree_density")
+
+[node name="TreeDensityTitle" type="Label" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/TreeDensityGui/TreeDensitySettings"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.94, 0.98, 1)
+theme_override_font_sizes/font_size = 22
+text = "소나무 밀도"
+horizontal_alignment = 1
+
+[node name="TreeDensitySliderRow" type="HBoxContainer" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/TreeDensityGui/TreeDensitySettings"]
+layout_mode = 2
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="SparseLabel" type="Label" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/TreeDensityGui/TreeDensitySettings/TreeDensitySliderRow"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.84, 0.9, 1)
+theme_override_font_sizes/font_size = 18
+text = "적음"
+
+[node name="TreeDensitySlider" type="HSlider" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/TreeDensityGui/TreeDensitySettings/TreeDensitySliderRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+
+[node name="DenseLabel" type="Label" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/TreeDensityGui/TreeDensitySettings/TreeDensitySliderRow"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.84, 0.9, 1)
+theme_override_font_sizes/font_size = 18
+text = "많음"
+
+[node name="TreeDensityValueLabel" type="Label" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/TreeDensityGui/TreeDensitySettings"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.68, 0.72, 0.78, 1)
+theme_override_font_sizes/font_size = 17
+text = "밀도 50% · 간격 505"
+horizontal_alignment = 1
+
+[node name="SettingsBackButton" type="Button" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox"]
+process_mode = 3
+custom_minimum_size = Vector2(280, 56)
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "돌아가기"
+

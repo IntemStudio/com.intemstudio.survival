@@ -2,9 +2,9 @@ extends VBoxContainer
 
 ## 일시정지 설정 — 해상도·화면 모드·VSync.
 
-@onready var _resolution_option: OptionButton = %ResolutionOption
-@onready var _window_mode_option: OptionButton = %WindowModeOption
-@onready var _vsync_option: OptionButton = %VSyncOption
+@onready var _resolution_option: OptionButton = $ResolutionRow/ResolutionOption
+@onready var _window_mode_option: OptionButton = $WindowModeRow/WindowModeOption
+@onready var _vsync_option: OptionButton = $VSyncRow/VSyncOption
 @onready var _video_title: Label = get_node_or_null("../VideoDisplayTitle") as Label
 @onready var _resolution_label: Label = (
 	get_node_or_null("ResolutionRow/ResolutionLabel") as Label
@@ -23,8 +23,8 @@ func _ready() -> void:
 	_resolution_option.item_selected.connect(_on_display_option_changed)
 	_window_mode_option.item_selected.connect(_on_display_option_changed)
 	_vsync_option.item_selected.connect(_on_display_option_changed)
-	sync_from_display()
 	refresh_locale()
+	sync_from_display()
 
 
 func refresh_locale() -> void:
@@ -52,10 +52,18 @@ func refresh_locale() -> void:
 func sync_from_display() -> void:
 	_syncing = true
 	_build_resolution_options()
+	if _window_mode_option.item_count == 0:
+		_rebuild_window_mode_options()
+	if _vsync_option.item_count == 0:
+		_rebuild_vsync_options()
 	var state := DisplaySettings.read_current()
 	_select_resolution(state["resolution"] as Vector2i)
-	_window_mode_option.select(int(state["window_mode"]))
-	_vsync_option.select(0 if state["vsync"] == DisplayServer.VSYNC_DISABLED else 1)
+	var mode_index := int(state["window_mode"])
+	if mode_index >= 0 and mode_index < _window_mode_option.item_count:
+		_window_mode_option.select(mode_index)
+	var vsync_index := 0 if state["vsync"] == DisplayServer.VSYNC_DISABLED else 1
+	if vsync_index >= 0 and vsync_index < _vsync_option.item_count:
+		_vsync_option.select(vsync_index)
 	_syncing = false
 
 
@@ -86,6 +94,8 @@ func _rebuild_vsync_options() -> void:
 
 
 func _select_resolution(size: Vector2i) -> void:
+	if _resolution_presets.is_empty():
+		return
 	var best_index := 0
 	var best_dist := INF
 	for i in _resolution_presets.size():

@@ -21,8 +21,12 @@ var _timeline_fired_keys: Dictionary = {}
 var _density_event_mult := 1.0
 var _density_event_remaining := 0.0
 
+var _pause_menu: CanvasLayer
+var _weapon_select_menu: CanvasLayer
+
 
 func _ready() -> void:
+	_bind_ui_nodes()
 	LocaleSettings.load_and_apply()
 	DisplaySettings.load_and_apply()
 	AudioSettings.load_and_apply()
@@ -45,32 +49,45 @@ func is_game_started() -> bool:
 
 
 func is_weapon_select_open() -> bool:
-	return %WeaponSelectMenu.visible
+	return _weapon_select_menu != null and _weapon_select_menu.visible
 
 
 func is_pause_menu_open() -> bool:
-	return %PauseMenu.visible
+	return _pause_menu != null and _pause_menu.visible
 
 
 func show_weapon_select(title_key: StringName = &"weapon_select.level_up") -> bool:
-	if not %WeaponSelectMenu.present_random_choices(title_key, %Player.get_owned_weapons()):
+	if _weapon_select_menu == null:
+		push_error("Game: WeaponSelectMenu node missing.")
+		return false
+	if not _weapon_select_menu.present_random_choices(title_key, %Player.get_owned_weapons()):
 		_consume_pending_weapon_select()
 		return false
 
-	%WeaponSelectMenu.show()
-	%WeaponSelectMenu.on_menu_opened()
+	_weapon_select_menu.show()
+	_weapon_select_menu.on_menu_opened()
 	get_tree().paused = true
 	return true
 
 
 func on_weapon_chosen(weapon: WeaponData) -> void:
-	%WeaponSelectMenu.on_menu_closed()
-	%WeaponSelectMenu.hide()
+	if _weapon_select_menu == null:
+		return
+	_weapon_select_menu.on_menu_closed()
+	_weapon_select_menu.hide()
 	get_tree().paused = false
 	%Player.add_weapon.call_deferred(weapon)
 
 	_ensure_game_started()
 	_consume_pending_weapon_select()
+
+
+# F5 씬 UI 노드 — 프리팹 인스턴스 실패 시 null 방지.
+func _bind_ui_nodes() -> void:
+	_pause_menu = get_node_or_null("PauseMenu") as CanvasLayer
+	_weapon_select_menu = get_node_or_null("WeaponSelectMenu") as CanvasLayer
+	if _pause_menu == null:
+		push_error("Game: PauseMenu missing — check res://ui/pause_menu_overlay.tscn loads in survivors_game.tscn.")
 
 
 func _ensure_game_started() -> void:
@@ -110,10 +127,6 @@ func register_weapon_damage(weapon: WeaponData, amount: int) -> void:
 # UI 표시용 — 보유 무기 포함, 피해량 내림차순 행 목록.
 func get_weapon_damage_display_rows() -> Array[Dictionary]:
 	return _weapon_damage.build_display_rows(%Player.get_owned_weapons())
-
-
-func format_damage_amount(amount: int) -> String:
-	return _format_damage(amount)
 
 
 func refresh_locale() -> void:
@@ -308,15 +321,17 @@ func _show_stage_clear() -> void:
 
 
 func show_pause_menu() -> void:
-	if is_weapon_select_open():
+	if is_weapon_select_open() or _pause_menu == null:
 		return
-	%PauseMenu.refresh_owned_weapons()
-	%PauseMenu.show()
+	_pause_menu.refresh_owned_weapons()
+	_pause_menu.show()
 	get_tree().paused = true
 
 
 func resume_game() -> void:
-	%PauseMenu.hide()
+	if _pause_menu == null:
+		return
+	_pause_menu.hide()
 	if not is_game_over():
 		get_tree().paused = false
 
@@ -340,71 +355,12 @@ func _refresh_game_over_title() -> void:
 
 
 func _populate_game_over_weapon_damage() -> void:
-	populate_weapon_damage_list(
+	WeaponDamageUi.populate_list(
 		%WeaponDamageList,
 		get_weapon_damage_display_rows(),
 		UiLocale.t(&"gameover.no_damage"),
 		true
 	)
-
-
-# 게임 오버·일시정지 등 무기별 피해 목록 UI를 채웁니다.
-func populate_weapon_damage_list(
-	list: VBoxContainer,
-	rows: Array[Dictionary],
-	empty_text: String,
-	include_grand_total: bool,
-	weapon_type_font_colors: Dictionary = {}
-) -> void:
-	for child in list.get_children():
-		child.queue_free()
-
-	if rows.is_empty():
-		var empty_label := Label.new()
-		empty_label.text = empty_text
-		empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		list.add_child(empty_label)
-		return
-
-	var grand_total := 0
-	for row in rows:
-		grand_total += int(row["total"])
-
-	for row in rows:
-		var weapon: WeaponData = row["weapon"]
-		var total: int = int(row["total"])
-		var label := Label.new()
-		label.text = "%s  %s" % [weapon.get_display_name_localized(), format_damage_amount(total)]
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		label.add_theme_font_size_override("font_size", 22)
-		if not weapon_type_font_colors.is_empty():
-			label.add_theme_color_override(
-				"font_color",
-				weapon_type_font_colors.get(weapon.weapon_type, Color(0.92, 0.92, 0.95, 1))
-			)
-		list.add_child(label)
-
-	if not include_grand_total:
-		return
-
-	var total_label := Label.new()
-	total_label.text = "합계  %s" % format_damage_amount(grand_total)
-	total_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	total_label.add_theme_font_size_override("font_size", 24)
-	list.add_child(total_label)
-
-
-func _format_damage(amount: int) -> String:
-	var text := str(amount)
-	if amount < 1000:
-		return text
-	var parts: PackedStringArray = []
-	while text.length() > 3:
-		parts.insert(0, text.substr(text.length() - 3, 3))
-		text = text.substr(0, text.length() - 3)
-	if not text.is_empty():
-		parts.insert(0, text)
-	return ",".join(parts)
 
 
 func _restart_game() -> void:

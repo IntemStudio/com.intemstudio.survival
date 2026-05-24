@@ -2,8 +2,8 @@ extends VBoxContainer
 
 ## 일시정지 설정 — 소나무 밀도 슬라이더(드래그 시 %MapArena 실시간 재배치).
 
-@onready var _slider: HSlider = %TreeDensitySlider
-@onready var _value_label: Label = %TreeDensityValueLabel
+@onready var _slider: HSlider = $TreeDensitySliderRow/TreeDensitySlider
+@onready var _value_label: Label = $TreeDensityValueLabel
 @onready var _tree_title: Label = get_node_or_null("../TreeDensityTitle") as Label
 @onready var _sparse_label: Label = get_node_or_null("TreeDensitySliderRow/SparseLabel") as Label
 @onready var _dense_label: Label = get_node_or_null("TreeDensitySliderRow/DenseLabel") as Label
