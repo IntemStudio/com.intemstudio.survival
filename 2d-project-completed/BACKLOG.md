@@ -13,7 +13,8 @@
 
 | 영역 | 구현 요약 |
 |------|-----------|
-| 게임 루프 | 시작 무기 선택 → 스폰 타이머 → 레벨업 3택1 → **30분 클리어** 또는 패배 게임오버(무기별 피해·합계)·재시작 |
+| 게임 로비 | F5 `game_lobby.tscn` — 설정 apply · **게임 시작** → `survivors_game.tscn` · `UiLocale` `lobby.*` |
+| 게임 루프 | 로비 진입 후 시작 무기 선택 → 스폰 타이머 → 레벨업 3택1 → **30분 클리어** 또는 패배 게임오버(무기별 피해·합계)·재시작 |
 | 일시정지 | Esc, **설정**(소나무 밀도), 무기 선택·게임오버·클리어 중 일시정지 차단 |
 | 밸런스 (VS형 A·B·C) | `default_balance_table.tres` VS 키프레임(11분 피크·16~20 호흡·25분 보스)·`balance_pace_multiplier` · `default_balance_timeline.tres`(9·11·25·28분 이벤트) · 30분 `die_from_stage_clear()` 클리어 |
 | 몹 | basic / fast / elite / special_a·b / boss — 공용 `mob.gd`; **ranged** — 8분+ 스폰(VS형 A); **dummy** — 테스트 전용 |
@@ -23,7 +24,8 @@
 | 상태이상 | 독(연금), 쐐기(nettles), 피격·독 데미지 플로팅 텍스트 |
 | 피격 연출 | `HitFlash` — 몹 `%Slime`·플레이어 `HappyBoo/Colorizer` modulate 깜박임; 몹은 무기/독 피해 + `play_hurt()` 애니 병행 |
 | 오브젝트 풀 | `ScenePool` + `PoolUtil` — 무기 발사체, 경험치 오브, 몹 7종+더미 prewarm, **몹 투사체·공격 예고 마크** (`prewarm_mob_projectiles` 32, `prewarm_mob_attack_marks` 20) |
-| 픽업·경험치 | 오브(`ScenePool`, `exp_orbs`, `pickup_range` 자동 자석·가속·`MagnetTrail` 꼬리); `%PickupRangeRing`; 자석 1%·체력 1% 드랍(오프셋 스폰) |
+| 픽업·경험치·골드 | 오브(`ScenePool`, `exp_orbs`, `pickup_range` 자동 자석·가속·`MagnetTrail`); `%PickupRangeRing`; **골드**(`KillRewards`·`gold_coin`·HUD `%GoldLabel`); 자석 1%·체력 1% 드랍 |
+| 인벤토리 (Phase 0~6) | 가방 8·2×7슬롯·Common 장비 73종·UI v2(4칸 전투 슬롯)·I·W/RMB 세트 스왑 · 빈 세이브 시 `apply_random_starter` |
 | 플레이어 피격 | 근접: 범위 내 `contact_attack_interval`/`contact_attack_damage` + HurtBox 겹침 진입 시 1; 원거리: `mob_projectile`만; `GameplaySettings` 범위 링; `HitFlash` |
 | 무기 조준 | `gun.gd` 사거리 내 최근접 몹 — `%TargetIndicator` 속 빈 링+브래킷(`target_indicator_ring.gd`, 펄스·회전), 몹 루트 기준 고정 오프셋 |
 | 무기 피해 통계 | `WeaponDamageTracker` → 게임오버 `%WeaponDamageList` · 일시정지 `%PauseOwnedWeaponsList`(타입별 색·합계) |
@@ -60,11 +62,12 @@
   - [x] Phase 0~2 — 데이터·`InventoryService`·`GearData`·Common 장비 73종·`GearStatMerge`/`GearStatDisplay`
   - [x] Phase 4~5 — UI v2(4칸 전투 슬롯)·드래그·`InventoryGameBridge`·**I**
   - [x] Phase 3 (최소) — `InventoryCombatBridge` · F6 `use_inventory_loadout`
-  - [x] Phase 6 — W·RMB 스왑·HUD `%CombatSetLabel`·가방 RMB/더블클릭 장착·`try_equip_from_bag_smart`·편집 탭 분리·`UiLocale`
+  - [x] Phase 6 — W·RMB 스왑·HUD `%CombatSetLabel`·가방 RMB/더블클릭 장착·`try_equip_from_bag_smart`·편집 탭 분리·`UiLocale`·빈 세이브 `apply_random_starter`
   - [ ] Phase 3 (잔여) — F5+레벨업 무기 공존 정책
   - [ ] Phase 7 — `sum_stat_modifiers_for_set`→Player·offhand 비주얼·퀵슬롯 4칸
 - [ ] **승리 조건** — 생존 시간 목표·웨이브 클리어·보스 처치 승리 없음(현재는 사망만).
-- [ ] **경험치 보상 스케일** — `exp_orb` 기본값 1 고정. 몹 종류·페이즈·엘리트/보스별 차등 없음.
+- [ ] **골드 소비처** — 처치·수집·HUD 표시만 있음. 상점·메타 진행·인벤 연동 없음.
+- [ ] **경험치 보상 미세 튜닝** — `KillRewards`로 `mob_kind`·`loot_multiplier` 반영됨. 남음: 엘리트/보스 전용 드랍 테이블·오브 비주얼 차등.
 - [ ] **캐릭터 선택** — HappyBoo 고정. 시작 전 캐릭터·스탯 프리셋 없음.
 - [ ] **메타 진행** — 런 간 영구 해금·통화·업그레이드 없음(의도적 미구현일 수 있음).
 - [ ] **보스/특수 등장 연출** — 25분 보스 플래그 등은 수치만; 경고 UI·BGM·스폰 이펙트 없음.
@@ -151,7 +154,9 @@
 4g. **피격 깜박임 변경** → `effects/hit_flash/hit_flash.gd` (`FLASH_MULTIPLIER`, `BLINK_COUNT`, on/off 시간), `mob.gd` (`_play_hit_flash`, `pool_reset`·`HitFlash.cancel`), `player.gd` (`_play_hit_flash`, `Colorizer`); `AGENTS.md` 피격 깜박임 섹션 동기화
 4h. **맵 경계·스폰 영역 변경** → `map_arena.gd`, **`survivors_game.tscn` `%MapArena` 오버라이드(메인 3×)**, `test_arena.tscn`(1×·`spawn_trees`), `game.gd` `spawn_mob`; [`Docs/AGENTS_MapArena.md`](Docs/AGENTS_MapArena.md)·`godot-core.mdc`
 4j. **소나무 Poisson·밀도 UI 변경** → `poisson_sampler.gd`, `map_arena.gd`(`tree_spacing_dense`/`sparse`, `tree_min_spacing`, `get/set_tree_density_normalized`, 기본 밀도 50%), `ui/settings/tree_density_settings.gd`, `survivors_game.tscn` `%PauseMenu` `%SettingsPanel`; [`Docs/AGENTS_MapArena.md`](Docs/AGENTS_MapArena.md) §소나무·`AGENTS.md` §일시정지
-4l. **일시정지·설정 UI 변경** → `ui/pause_menu.gd`, `survivors_game.tscn` (`%PauseMainContent`, `%SettingsPanel`, `SettingsButton`, `SettingsBackButton`); `AGENTS.md` §일시정지 메뉴
+4l. **일시정지·설정 UI 변경** → `ui/pause_menu.gd`, `survivors_game.tscn` (`%PauseMainContent`, `%SettingsPanel`, `SettingsButton`, `SettingsBackButton`); `AGENTS.md` §일시정지
+4m. **처치 보상·골드 변경** → `game/balance/kill_rewards.gd`, `game/game.gd` (`get_kill_rewards_for_mob`), `entities/mob/mob.gd` (`_compute_kill_rewards`), `effects/gold_coin/*`, `entities/player/player.gd` (`gain_gold`); `AGENTS.md` 픽업·경험치·골드 섹션
+4n. **게임 로비 변경** → `game_lobby.tscn`, `ui/lobby/game_lobby.gd`, `project.godot` (`run/main_scene`), `ui/settings/ui_locale.gd`; `AGENTS.md` 게임 로비
 4i. **무기 선택·리롤·버리기 UI 변경** → `ui/weapon_select_menu.gd` (`present_random_choices`, `reroll_choices`, `discard_weapon_at_index`, `_owned_weapons`, `_discarded_weapons`, `_build_selectable_weapon_pool`), `survivors_game.tscn` (`DiscardSlot0~2`, `RerollButton`, `RightColumnVBox/DiscardedPanel`, `AutoSelectRow`, `AutoPriorityPanel`); `AGENTS.md` 무기 선택 UI·`.cursor/rules/godot-weapons.mdc`
 5. **접촉 피해·충돌 정렬 변경** → `ground_shadow_footprint.gd`, `player.gd` (`_apply_contact_damage`, `HurtBox`, `set_contact_damage_enabled`), `mob.gd` (`contact_attack_interval`/`contact_attack_damage`, standoff, `is_contact_damage_active`), `mob_projectile` (`collision_mask` 9); `AGENTS.md` 접촉 피해·원거리 몹·게임 플레이 설정
 5b. **조준 링·경험치 자석 연출** → `gun.gd` `_set_targeted`, `mob.gd` `set_targeted`·`target_indicator_ring.gd`·`%TargetIndicator`, `exp_orb.gd`/`exp_orb.tscn` (`MagnetTrail`, 가속 상수); `AGENTS.md` 조준 표시·픽업 섹션
@@ -160,4 +165,4 @@
 
 ---
 
-*마지막 갱신: 2026-05-24 — 근접 접촉(범위 주기 공격·충돌 1)·원거리 발사체-only·`GameplaySettings` 근/원 거리 링·`mob_projectile` mask 9. 구현이 바뀌면 이 문서도 함께 맞춥니다.*
+*마지막 갱신: 2026-05-25 — 게임 로비(`game_lobby.tscn`)·`KillRewards`/골드 드랍·인벤 `apply_random_starter`·장비 카탈로그 73종. 구현이 바뀌면 이 문서도 함께 맞춥니다.*

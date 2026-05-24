@@ -6,13 +6,14 @@
 - [프로젝트 개요](#프로젝트-개요)
 - [폴더 지도](#폴더-지도)
 - [고정 맵 경계 (`MapArena`)](#고정-맵-경계-maparena) · 상세 [`Docs/AGENTS_MapArena.md`](Docs/AGENTS_MapArena.md)
+- [게임 로비](#게임-로비-game_lobbytscn)
 - [런타임 흐름 (요약)](#런타임-흐름-요약)
 - [테스트 아레나](#테스트-아레나-test_arenatscn)
 - [무기 선택 UI](#무기-선택-ui-weaponselectmenu)
 - [무기별 피해 집계·게임오버](#무기별-피해-집계게임오버)
 - [일시정지 메뉴](#일시정지-메뉴-pausemenu)
 - [무기 공격 전달 방식](#무기-공격-전달-방식) · [조준 표시](#조준-표시-gun--mob) · [몹 체력바](#몹-체력바-healthbar)
-- [픽업·경험치·자석](#픽업경험치자석)
+- [픽업·경험치·골드·자석](#픽업경험치골드자석)
 - [플레이어 이동·대시](#플레이어-이동대시)
 - [자동 공격 토글](#자동-공격-토글)
 - [플레이어 접촉 피해](#플레이어-접촉-피해)
@@ -49,7 +50,7 @@
 
 Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확장). 한 판에서 이동·대시·접촉 피해·레벨업·무기 선택·시간에 따른 몹 웨이브 생존을 처리합니다.
 
-- **실행 씬:** `survivors_game.tscn` (`project.godot` → `run/main_scene`)
+- **실행 씬:** `game_lobby.tscn` (`project.godot` → `run/main_scene`) — **게임 시작**으로 `survivors_game.tscn` 진입
 - **오케스트레이션:** 루트 노드 `Game` + `game/game.gd`
 - **Autoload 없음** — 다수 스크립트가 `/root/Game` 경로를 하드코딩
 - **창·뷰포트:** HD **1280×720** (`project.godot` `[display]`, `resizable=false`, `stretch` `canvas_items` + `expand`)
@@ -62,14 +63,17 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 
 | 경로 | 역할 |
 |------|------|
-| `survivors_game.tscn` | 메인 씬(F5): `Game`, `%MapArena`(3× 맵 오버라이드), `Player`, HUD, `%PauseMenu`(설정·소나무 밀도), 무기 UI, `%GameOver` |
+| `game_lobby.tscn` | **시작 화면**(F5): `GameLobby` — 설정 로드·게임 시작·종료 |
+| `ui/lobby/game_lobby.gd` | 로비 UI — `LocaleSettings`/`DisplaySettings`/`AudioSettings` apply · `survivors_game.tscn` 전환 |
+| `survivors_game.tscn` | 메인 플레이 씬: `Game`, `%MapArena`(3× 맵 오버라이드), `Player`, HUD(`%GoldLabel`), `%PauseMenu`, 무기 UI, `%GameOver` |
 | `world/map_arena/` | `MapArena` — 벽·Poisson 소나무(`Obstacles`)·플레이 영역 내부 몹 스폰 좌표 |
 | `game/game.gd` | 스폰 타이머, 밸런스 시계, 처치 HUD, 일시정지/게임오버, 무기 선택, 무기별 피해 집계·게임오버 표시 |
 | `game/weapon_damage_tracker.gd` | `WeaponDamageTracker` — 무기 `get_unique_key()`별 누적 피해, 게임오버 행 목록 생성 |
 | `game/weapon_damage_ui.gd` | `WeaponDamageUi` — 게임오버·일시정지 피해 목록 VBox 채우기·천 단위 포맷 |
 | `ui/pause_menu_overlay.tscn` | F5/F6 공용 `%PauseMenu` 프리팹(설정·소나무 밀도 포함) |
 | `game/pool/` | `ScenePool` (`scene_pool.gd`), `PoolUtil` — 공통 `acquire` / `release` |
-| `game/balance/` | `BalanceTable`, `BalanceTimeline`, phase, `MobSpawnSelector`, `default_balance_table.tres`, `default_balance_timeline.tres` |
+| `game/balance/` | `BalanceTable`, `BalanceTimeline`, `KillRewards`, phase, `MobSpawnSelector`, `default_balance_table.tres`, `default_balance_timeline.tres` |
+| `effects/gold_coin/` | `gold_coin.gd` — 처치 골드 픽업(`gold_coins` 그룹, `ScenePool`) |
 | `test_arena.tscn` | **테스트 전용** 씬: `Game` + `game/test_arena.gd` — 몹/무기 수동 스폰, 리스폰 (`run/main_scene` 아님, **F6**) |
 | `game/test_arena.gd` | 테스트 아레나 오케스트레이션(스폰·무기 Equip·플레이어/몹 리스폰) |
 | `entities/player/` | 이동, 대시·쿨다운 게이지, 경험치, 무기 컨테이너, 피격, **자동 공격 토글(F)**, `Camera2D` **`zoom 0.5`** |
@@ -98,27 +102,46 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 
 ---
 
+## 게임 로비 (`game_lobby.tscn`)
+
+앱 실행(F5) 시 가장 먼저 뜨는 **타이틀·진입 화면**입니다. 메인 서바이버 루프와 씬·스크립트가 분리되어 있습니다.
+
+| 항목 | 내용 |
+|------|------|
+| 실행 | **F5** — `project.godot` `run/main_scene` = `game_lobby.tscn` |
+| 스크립트 | `ui/lobby/game_lobby.gd` |
+| 레이아웃 | `MenuOverlay` + `UiViewportLayout`(FHD 1920×1080, 중앙) — [`Docs/AGENTS_Display_UI.md`](Docs/AGENTS_Display_UI.md)와 동일 |
+| `_ready` | `LocaleSettings` · `DisplaySettings` · `AudioSettings` `load_and_apply()` — 게임 씬 진입 전 사용자 설정 반영 |
+| **게임 시작** | `%StartGameButton` → `change_scene_to_file("res://survivors_game.tscn")` |
+| **게임 종료** | `%QuitButton` → `get_tree().quit()` |
+| 로케일 | `UiLocale` — `lobby.title` · `lobby.start` · `lobby.quit` (`ui_locale.gd`) |
+
+**Must not:** 로비에서 `/root/Game` 경로를 가정하지 말 것 — `Game` 노드는 `survivors_game.tscn`에만 존재.
+
+---
+
 ## 런타임 흐름 (요약)
 
-1. `_ready`: `BalanceTable` 로드 → 시작 무기 선택(버튼 호버 시 `%WeaponSelectMenu` 설명 패널) → 트리 `paused`
-2. `Game.show_weapon_select` → `present_random_choices` → `show()` → `on_menu_opened()` → `paused`. 닫을 때 `on_menu_closed()` → `hide()` (`game.gd`)
-3. `on_weapon_chosen` → `Player.add_weapon` → `_ensure_game_started` → 스폰 `Timer` 시작
-4. 타이머마다: `%MapArena` 플레이 영역 안 무작위 위치에 `spawn_mob` (`ScenePool`으로 몹 acquire) → `initialize_spawn_health`로 HP
-5. `leveled_up` → 무기 선택 대기열; 메뉴가 열려 있으면 스폰 시계 정지. 선택 UI는 `WeaponSelectMenu.present_random_choices` → 버튼 라벨 + `WeaponData.build_select_tooltip_bbcode()` 상세
-6. `health_depleted` → `%GameOverTitle` `"Game Over"` · 무기별 피해 · `paused`
-7. 표 축 **30분** → 클리어: `Timer` 정지 · `mobs` → `die_from_stage_clear()`(연기만, 드랍·처치 없음) · `%GameOverTitle` `"클리어!"` · `paused` (실시간 = `1800 / balance_pace_multiplier`초)
-8. `_process`(시계 가동 중): `BalanceTimeline` 9·11·25·28분 1회 발동 · 밀도 버스트 시 `spawn_density × density_mult`
-9. 몹 일반 `_die()` → `register_kill` → 연기 → 오브(`ScenePool`) → 1% 자석·체력 → `PoolUtil.release_node`
+1. **로비** — F5 → 설정 apply → **게임 시작** 시 `survivors_game.tscn` 로드
+2. `_ready`: `BalanceTable` 로드 → 시작 무기 선택(버튼 호버 시 `%WeaponSelectMenu` 설명 패널) → 트리 `paused`
+3. `Game.show_weapon_select` → `present_random_choices` → `show()` → `on_menu_opened()` → `paused`. 닫을 때 `on_menu_closed()` → `hide()` (`game.gd`)
+4. `on_weapon_chosen` → `Player.add_weapon` → `_ensure_game_started` → 스폰 `Timer` 시작
+5. 타이머마다: `%MapArena` 플레이 영역 안 무작위 위치에 `spawn_mob` (`ScenePool`으로 몹 acquire) → `initialize_spawn_health`로 HP
+6. `leveled_up` → 무기 선택 대기열; 메뉴가 열려 있으면 스폰 시계 정지. 선택 UI는 `WeaponSelectMenu.present_random_choices` → 버튼 라벨 + `WeaponData.build_select_tooltip_bbcode()` 상세
+7. `health_depleted` → `%GameOverTitle` `"Game Over"` · 무기별 피해 · `paused`
+8. 표 축 **30분** → 클리어: `Timer` 정지 · `mobs` → `die_from_stage_clear()`(연기만, 드랍·처치 없음) · `%GameOverTitle` `"클리어!"` · `paused` (실시간 = `1800 / balance_pace_multiplier`초)
+9. `_process`(시계 가동 중): `BalanceTimeline` 9·11·25·28분 1회 발동 · 밀도 버스트 시 `spawn_density × density_mult`
+10. 몹 일반 `_die()` → `register_kill` → 연기 → `KillRewards`로 XP·골드 계산 → 오브·골드(`ScenePool`) → 1% 자석·체력 → `PoolUtil.release_node`
 
 ---
 
 ## 테스트 아레나 (`test_arena.tscn`)
 
-밸런스·레벨업·게임오버 없이 **몹·무기·피해**만 빠르게 검증하는 씬입니다. 메인 루프와 **씬·스크립트가 분리**되어 있고, `project.godot`의 `run/main_scene`은 `survivors_game.tscn` 그대로입니다.
+밸런스·레벨업·게임오버 없이 **몹·무기·피해**만 빠르게 검증하는 씬입니다. 메인 루프·로비와 **씬·스크립트가 분리**되어 있습니다.
 
 | 항목 | 내용 |
 |------|------|
-| 실행 | Godot에서 `test_arena.tscn` 연 뒤 **F6**(현재 씬 실행). F5는 메인 게임 |
+| 실행 | Godot에서 `test_arena.tscn` 연 뒤 **F6**(현재 씬 실행). **F5**는 `run/main_scene` = `game_lobby.tscn` |
 | 루트 계약 | 노드 이름 **`Game`**, 자식 **`Player`**, **`ObjectPools`**, **`%MapArena`** — `mob.gd`의 `/root/Game/Player`·풀·스폰 경로와 동일해야 함 |
 | 오케스트레이션 | `game/test_arena.gd` (`game.gd` 대체). **Esc** → `%PauseMenu`(`pause_menu_overlay.tscn` 인스턴스). `is_weapon_select_open` 항상 false · `is_pause_menu_open` / `is_game_over`(사망 리스폰 대기)로 `player.gd` F·Esc 게이트 |
 
@@ -279,19 +302,32 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 
 ---
 
-## 픽업·경험치·자석
+## 픽업·경험치·골드·자석
+
+### 처치 보상 (`KillRewards`)
+
+`game/balance/kill_rewards.gd` — `mob.gd` `_compute_kill_rewards()` → `Game.get_kill_rewards_for_mob(mob_kind)`(메인) 또는 `KillRewards.compute` 폴백(F6 등).
+
+| 항목 | 동작 |
+|------|------|
+| 기본 XP | `mob_kind`별 — basic/fast **1**, ranged **2**, elite **4**, special **5**, boss **25**, dummy **0** |
+| 페이즈 배율 | `BalancePhase.loot_multiplier` 선형 보간(예: 11분+ 1.3~1.5) |
+| 골드 | `round(xp × 0.5)` (`GOLD_PER_XP`) — XP 0이면 골드도 0 |
+
+### 픽업
 
 | 대상 | 스폰 | 수집 | 비고 |
 |------|------|------|------|
-| 경험치 오브 | `mob.gd` `_die()` → `ScenePool.acquire(EXP_ORB_SCENE)` | `Player` `%PickupRange`(layer 4) → `start_magnet` / `pickup_range` 이내 `pool_on_acquire` 자동 자석 | 수집 시 `gain_experience` → `PoolUtil.release_node` |
-| 자석 아이템 | `_die()`에서 `randf() < 0.01` → `magnet_pickup.tscn` `instantiate` | `%PickupRange` → `collect(player)` | `exp_orbs` 그룹 전원 `start_magnet(player)` 후 `queue_free` |
+| 경험치 오브 | `_die()` → `KillRewards.xp` → `ScenePool.acquire(EXP_ORB_SCENE)` | `Player` `%PickupRange`(layer 4) → `start_magnet` / `pickup_range` 이내 `pool_on_acquire` 자동 자석 | 수집 시 `gain_experience` → `PoolUtil.release_node` |
+| 골드 | `_die()` → `KillRewards.gold` > 0 → `gold_coin.tscn` (`ScenePool`, prewarm 80) | `pickup_range` 진입·자석(`start_magnet`) → `gain_gold` | HUD `%GoldLabel` · `gold_coins` 그룹 — 자석 아이템이 전원 끌어당김 |
+| 자석 아이템 | `_die()`에서 `randf() < 0.01` → `magnet_pickup.tscn` `instantiate` | `%PickupRange` → `collect(player)` | `exp_orbs`·`gold_coins` 그룹 전원 `start_magnet(player)` 후 `queue_free` |
 | 체력 아이템 | `_die()`에서 `randf() < 0.01` → `health_pickup.tscn` `instantiate` | `%PickupRange` → `collect(player)` | `heal_health(heal_amount)` (기본 30, 최대 체력까지) 후 `queue_free` |
 
 - **물리:** 픽업·오브·자석 — `PhysicsLayers.apply_pickup` (`collision_layer = 4`). 플레이어 `PickupRange` — `MASK_PLAYER_PICKUP` (4).
 - **범위 반경:** `player.gd` `@export pickup_range` (기본 **150**). `_ready`에서 `%PickupRange` `CircleShape2D` 반경과 동기화. `exp_orb.gd`는 플레이어 중심 거리 `<= player.pickup_range`일 때 자석 시작(Area 진입과 별도).
 - **범위 표시:** `player.tscn` `%PickupRange` 자식 `%PickupRangeRing` — `art/shared/fx/circle.png` `Sprite2D`, `modulate` 알파 **0.28**·연한 파랑. `player.gd` `_sync_pickup_range_visual()`가 `pickup_range`와 링 스케일을 맞춤(몹 `AttackRangeRing`과 동일 tex 반경÷스케일 방식). `z_index = -10`으로 캐릭터 뒤.
-- **비주얼:** 오브 scale `0.35`(파란), 자석·체력 `0.7`(주황·초록, 오브의 2배).
-- **자석 이동:** `exp_orb.gd` — 시간·거리 이중 가속(`MAGNET_RAMP_*`, `MAGNET_SNAP_*`, 상한 `MAGNET_MAX_SPEED`). 자석 중 `%MagnetTrail` `Line2D` 꼬리(폭·알파 그라데이션); `pool_reset`에서 초기화.
+- **비주얼:** 오브 scale `0.35`(파란), 골드 `circle.png` 황금 tint, 자석·체력 `0.7`(주황·초록, 오브의 2배).
+- **자석 이동:** `exp_orb.gd`·`gold_coin.gd` — 시간·거리 이중 가속(`MAGNET_RAMP_*`, `MAGNET_SNAP_*`, 상한 `MAGNET_MAX_SPEED`). 자석 중 `%MagnetTrail` `Line2D` 꼬리; `pool_reset`에서 초기화.
 - **플레이어 분기:** `player.gd` `_on_pickup_range_area_entered` — `collect` 우선, 없으면 `start_magnet`.
 - **자석·체력은 풀 밖:** 드랍 빈도가 낮아 `ScenePool` 미사용. 풀 도입 시 `pool_reset`/`pool_on_acquire`·`PoolUtil.release_node` 계약 필요.
 
@@ -514,7 +550,7 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | 방어구 | 항상 `sets[0]` (`SHARED_ARMOR_SET_INDEX`) |
 | UI | **I** · 3×3 · 가방 2×4 · `InventoryGameBridge` |
 | 전투 플래그 | F5 `use_inventory_loadout` **false** · F6 **true** · on 시 **W**≠위 이동(**↑** 사용) |
-| 데이터 | `inventory/*` · `user://player_loadout.cfg` |
+| 데이터 | `inventory/*` · `user://player_loadout.cfg` · 빈 세이브 시 `apply_random_starter` |
 | 서바이버 무기 | `_owned_weapons`·레벨업 3택 — 플래그 off면 인벤과 **분리** |
 
 **상세 (슬롯·UI·Phase 0~7):** [`Docs/Architecture_Inventory.md`](Docs/Architecture_Inventory.md)
@@ -540,9 +576,9 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 | `ScenePool.acquire(scene, parent, spawn_global_position?)` | `pool_reset` → 부모 재부착 → (선택) `Node2D.global_position` → 활성화 → `pool_on_acquire`. 몹은 `spawn_mob`/`spawn_test_mob`가 위치·`initialize_spawn_health`까지 설정 |
 | `PoolUtil.release_node(node)` | 반환(풀 미등록이면 `queue_free`) |
 
-**이미 풀 적용:** 발사체(`gun.gd` — 총알·`melee_projectile`·마법 등), **영역 존**(`area_damage_zone`, 연금 착지), 경험치 오브(`mob.gd` `_die`), 몹 7종+더미 prewarm, 몹 투사체·공격 예고 마크.
+**이미 풀 적용:** 발사체(`gun.gd` — 총알·`melee_projectile`·마법 등), **영역 존**(`area_damage_zone`, 연금 착지), 경험치 오브·**골드 코인**(`mob.gd` `_die`), 몹 7종+더미 prewarm, 몹 투사체·공격 예고 마크.
 
-**풀링 노드 계약:** 스크립트에 `pool_reset()` / `pool_on_acquire()` 구현. **매 스폰 설정은 `_ready`가 아니라** `pool_on_acquire` 또는 호출자 설정(`initialize_spawn_health` 등). 수명 종료는 `queue_free` 대신 `PoolUtil.release_node(self)`. 그룹 `exp_orbs`는 `pool_on_acquire`에서 추가, `pool_reset`에서 제거.
+**풀링 노드 계약:** 스크립트에 `pool_reset()` / `pool_on_acquire()` 구현. **매 스폰 설정은 `_ready`가 아니라** `pool_on_acquire` 또는 호출자 설정(`initialize_spawn_health`·`gold_value` 등). 수명 종료는 `queue_free` 대신 `PoolUtil.release_node(self)`. 그룹 `exp_orbs`·`gold_coins`는 `pool_on_acquire`에서 추가, `pool_reset`에서 제거.
 
 **prewarm:** `ObjectPools` 인스펙터(`prewarm_*`) 또는 `scene_pool.gd`의 `MOB_SCENES` 등. 새 몹 변종 추가 시 `MobSpawnSelector`와 `ScenePool.MOB_SCENES`를 같이 갱신.
 
@@ -556,6 +592,8 @@ Godot 4.6 기반 **2D 뱀파이어 서바이버류** (GDQuest 튜토리얼 + 확
 
 | 작업 | 파일 |
 |------|------|
+| 게임 로비 | `game_lobby.tscn`, `ui/lobby/game_lobby.gd`, `project.godot` (`run/main_scene`), `ui/settings/ui_locale.gd` (`lobby.*`) |
+| 처치 보상·골드 | `game/balance/kill_rewards.gd`, `game/game.gd` (`get_kill_rewards_for_mob`), `entities/mob/mob.gd`, `effects/gold_coin/*`, `entities/player/player.gd` (`gain_gold`, `%GoldLabel`) |
 | 오브젝트 풀 | `game/pool/scene_pool.gd`, `pool_util.gd`, `survivors_game.tscn` (`ObjectPools`) |
 | 스폰·시간·UI | `game/game.gd`, `survivors_game.tscn`, `world/map_arena/map_arena.gd` (`%MapArena`) |
 | 맵 경계·벽·소나무·스폰 | [`Docs/AGENTS_MapArena.md`](Docs/AGENTS_MapArena.md), `map_arena.gd`, `poisson_sampler.gd`, **`survivors_game.tscn` `%MapArena` 오버라이드(3×)**, `test_arena.tscn`, `ui/settings/tree_density_settings.gd` |
