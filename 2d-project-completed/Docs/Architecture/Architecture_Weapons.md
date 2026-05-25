@@ -1,0 +1,117 @@
+# Architecture — Weapons (무기)
+
+**진입:** [`AGENTS.md`](../../AGENTS.md) · 플레이 규칙: [`Wiki/Weapons.md`](../Wiki/Weapons.md), [`Wiki/Combat.md`](../Wiki/Combat.md) · 인벤 연동: [`Architecture_Inventory.md`](Architecture_Inventory.md)
+
+무기 시스템의 데이터, 장착, 발사, 피해 기록 흐름을 정리한다. 무기별 데모 선정, 성장 기획, 아이콘 정책은 `Docs/Wiki/Weapons.md`와 `BACKLOG.md`에서 관리한다.
+
+## Overview
+
+무기는 `WeaponData` 리소스를 중심으로 동작한다. 메인 루프에서는 레벨업 선택 UI가 카탈로그에서 후보를 뽑고, 선택된 `WeaponData`를 `Player.add_weapon()`으로 플레이어에게 추가한다. 플레이어는 무기마다 `Gun` 인스턴스를 만들고, `Gun`은 weapon type과 delivery 필드를 보고 탄환, 근접 관통 발사체, 투척체, 장판, 궤도 무기를 생성한다.
+
+피해는 발사체나 장판이 몹에 닿을 때 `Mob.apply_weapon_damage(amount, weapon)`로 들어간다. 이 경로는 `Game.register_weapon_damage()`를 통해 `WeaponDamageTracker`에 누적되어 게임오버와 일시정지 피해 목록에 표시된다. 인벤토리 loadout을 켠 경우에도 weapon은 결국 `Player.add_weapon()`과 `Gun` 경로를 사용하되, 장비 스탯은 `Player.roll_weapon_damage()`와 `get_effective_attacks_per_second()`에서 반영된다.
+
+## Responsibilities & Boundaries
+
+### In Scope
+
+| 책임 | 설명 |
+|------|------|
+| 무기 데이터 | `WeaponData`의 id, 타입, 손잡이, 피해, APS, 사거리, delivery, 원소, 특수 필드 |
+| 카탈로그 | Ranged/Melee/Magic 카탈로그의 `WeaponData` 생성과 선택 UI 후보 공급 |
+| 장착 | `Player.add_weapon()`이 `Gun`을 생성하고 `%Weapons` 아래 배치 |
+| 조준·발사 | `Gun`이 최근접 몹 조준, 자동 공격/수동 공격, burst, delivery 분기 처리 |
+| 피해 전달 | 발사체·장판·궤도 스크립트가 몹에 weapon 귀속 피해 적용 |
+| 피해 통계 | `WeaponDamageTracker`가 `WeaponData.get_unique_key()` 기준으로 누적 피해 표시 |
+| 장비 스탯 연동 | loadout 활성 시 피해·APS 배율을 `Player` 계산 경로에서 반영 |
+
+### Out of Scope
+
+| 제외 | 비고 |
+|------|------|
+| 보유 무기 강화 단계 | 현재는 신규 무기 선택 중심이며 성장 정책은 Wiki/Backlog에서 결정한다. |
+| 무기 합성·진화 | 별도 성장 Epic으로 분리한다. |
+| 데모 무기 풀 선정 | 플레이 감각과 콘텐츠 정책 문제이므로 Wiki/Plan에서 관리한다. |
+| 아이콘·고유 아트 정책 | 콘텐츠·아트 폴리시로 관리한다. |
+| 인벤 weapon과 레벨업 weapon의 장기 통합 정책 | `Architecture_Inventory.md`와 별도 Epic에서 다룬다. |
+
+## Key Types & Relationships
+
+| 타입/파일 | 역할 |
+|-----------|------|
+| `weapons/data/weapon_data.gd` | 무기 데이터와 툴팁, 사거리·관통·delivery helper의 단일 소스 |
+| `weapons/catalogs/ranged_weapon_catalog.gd` | 원거리·투척·폭발·연금 투척 계열 `WeaponData` 생성 |
+| `weapons/catalogs/melee_weapon_catalog.gd` | 근접 무기를 관통 발사체 모델로 생성 |
+| `weapons/catalogs/magic_weapon_catalog.gd` | 마법 탄, 유도, 궤도 계열 `WeaponData` 생성 |
+| `ui/weapon_select_menu.gd` | 레벨업 후보 표시, 리롤·버리기·자동 선택, 툴팁 표시 |
+| `entities/player/player.gd` | 보유 무기 배열, `Gun` 생성, 장비 스탯 기반 damage/APS 계산 |
+| `weapons/core/gun.gd` | 조준, 자동 공격, 수동 공격, burst, delivery별 스폰 |
+| `weapons/core/bullet_2d.gd` | 일반 탄환, 관통 카운트, 폭발형 원거리 처리 |
+| `weapons/melee/melee_projectile.gd` | 근접 관통 발사체, 왕복, 다중 hit, 부채꼴 발사 |
+| `weapons/magic/magic_bolt.gd` | 마법 투사체와 유도 이동 처리 |
+| `weapons/magic/king_bible_orb.gd` | 플레이어 주변 궤도 무기, overlap 기반 반복 피해 |
+| `weapons/throwing/throwing_projectile.gd` | 기본 투척체 처리 |
+| `weapons/concoction/concoction.gd` | 포물선 투척 후 독 장판 생성 |
+| `weapons/area/area_damage_zone.gd` | 원형/사각 영역 피해, poison 적용, 짧은 lifetime |
+| `entities/mob/mob.gd` | weapon 귀속 피해 수신, 상태이상 적용, 피해 통계 등록 |
+| `game/weapon_damage_tracker.gd` | weapon key별 누적 피해와 표시 행 생성 |
+
+관계는 아래처럼 유지한다.
+
+```text
+WeaponSelectMenu / InventoryCombatBridge
+  -> Player.add_weapon()
+  -> Gun.equip_weapon()
+  -> projectile / area / orbit
+  -> Mob.apply_weapon_damage()
+  -> Game.register_weapon_damage()
+  -> WeaponDamageTracker
+```
+
+## Flow
+
+### Runtime
+
+1. `WeaponSelectMenu`가 Ranged/Melee/Magic 카탈로그를 합쳐 후보 풀을 만든다.
+2. 플레이어가 무기를 고르면 `Game.on_weapon_chosen()`이 `Player.add_weapon(weapon_data)`를 호출한다.
+3. `Player.add_weapon()`은 중복 보유를 막고 `gun.tscn`을 인스턴스화해 `%Weapons` 아래에 추가한다.
+4. `Gun.equip_weapon()`은 스프라이트, 공격 속도, 양손 스케일, 궤도 companion을 초기화한다.
+5. 일반 무기는 자동 공격 on 또는 좌클릭 유지 상태에서 timer에 맞춰 `shoot()`를 호출한다. 궤도 무기는 별도 companion이 physics tick에서 overlap 피해를 처리한다.
+6. `Gun.shoot()`는 `weapon_type`과 delivery helper에 따라 탄환, 근접 발사체, 마법 탄, 투척체, 장판을 스폰한다.
+7. 각 피해 오브젝트는 `LoadoutStatApply.roll_combat_damage()` 또는 플레이어의 `roll_weapon_damage()`를 통해 장비 배율을 반영한 피해를 굴린다.
+8. 몹에 닿으면 `Mob.apply_weapon_damage()`가 HP 감소, 피격 연출, 상태이상, 피해 통계 등록을 처리한다.
+9. 게임오버·일시정지 UI는 `WeaponDamageTracker.build_display_rows()`로 보유 무기와 누적 피해를 표시한다.
+
+### Editor / Data
+
+1. 새 무기는 `weapon_id`를 반드시 고유하게 지정한다.
+2. 카탈로그 생성 필드는 `WeaponData` helper가 이해하는 타입과 delivery 값만 사용한다.
+3. 새 delivery나 projectile movement를 만들면 `WeaponData` helper, `Gun.shoot()` 분기, 실제 피해 오브젝트, 테스트 아레나 필터/스냅샷을 함께 확인한다.
+4. 새 발사체나 이펙트는 `ScenePool` 대상이면 `pool_reset()`과 `pool_on_acquire()` 계약을 구현한다.
+5. 툴팁에 표시되는 새 수치는 `WeaponData.build_select_tooltip_bbcode()` 양 언어 경로를 함께 갱신한다.
+
+## Invariants & Gotchas
+
+| 규칙 | 이유 |
+|------|------|
+| `weapon_id`는 비어 있지 않고 고유해야 한다. | 피해 통계, 인벤 `item_id`, 세이브 해석의 키가 된다. |
+| 무기 피해는 `Mob.apply_weapon_damage(amount, weapon)` 경로를 우선 사용한다. | 독·장판·발사체 피해가 모두 같은 통계 키에 귀속되어야 한다. |
+| `WeaponData.get_unique_key()` 기준이 바뀌면 피해 통계와 인벤 해석을 같이 확인한다. | 표시 이름보다 안정적인 id가 필요하다. |
+| 일반 발사체는 풀 반환 또는 수명 종료 경로가 있어야 한다. | 피크 구간에서 노드 누수와 성능 저하를 막는다. |
+| `projectile_pierce_count == 0`은 유효하지 않다. | 0은 설정 실수로 보고 발사체가 에러 후 반환한다. |
+| 궤도 무기는 자동 공격 off일 때 피해 판정을 멈추지만 회전 위치 갱신은 유지한다. | 자동 공격 토글의 의미와 비주얼 연속성을 함께 지킨다. |
+| `Gun`은 `/root/Game`과 `ObjectPools`를 전제로 스폰한다. | 씬 분리나 테스트 씬 변경 시 루트 계약을 맞춰야 한다. |
+| loadout damage/APS 배율은 발사체가 직접 계산하기보다 `Player`/`LoadoutStatApply` 경로를 사용한다. | 인벤 장비 스탯 반영 위치를 한 곳으로 모은다. |
+
+## Change Guidelines
+
+| 변경 | 확인할 것 |
+|------|-----------|
+| 새 무기 추가 | 카탈로그, `weapon_id`, `weapon_type`, hand, damage element, 툴팁, F6 Equip |
+| 새 공격 방식 추가 | `WeaponData` helper, `Gun.shoot()` 분기, 풀링, 몹 피해 경로, 피해 통계 |
+| 새 projectile movement 추가 | 이동 스크립트, 사거리 종료, 관통/왕복/유도 규칙, 테스트 아레나 |
+| 피해 공식 변경 | `Player.roll_weapon_damage()`, `LoadoutStatApply`, 독/장판/궤도 피해가 같은 규칙을 쓰는지 |
+| 자동 공격 변경 | `Gun.refresh_auto_attack()`, 궤도 무기, HUD 라벨, 수동 좌클릭과 timer 충돌 여부 |
+| 피해 통계 변경 | `WeaponDamageTracker`, `Mob._register_weapon_damage()`, 게임오버·일시정지 UI |
+| 풀링 대상 변경 | `ScenePool`, `PoolUtil.release_node()`, `pool_reset()`, `pool_on_acquire()` |
+
+최소 검증은 F6 테스트 아레나에서 각 타입의 대표 무기를 Equip하고, 더미/기본 몹에게 피해가 들어가며, 자동 공격 on/off와 게임오버 피해 목록이 기대대로 동작하는지 확인하는 것이다.

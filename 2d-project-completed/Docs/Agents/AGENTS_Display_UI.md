@@ -1,6 +1,6 @@
 # 디스플레이·카메라·UI
 
-**진입:** [`AGENTS.md`](../AGENTS.md) · 에이전트 must: [`.cursor/rules/godot-core.mdc`](../.cursor/rules/godot-core.mdc) (Display / camera / UI)
+**진입:** [`AGENTS.md`](../../AGENTS.md) · 에이전트 must: [`.cursor/rules/godot-core.mdc`](../../.cursor/rules/godot-core.mdc) (Display / camera / UI)
 
 게임 **월드**와 **UI**는 해상도·줌 정책이 다릅니다. UI는 FHD 좌표, 월드는 뷰포트·카메라 줌이 직접 반영됩니다.
 

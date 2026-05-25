@@ -1,0 +1,12 @@
+views:
+  - type: table
+    name: 표
+    filters:
+      and:
+        - file.ext == "md"
+    order:
+      - file.name
+      - file.tags
+    sort:
+      - property: file.path
+        direction: ASC

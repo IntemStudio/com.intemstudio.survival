@@ -1,0 +1,225 @@
+{
+  "main": {
+    "id": "819fedda432ae4b0",
+    "type": "split",
+    "children": [
+      {
+        "id": "74bbff81de03be7b",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "1588acb7381708cc",
+            "type": "leaf",
+            "state": {
+              "type": "bases",
+              "state": {
+                "file": "무제.base",
+                "viewName": "표"
+              },
+              "icon": "lucide-table",
+              "title": "무제"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "a1c70ba3da758563",
+    "type": "split",
+    "children": [
+      {
+        "id": "d9fd81c9f0b0480c",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "db73834055f2a82d",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "파일 탐색기"
+            }
+          },
+          {
+            "id": "22df9b258238281e",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "검색"
+            }
+          },
+          {
+            "id": "68bd10c5724ef953",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "북마크"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "569237c77a36dd10",
+    "type": "split",
+    "children": [
+      {
+        "id": "e7af7df2aee85d9e",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "a6fe54c1fd5ec429",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "Docs/Plan/Weekly/Week01_Demo_ScopeLock.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Week01_Demo_ScopeLock 의 백링크"
+            }
+          },
+          {
+            "id": "5982b422022cce1f",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "Docs/Plan/Weekly/Week01_Demo_ScopeLock.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Week01_Demo_ScopeLock 의 나가는 링크"
+            }
+          },
+          {
+            "id": "d4729739cf2c51d5",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "태그"
+            }
+          },
+          {
+            "id": "a9219f29f9ddf403",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "모든 속성"
+            }
+          },
+          {
+            "id": "6aea0ca4c251ee6c",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "Docs/Plan/Weekly/Week01_Demo_ScopeLock.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Week01_Demo_ScopeLock 의 개요"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:빠른 전환기 열기": false,
+      "graph:그래프 뷰 열기": false,
+      "canvas:새 캔버스 만들기": false,
+      "daily-notes:오늘의 일일 노트 열기": false,
+      "templates:템플릿 삽입": false,
+      "command-palette:명령어 팔레트 열기": false,
+      "bases:새 베이스 생성하기": false
+    }
+  },
+  "active": "1588acb7381708cc",
+  "lastOpenFiles": [
+    "무제.canvas",
+    "2026-05-26.md",
+    "Docs/Architecture.md",
+    "Docs/Agents.md",
+    "Docs/Wiki/Combat.md",
+    "Docs/Plan/Plan_Balance_VS_Curve_Alignment.md",
+    "Docs/Plan/Plan_Release_Roadmap.md",
+    "Docs/Plan/Weekly/Week04_QA_Build.md",
+    "Docs/Wiki/README.md",
+    "Docs/Wiki/무제.canvas",
+    "Docs/Wiki/GameRules.md",
+    "AGENTS.md",
+    "icon.png",
+    "무제.base",
+    "Docs/Plan/Weekly/Current.md",
+    "Docs/README.md",
+    "Docs/Plan/Weekly/Week01_Demo_ScopeLock.md",
+    "BACKLOG.md",
+    "Docs/Agents/AGENTS_MapArena.md",
+    "Docs/Agents/AGENTS_Display_UI.md",
+    "Docs/Plan/README.md",
+    "Docs/Architecture/Architecture_Mobs.md",
+    "Docs/Architecture/Architecture_GameLoop_Balance.md",
+    "Docs/Architecture/Architecture_Weapons.md",
+    "Docs/Architecture/Architecture_Inventory.md",
+    "Docs/Architecture/README.md",
+    "Docs/Agents/README.md",
+    "Docs/Architecture",
+    "Docs/Agents",
+    "Docs/Plan/Weekly/Week03_Content_Lock.md",
+    "Docs/Plan/Weekly/Week02_Demo_Core.md",
+    "Docs/Plan/Weekly",
+    "addons/colorpicker_presets/readme/install_project_settings.png",
+    "addons/colorpicker_presets/readme/colorpicker_presets.png",
+    "Docs/Plan",
+    "Docs/Wiki",
+    "Docs/무제.canvas"
+  ]
+}

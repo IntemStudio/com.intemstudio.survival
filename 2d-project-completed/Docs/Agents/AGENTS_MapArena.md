@@ -1,6 +1,6 @@
 # MapArena — 맵 경계·스폰·소나무
 
-**진입:** [`AGENTS.md`](../AGENTS.md) · 에이전트 must: [`.cursor/rules/godot-core.mdc`](../.cursor/rules/godot-core.mdc)
+**진입:** [`AGENTS.md`](../../AGENTS.md) · 에이전트 must: [`.cursor/rules/godot-core.mdc`](../../.cursor/rules/godot-core.mdc)
 
 메인·테스트 씬이 **같은 `map_arena.tscn` 프리팹**을 쓰지만, **맵 크기는 씬별로 다릅니다.** 예전 `Player/Path2D`·`%PathFollow2D` 테두리 스폰은 제거됨.
 
