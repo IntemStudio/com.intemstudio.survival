@@ -32,3 +32,22 @@ static func apply_active_weapon_to_player(
 		push_warning("InventoryCombatBridge: unknown weapon id '%s'" % weapon_id)
 		return
 	player.add_weapon(weapon)
+
+
+# 활성 weapon + loadout 스탯을 Player에 한 번에 반영합니다.
+static func apply_loadout_to_player(
+	player: Node,
+	registry: ItemRegistry,
+	loadout: PlayerLoadoutState
+) -> void:
+	apply_active_weapon_to_player(player, registry, loadout)
+	if player == null:
+		return
+	if player.has_method(&"refresh_stats_from_loadout"):
+		player.call("refresh_stats_from_loadout", registry, loadout)
+
+
+# use_inventory_loadout off 시 loadout 스탯을 초기화합니다.
+static func clear_loadout_from_player(player: Node) -> void:
+	if player != null and player.has_method(&"clear_loadout_stats"):
+		player.call("clear_loadout_stats")

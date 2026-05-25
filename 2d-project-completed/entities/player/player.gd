@@ -7,6 +7,7 @@ const GUN_SCENE := preload("res://weapons/core/gun.tscn")
 const DASH_SPEED := 1400.0
 const DASH_DURATION := 0.18
 const DASH_COOLDOWN := 0.5
+const BASE_MOVE_SPEED := 600.0
 
 @export var pickup_range := 150.0
 @export var base_exp_to_level := 5
@@ -30,6 +31,12 @@ var _health_depleted_emitted := false
 var _hurtbox_overlap_mob_ids: Dictionary = {}
 var _hit_flash_target: CanvasItem
 var _hit_flash_base_modulate := Color.WHITE
+var _loadout_stats_active := false
+var _loadout_stat_modifiers: Dictionary = {}
+var _loadout_registry: ItemRegistry
+var _loadout_state: PlayerLoadoutState
+var _grant_orbital_nodes: Array = []
+var _loadout_dash_haste_remaining := 0.0
 
 
 func _ready() -> void:
@@ -116,9 +123,13 @@ func _apply_contact_damage(delta: float) -> void:
 	if damage <= 0:
 		return
 
-	health -= damage
+	var taken := _resolve_incoming_damage(damage)
+	if taken <= 0:
+		return
+
+	health -= taken
 	%HealthBar.value = health
-	_damage_float_accumulator += damage
+	_damage_float_accumulator += taken
 	_try_emit_health_depleted()
 
 
@@ -238,6 +249,138 @@ func clear_weapons() -> void:
 	refresh_primary_weapon_range_ring()
 
 
+# loadout 장비 stat_modifiers를 캐시하고 이동·무기 배율을 갱신합니다.
+func refresh_stats_from_loadout(registry: ItemRegistry, loadout: PlayerLoadoutState) -> void:
+	if not _uses_inventory_loadout_for_movement():
+		return
+	_loadout_stats_active = true
+	if registry == null or loadout == null:
+		_loadout_stat_modifiers = {}
+		_loadout_registry = null
+		_loadout_state = null
+		_clear_loadout_grant_passives()
+	else:
+		_loadout_stat_modifiers = registry.sum_stat_modifiers_for_loadout(loadout)
+	_loadout_registry = registry
+	_loadout_state = loadout
+	_sync_health_bar_max()
+	_refresh_loadout_grant_passives()
+	_refresh_weapon_combat_modifiers()
+
+
+# use_inventory_loadout off 시 기본 이동·무기 수치로 되돌립니다.
+func clear_loadout_stats() -> void:
+	if not _loadout_stats_active:
+		return
+	_loadout_stats_active = false
+	_loadout_stat_modifiers = {}
+	_loadout_registry = null
+	_loadout_state = null
+	_loadout_dash_haste_remaining = 0.0
+	_clear_loadout_grant_passives()
+	_sync_health_bar_max()
+	_refresh_weapon_combat_modifiers()
+
+
+func is_loadout_stats_active() -> bool:
+	return _loadout_stats_active
+
+
+func get_max_health() -> float:
+	if not _loadout_stats_active:
+		return LoadoutStatApply.BASE_MAX_HEALTH
+	return LoadoutStatApply.compute_max_health(_loadout_stat_modifiers)
+
+
+# 장비 heart_* 반영 후 체력바 상한을 맞춥니다.
+func _sync_health_bar_max() -> void:
+	var previous_max: float = %HealthBar.max_value
+	var new_max: float = get_max_health()
+	%HealthBar.max_value = new_max
+	if new_max > previous_max:
+		health += new_max - previous_max
+	health = minf(health, new_max)
+	%HealthBar.value = health
+
+
+# loadout 방어구·방패가 있으면 피해를 줄입니다.
+func _resolve_incoming_damage(raw_amount: int) -> int:
+	if raw_amount <= 0:
+		return 0
+	if not _loadout_stats_active:
+		return raw_amount
+	return LoadoutStatApply.mitigate_incoming_damage(_loadout_stat_modifiers, raw_amount)
+
+
+func get_move_speed() -> float:
+	if not _loadout_stats_active:
+		return BASE_MOVE_SPEED
+	var speed := BASE_MOVE_SPEED * LoadoutStatApply.compute_move_speed_mult(_loadout_stat_modifiers)
+	if _loadout_dash_haste_remaining > 0.0:
+		speed *= LoadoutGrantPassive.DASH_HASTE_MULT
+	return speed
+
+
+func get_last_move_direction() -> Vector2:
+	return _last_move_direction
+
+
+# grant_on_dash: haste — 대시 후 잠시 이동 속도 상승.
+func apply_loadout_dash_haste() -> void:
+	_loadout_dash_haste_remaining = LoadoutGrantPassive.DASH_HASTE_DURATION
+
+
+func _refresh_loadout_grant_passives() -> void:
+	if not _loadout_stats_active:
+		_clear_loadout_grant_passives()
+		return
+	LoadoutGrantPassive.refresh_orbitals(
+		self, _loadout_registry, _loadout_stat_modifiers, _grant_orbital_nodes
+	)
+	LoadoutGrantPassive.refresh_offhand_visual(self, _loadout_registry, _loadout_state)
+
+
+func _clear_loadout_grant_passives() -> void:
+	LoadoutGrantPassive.clear_orbitals(_grant_orbital_nodes)
+	var pivot := get_node_or_null("%OffhandPivot") as Node2D
+	if pivot:
+		pivot.visible = false
+
+
+func _apply_loadout_on_dash() -> void:
+	if not _loadout_stats_active:
+		return
+	LoadoutGrantPassive.apply_on_dash(self, _loadout_registry, _loadout_stat_modifiers)
+
+
+# 장비 배율을 반영한 무기 피해 롤.
+func roll_weapon_damage(weapon: WeaponData) -> int:
+	if weapon == null:
+		return 1
+	var rolled := weapon.roll_damage()
+	if not _loadout_stats_active:
+		return rolled
+	var mult := LoadoutStatApply.compute_damage_mult(_loadout_stat_modifiers, weapon, level)
+	return maxi(1, roundi(float(rolled) * mult))
+
+
+# 장비 배율을 반영한 무기 APS.
+func get_effective_attacks_per_second(weapon: WeaponData) -> float:
+	if weapon == null:
+		return 1.0
+	var base_aps := weapon.attacks_per_second
+	if not _loadout_stats_active:
+		return base_aps
+	return base_aps * LoadoutStatApply.compute_attack_speed_mult(_loadout_stat_modifiers, weapon)
+
+
+func _refresh_weapon_combat_modifiers() -> void:
+	for gun in %Weapons.get_children():
+		if gun.has_method(&"refresh_loadout_combat_modifiers"):
+			gun.call("refresh_loadout_combat_modifiers")
+	refresh_primary_weapon_range_ring()
+
+
 func add_weapon(weapon_data: WeaponData) -> void:
 	if has_weapon(weapon_data):
 		return
@@ -281,17 +424,20 @@ func apply_mob_projectile_damage(amount: int) -> String:
 		return "damage_amount<=0 (value=%d)" % amount
 	if _health_depleted_emitted:
 		return "player_health_depleted (health=%.1f)" % health
+	var taken := _resolve_incoming_damage(amount)
+	if taken <= 0:
+		return ""
 	_play_hit_flash()
-	health -= float(amount)
+	health -= float(taken)
 	%HealthBar.value = health
-	FloatingDamageText.spawn_player_damage(global_position, amount)
+	FloatingDamageText.spawn_player_damage(global_position, taken)
 	_try_emit_health_depleted()
 	return ""
 
 
 # 체력 회복 아이템 등에서 호출합니다.
 func heal_health(amount: float) -> void:
-	var max_hp: float = %HealthBar.max_value
+	var max_hp: float = get_max_health()
 	health = minf(health + amount, max_hp)
 	%HealthBar.value = health
 	if health > 0.0:
@@ -444,12 +590,13 @@ func _on_pickup_range_area_entered(area: Area2D) -> void:
 
 
 func _physics_process(delta: float) -> void:
-	const SPEED := 600.0
+	var speed := get_move_speed()
 	var direction := _get_move_direction()
 	if direction.length_squared() > 0.01:
 		_last_move_direction = direction.normalized()
 
 	_dash_cooldown_remaining = maxf(_dash_cooldown_remaining - delta, 0.0)
+	_loadout_dash_haste_remaining = maxf(_loadout_dash_haste_remaining - delta, 0.0)
 	_update_dash_cooldown_gauge()
 
 	if _dash_time_remaining > 0.0:
@@ -464,10 +611,11 @@ func _physics_process(delta: float) -> void:
 			_dash_time_remaining = DASH_DURATION
 			_dash_cooldown_remaining = DASH_COOLDOWN
 			velocity = _dash_direction * DASH_SPEED
+			_apply_loadout_on_dash()
 		else:
-			velocity = direction * SPEED
+			velocity = direction * speed
 	else:
-		velocity = direction * SPEED
+		velocity = direction * speed
 
 	move_and_slide()
 

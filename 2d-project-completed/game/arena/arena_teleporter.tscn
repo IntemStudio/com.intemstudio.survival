@@ -1,0 +1,48 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://game/arena/arena_teleporter.gd" id="1_teleporter"]
+[ext_resource type="Texture2D" path="res://art/shared/fx/circle.png" id="2_circle"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_interact"]
+radius = 96.0
+
+[node name="ArenaTeleporter" type="Area2D"]
+z_index = 30
+z_as_relative = false
+script = ExtResource("1_teleporter")
+
+[node name="ShadowSprite" type="Sprite2D" parent="."]
+modulate = Color(0.02, 0.04, 0.08, 0.45)
+scale = Vector2(3.45, 3.45)
+texture = ExtResource("2_circle")
+
+[node name="TeleporterSprite" type="Sprite2D" parent="."]
+unique_name_in_owner = true
+z_index = 1
+modulate = Color(0.05, 0.62, 1, 0.82)
+scale = Vector2(2.9, 2.9)
+texture = ExtResource("2_circle")
+
+[node name="CoreSprite" type="Sprite2D" parent="."]
+z_index = 2
+modulate = Color(0.72, 1, 1, 1)
+scale = Vector2(0.86, 0.86)
+texture = ExtResource("2_circle")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_interact")
+
+[node name="PromptLabel" type="Label" parent="."]
+unique_name_in_owner = true
+z_index = 3
+offset_left = -112.0
+offset_top = -156.0
+offset_right = 112.0
+offset_bottom = -112.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.04, 0.08, 0.95)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 26
+text = "E: 웨이브 시작"
+horizontal_alignment = 1
+vertical_alignment = 1

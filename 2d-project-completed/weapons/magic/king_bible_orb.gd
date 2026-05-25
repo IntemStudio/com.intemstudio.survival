@@ -52,7 +52,7 @@ func _damage_overlapping_mobs(delta: float) -> void:
 		if not _player.is_auto_attack_enabled():
 			return
 
-	var hit_interval := 1.0 / _weapon.attacks_per_second
+	var hit_interval := 1.0 / LoadoutStatApply.get_effective_attacks_per_second(_weapon)
 	for body in get_overlapping_bodies():
 		if not is_instance_valid(body) or not body.is_in_group("mobs"):
 			continue
@@ -64,7 +64,7 @@ func _damage_overlapping_mobs(delta: float) -> void:
 			_mob_hit_cooldowns[mob_id] = remaining
 			continue
 
-		var damage := _weapon.roll_damage()
+		var damage := LoadoutStatApply.roll_combat_damage(_weapon)
 		if body.has_method("apply_weapon_damage"):
 			body.apply_weapon_damage(damage, _weapon)
 		elif body.has_method("take_damage"):

@@ -129,8 +129,14 @@ func _on_scheduled_hit(generation: int, mob_id: int) -> void:
 func _deal_damage(body: Node) -> void:
 	if not _weapon:
 		return
-	var damage := _weapon.roll_damage()
+	var damage := _roll_weapon_damage()
 	if body.has_method("apply_weapon_damage"):
 		body.apply_weapon_damage(damage, _weapon)
 	elif body.has_method("take_damage"):
 		body.take_damage(damage)
+
+
+func _roll_weapon_damage() -> int:
+	if is_instance_valid(_owner) and _owner.has_method("roll_weapon_damage"):
+		return _owner.roll_weapon_damage(_weapon)
+	return _weapon.roll_damage()

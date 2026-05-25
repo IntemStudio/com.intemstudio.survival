@@ -25,7 +25,7 @@ func setup(weapon_data: WeaponData, spawn_transform: Transform2D) -> void:
 		PoolUtil.release_node(self)
 		return
 	_weapon = weapon_data
-	_damage = weapon_data.roll_damage()
+	_damage = LoadoutStatApply.roll_combat_damage(weapon_data)
 	_hit_mob_ids.clear()
 	global_transform = spawn_transform
 	if has_node("Sprite"):
@@ -99,7 +99,7 @@ func _explode_at(center: Vector2) -> void:
 		var mob_node := mob as Node2D
 		if GroundShadowFootprint.get_combat_target_center(mob_node).distance_to(center) > radius:
 			continue
-		var damage := _weapon.roll_damage()
+		var damage := LoadoutStatApply.roll_combat_damage(_weapon)
 		if mob.has_method("apply_weapon_damage"):
 			mob.apply_weapon_damage(damage, _weapon)
 		elif mob.has_method("take_damage"):

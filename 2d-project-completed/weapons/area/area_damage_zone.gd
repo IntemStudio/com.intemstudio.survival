@@ -93,7 +93,7 @@ func _pulse_damage() -> void:
 		if _apply_poison and body.has_method("apply_poison"):
 			body.apply_poison(_weapon)
 		if body.has_method("apply_weapon_damage"):
-			body.apply_weapon_damage(_weapon.roll_damage(), _weapon)
+			body.apply_weapon_damage(LoadoutStatApply.roll_combat_damage(_weapon), _weapon)
 
 		_hit_mobs[mob_id] = hits_done + 1
 

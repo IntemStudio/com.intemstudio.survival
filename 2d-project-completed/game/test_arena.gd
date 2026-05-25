@@ -167,21 +167,24 @@ func show_inventory_swap_toast(message: String) -> void:
 
 func apply_inventory_loadout_to_player() -> void:
 	if not use_inventory_loadout or _inventory_menu == null:
+		InventoryCombatBridge.clear_loadout_from_player(%Player)
 		InventoryGameBridge.refresh_combat_set_hud(self, _inventory_menu)
 		return
 	var menu_service: InventoryService = _inventory_menu.get_service()
 	if menu_service == null:
+		InventoryCombatBridge.clear_loadout_from_player(%Player)
 		InventoryGameBridge.refresh_combat_set_hud(self, _inventory_menu)
 		return
 	var weapon_id := InventoryCombatBridge.get_active_weapon_id(menu_service.loadout)
 	if weapon_id.is_empty():
 		%Player.clear_weapons()
 		_equipped_weapon_id = ""
-		InventoryGameBridge.refresh_combat_set_hud(self, _inventory_menu)
-		return
-	var weapon := menu_service.registry.resolve_weapon(weapon_id)
-	if weapon:
-		_equip_weapon(weapon)
+	else:
+		var weapon := menu_service.registry.resolve_weapon(weapon_id)
+		if weapon:
+			_equip_weapon(weapon)
+	if %Player.has_method(&"refresh_stats_from_loadout"):
+		%Player.refresh_stats_from_loadout(menu_service.registry, menu_service.loadout)
 	InventoryGameBridge.refresh_combat_set_hud(self, _inventory_menu)
 
 
@@ -386,6 +389,8 @@ func _apply_tuning_live(catalog_weapon: WeaponData) -> void:
 	player.clear_weapons()
 	player.add_weapon(tuned)
 	player.set_auto_attack_enabled(true)
+	if player.has_method(&"_refresh_weapon_combat_modifiers"):
+		player._refresh_weapon_combat_modifiers()
 
 
 func _setup_projectile_tuning_ui() -> void:
@@ -719,8 +724,9 @@ func _respawn_player() -> void:
 	if not _player_is_dead:
 		return
 	var player: CharacterBody2D = %Player
-	var max_hp: float = player.get_node("%HealthBar").max_value
+	var max_hp: float = player.get_max_health() if player.has_method(&"get_max_health") else player.get_node("%HealthBar").max_value
 	player.health = max_hp
+	player.get_node("%HealthBar").max_value = max_hp
 	player.get_node("%HealthBar").value = max_hp
 	player.global_position = %PlayerSpawnPoint.global_position
 	player.collision_layer = _saved_player_collision_layer

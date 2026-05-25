@@ -46,7 +46,7 @@ func _apply_weapon_data() -> void:
 	if not weapon:
 		return
 	if not weapon.has_burst():
-		_shoot_timer.wait_time = 1.0 / weapon.attacks_per_second
+		_shoot_timer.wait_time = 1.0 / _get_effective_attacks_per_second()
 	if weapon.texture:
 		_weapon_sprite.texture = weapon.texture
 		_weapon_sprite.modulate = weapon.sprite_modulate
@@ -74,7 +74,7 @@ func refresh_auto_attack() -> void:
 				_begin_burst()
 			else:
 				shoot()
-				_shoot_timer.wait_time = 1.0 / weapon.attacks_per_second
+				_shoot_timer.wait_time = 1.0 / _get_effective_attacks_per_second()
 				_shoot_timer.start()
 	elif not _is_manual_fire_pressed():
 		_shoot_timer.stop()
@@ -205,7 +205,7 @@ func _handle_auto_attack() -> void:
 		_begin_burst()
 	else:
 		shoot()
-		_shoot_timer.wait_time = 1.0 / weapon.attacks_per_second
+		_shoot_timer.wait_time = 1.0 / _get_effective_attacks_per_second()
 		_shoot_timer.start()
 
 
@@ -224,7 +224,7 @@ func _handle_manual_fire_input() -> void:
 		_begin_burst()
 	else:
 		shoot()
-		_shoot_timer.wait_time = 1.0 / weapon.attacks_per_second
+		_shoot_timer.wait_time = 1.0 / _get_effective_attacks_per_second()
 		_shoot_timer.start()
 
 
@@ -282,7 +282,36 @@ func _get_player() -> Node2D:
 		if node.has_method("add_weapon"):
 			return node as Node2D
 		node = node.get_parent()
-	return null
+	var found := LoadoutStatApply.find_combat_player()
+	return found as Node2D if found != null else null
+
+
+func refresh_loadout_combat_modifiers() -> void:
+	if not weapon or not is_inside_tree():
+		return
+	if weapon.has_burst():
+		return
+	var aps := _get_effective_attacks_per_second()
+	if aps > 0.0:
+		_shoot_timer.wait_time = 1.0 / aps
+
+
+func _get_effective_attacks_per_second() -> float:
+	var player := _get_player()
+	if player and player.has_method("get_effective_attacks_per_second"):
+		return player.get_effective_attacks_per_second(weapon)
+	if weapon:
+		return weapon.attacks_per_second
+	return 1.0
+
+
+func _roll_combat_damage() -> int:
+	var player := _get_player()
+	if player and player.has_method("roll_weapon_damage"):
+		return player.roll_weapon_damage(weapon)
+	if weapon:
+		return weapon.roll_damage()
+	return 1
 
 
 func _get_scene_pool(game: Node) -> ScenePool:
@@ -372,7 +401,7 @@ func _shoot_bullet() -> void:
 		new_bullet.setup(weapon, _get_spawn_transform())
 	else:
 		new_bullet.global_transform = _get_spawn_transform()
-		new_bullet.set("damage", weapon.roll_damage())
+		new_bullet.set("damage", _roll_combat_damage())
 
 
 func _shoot_throwing() -> void:
@@ -397,7 +426,7 @@ func _shoot_throwing() -> void:
 			projectile.setup(
 				player,
 				_get_shoot_direction(),
-				weapon.roll_damage(),
+				_roll_combat_damage(),
 				weapon.get_projectile_range(),
 				weapon.throw_speed
 			)
@@ -434,5 +463,5 @@ func _on_timer_timeout() -> void:
 			_begin_burst()
 	else:
 		shoot()
-		_shoot_timer.wait_time = 1.0 / weapon.attacks_per_second
+		_shoot_timer.wait_time = 1.0 / _get_effective_attacks_per_second()
 		_shoot_timer.start()

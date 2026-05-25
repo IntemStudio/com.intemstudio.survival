@@ -11,7 +11,6 @@ const ARMOR_SLOT_KEYS: Array[StringName] = [
 ]
 
 ## 방어구·악세는 세트와 무관하게 sets[0]만 사용(탭 전환 시 UI·데이터 불변).
-const SHARED_ARMOR_SET_INDEX := 0
 
 # 레퍼런스 UI 3×3
 # 행0: 무기2 | 헬멧 | 보조2  ·  행1: 무기1 | 갑옷 | 보조1  ·  행2: 장갑 | 악세 | 부츠
@@ -144,12 +143,12 @@ func refresh_all_slots() -> void:
 
 	for slot_key in _armor_slots:
 		var slot: InventorySlot = _armor_slots[slot_key]
-		var item_id := service.loadout.get_set_item_id(SHARED_ARMOR_SET_INDEX, slot_key)
+		var item_id := service.loadout.get_set_item_id(EquipSlots.SHARED_ARMOR_SET_INDEX, slot_key)
 		slot.set_item(item_id, _resolve_texture(item_id), false)
 
 	if _accessory_slot:
 		var accessory_id := service.loadout.get_set_item_id(
-			SHARED_ARMOR_SET_INDEX,
+			EquipSlots.SHARED_ARMOR_SET_INDEX,
 			EquipSlots.ACCESSORY
 		)
 		_accessory_slot.set_item(accessory_id, _resolve_texture(accessory_id), false)
@@ -198,14 +197,14 @@ func _build_equip_slots() -> void:
 	for slot_key in ARMOR_SLOT_KEYS:
 		_armor_slots[slot_key] = _create_equip_slot(
 			ARMOR_LAYOUT[slot_key],
-			SHARED_ARMOR_SET_INDEX,
+			EquipSlots.SHARED_ARMOR_SET_INDEX,
 			slot_key,
 			String(EQUIP_LABELS.get(slot_key, ""))
 		)
 
 	_accessory_slot = _create_equip_slot(
 		ACCESSORY_LAYOUT,
-		SHARED_ARMOR_SET_INDEX,
+		EquipSlots.SHARED_ARMOR_SET_INDEX,
 		EquipSlots.ACCESSORY,
 		String(EQUIP_LABELS.get(EquipSlots.ACCESSORY, ""))
 	)
@@ -392,7 +391,7 @@ func _show_drop_error(err: StringName, source: Dictionary, target: Dictionary) -
 func _try_equip_from_bag_slot(bag_index: int) -> bool:
 	if service == null:
 		return false
-	var err := service.try_equip_from_bag_smart(bag_index, SHARED_ARMOR_SET_INDEX)
+	var err := service.try_equip_from_bag_smart(bag_index, EquipSlots.SHARED_ARMOR_SET_INDEX)
 	_show_error(err)
 	return err.is_empty()
 

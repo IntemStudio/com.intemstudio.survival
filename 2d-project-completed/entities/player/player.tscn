@@ -38,6 +38,20 @@ script = ExtResource("1_73bic")
 [node name="HappyBoo" parent="." unique_id=984748070 instance=ExtResource("2_bl5ih")]
 unique_name_in_owner = true
 
+[node name="OffhandPivot" type="Node2D" parent="HappyBoo"]
+unique_name_in_owner = true
+visible = false
+position = Vector2(-38, 6)
+
+[node name="OffhandSprite" type="Sprite2D" parent="HappyBoo/OffhandPivot"]
+unique_name_in_owner = true
+texture = ExtResource("3_ring")
+scale = Vector2(0.32, 0.32)
+modulate = Color(0.82, 0.88, 1, 0.95)
+
+[node name="LoadoutOrbitals" type="Node2D" parent="."]
+unique_name_in_owner = true
+
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=2129353866]
 shape = SubResource("RectangleShape2D_csncd")
 

@@ -110,17 +110,38 @@ func is_offhand_blocked_by_weapon(set_weapon_id: String) -> bool:
 	return is_two_handed_weapon(set_weapon_id)
 
 
-# 활성 세트 기준 스탯 보정 합산(방어구·악세·offhand 방패 등).
+# 단일 세트 dict — weapon 제외 슬롯 gear stat 합산.
 func sum_stat_modifiers_for_set(set_dict: Dictionary) -> Dictionary:
 	var totals: Dictionary = {}
 	for slot_key in EquipSlots.ALL:
 		if slot_key == EquipSlots.WEAPON:
 			continue
-		var item_id := String(set_dict.get(slot_key, ""))
-		if item_id.is_empty():
-			continue
-		var gear := resolve_gear(item_id)
-		if gear == null:
-			continue
-		GearStatMerge.merge_into(totals, gear.stat_modifiers)
+		_merge_gear_stat_for_item(totals, String(set_dict.get(slot_key, "")))
 	return totals
+
+
+# loadout 정책: sets[0] 방어구 5+악세 + 활성 세트 offhand.
+func sum_stat_modifiers_for_loadout(loadout: PlayerLoadoutState) -> Dictionary:
+	if loadout == null:
+		return {}
+	var totals: Dictionary = {}
+	for slot_key in EquipSlots.ARMOR_STAT_SLOTS:
+		_merge_gear_stat_for_item(
+			totals,
+			loadout.get_set_item_id(EquipSlots.SHARED_ARMOR_SET_INDEX, slot_key)
+		)
+	var active_index := loadout.active_set_index
+	_merge_gear_stat_for_item(
+		totals,
+		loadout.get_set_item_id(active_index, EquipSlots.OFFHAND)
+	)
+	return totals
+
+
+func _merge_gear_stat_for_item(totals: Dictionary, item_id: String) -> void:
+	if item_id.is_empty():
+		return
+	var gear := resolve_gear(item_id)
+	if gear == null:
+		return
+	GearStatMerge.merge_into(totals, gear.stat_modifiers)

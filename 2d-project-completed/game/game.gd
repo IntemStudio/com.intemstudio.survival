@@ -1,5 +1,8 @@
 extends Node2D
 
+const RunConfigScript = preload("res://game/run_config.gd")
+const ArenaWaveDirectorScript = preload("res://game/arena/arena_wave_director.gd")
+const ARENA_TELEPORTER_SCENE := preload("res://game/arena/arena_teleporter.tscn")
 const DEFAULT_BALANCE_TABLE := preload("res://game/balance/default_balance_table.tres")
 const DEFAULT_BALANCE_TIMELINE := preload("res://game/balance/default_balance_timeline.tres")
 const RUN_CLEAR_CURVE_MINUTES := 30.0
@@ -9,6 +12,8 @@ const RUN_CLEAR_CURVE_MINUTES := 30.0
 @export_range(0.05, 2.0, 0.01, "or_greater") var base_spawn_interval := 0.3
 @export_range(1, 500, 1) var max_alive_mobs := 100
 ## true면 인벤 활성 세트 weapon만 Player에 반영(서바이버 레벨업 무기와 분리).
+## F5: use_inventory_loadout=false — 레벨업 3택·_owned_weapons 유지(인벤 weapon 미적용).
+## F5에서 true로 켤 경우 레벨업 무기와 인벤 weapon 병행 정책을 Architecture_Inventory §3-잔여에서 확정할 것.
 @export var use_inventory_loadout := false
 
 var _elapsed_seconds := 0.0
@@ -22,6 +27,12 @@ var _weapon_damage := WeaponDamageTracker.new()
 var _timeline_fired_keys: Dictionary = {}
 var _density_event_mult := 1.0
 var _density_event_remaining := 0.0
+var _game_mode: StringName = RunConfigScript.MODE_SURVIVAL
+var _arena_director: ArenaWaveDirector
+var _arena_teleporter: ArenaTeleporter
+var _arena_waiting_for_teleporter := false
+var _arena_enable_teleporter_after_weapon_select := false
+var _arena_pending_teleporter_message := ""
 
 var _pause_menu: CanvasLayer
 var _weapon_select_menu: CanvasLayer
@@ -30,6 +41,10 @@ var _inventory_menu: CanvasLayer
 
 func _ready() -> void:
 	_bind_ui_nodes()
+	_game_mode = RunConfigScript.get_game_mode()
+	if _is_arena_mode():
+		_setup_arena_director()
+		_setup_arena_teleporter()
 	LocaleSettings.load_and_apply()
 	DisplaySettings.load_and_apply()
 	AudioSettings.load_and_apply()
@@ -49,6 +64,14 @@ func _ready() -> void:
 
 func is_game_started() -> bool:
 	return _game_started
+
+
+func _is_survival_mode() -> bool:
+	return _game_mode == RunConfigScript.MODE_SURVIVAL
+
+
+func _is_arena_mode() -> bool:
+	return _game_mode == RunConfigScript.MODE_ARENA
 
 
 func is_weapon_select_open() -> bool:
@@ -87,6 +110,8 @@ func on_weapon_chosen(weapon: WeaponData) -> void:
 
 	_ensure_game_started()
 	_consume_pending_weapon_select()
+	if _arena_enable_teleporter_after_weapon_select:
+		_enable_pending_arena_teleporter()
 
 
 # F5 씬 UI 노드 — 프리팹 인스턴스 실패 시 null 방지.
@@ -100,13 +125,101 @@ func _bind_ui_nodes() -> void:
 		push_error("Game: InventoryMenu missing — check res://ui/inventory/inventory_overlay.tscn.")
 
 
+# 아레나 웨이브 디렉터 신호를 메인 게임 흐름에 연결합니다.
+func _setup_arena_director() -> void:
+	_arena_director = ArenaWaveDirectorScript.new()
+	_arena_director.wave_started.connect(_on_arena_wave_started)
+	_arena_director.wave_completed.connect(_on_arena_wave_completed)
+	_arena_director.arena_completed.connect(_on_arena_completed)
+
+
+# 아레나 시작 장치를 맵 중앙에 배치합니다.
+func _setup_arena_teleporter() -> void:
+	if _arena_teleporter != null:
+		return
+	_arena_teleporter = ARENA_TELEPORTER_SCENE.instantiate() as ArenaTeleporter
+	if _arena_teleporter == null:
+		push_error("Game: ArenaTeleporter scene must instantiate ArenaTeleporter.")
+		return
+	add_child(_arena_teleporter)
+	_arena_teleporter.global_position = Vector2.ZERO
+	_arena_teleporter.set_available(false)
+	_arena_teleporter.activated.connect(_on_arena_teleporter_activated)
+
+
 func _ensure_game_started() -> void:
 	if _game_started:
 		return
 	_game_started = true
 	%Player.set_contact_damage_enabled(true)
-	_apply_spawn_interval_from_phase(true)
-	$Timer.start()
+	if _is_arena_mode():
+		_prepare_arena_run()
+	else:
+		_apply_spawn_interval_from_phase(true)
+		$Timer.start()
+
+
+func _prepare_arena_run() -> void:
+	if _arena_director == null:
+		_setup_arena_director()
+	if _arena_teleporter == null:
+		_setup_arena_teleporter()
+	_arena_director.start()
+	$Timer.stop()
+	_enable_arena_teleporter("중앙 텔레포터에서 E로 아레나 시작", 4.0)
+	_update_time_hud()
+	_update_balance_phase_hud()
+
+
+# 웨이브 사이 대기 상태에서만 텔레포터를 다시 열어 다음 웨이브 시작을 플레이어에게 맡깁니다.
+func _enable_arena_teleporter(message: String, duration: float) -> void:
+	_arena_waiting_for_teleporter = true
+	if _arena_teleporter != null:
+		_arena_teleporter.global_position = Vector2.ZERO
+		_arena_teleporter.set_available(true)
+	%BalanceNoticeBanner.show_timeline_alert(message, duration)
+
+
+# 웨이브 보상 무기 선택이 끝난 뒤 다음 웨이브 시작 장치를 엽니다.
+func _queue_arena_teleporter_after_weapon_select(message: String) -> void:
+	_arena_enable_teleporter_after_weapon_select = true
+	_arena_pending_teleporter_message = message
+
+
+func _enable_pending_arena_teleporter() -> void:
+	var message := _arena_pending_teleporter_message
+	_arena_enable_teleporter_after_weapon_select = false
+	_arena_pending_teleporter_message = ""
+	if message.is_empty():
+		message = "텔레포터로 다음 웨이브 시작"
+	_enable_arena_teleporter(message, 4.0)
+
+
+func _start_next_arena_wave() -> void:
+	if _arena_director == null or _run_cleared or _run_failed:
+		return
+	_arena_director.begin_next_wave()
+	if _arena_director.has_pending_spawns():
+		$Timer.wait_time = ArenaWaveDirectorScript.SPAWN_INTERVAL
+		$Timer.start()
+
+
+func _spawn_next_arena_mob() -> void:
+	if _arena_director == null:
+		return
+	if _arena_director.has_pending_spawns():
+		_arena_director.spawn_next(self)
+	if not _arena_director.has_pending_spawns():
+		$Timer.stop()
+		_check_arena_wave_completion()
+
+
+func _check_arena_wave_completion() -> void:
+	if _arena_director == null or not _is_arena_mode():
+		return
+	if is_weapon_select_open():
+		return
+	_arena_director.check_wave_completion(_count_alive_mobs())
 
 
 func _consume_pending_weapon_select() -> void:
@@ -127,6 +240,8 @@ func _on_player_leveled_up(_new_level: int) -> void:
 func register_kill() -> void:
 	kill_count += 1
 	_update_kill_count_hud()
+	if _is_arena_mode():
+		call_deferred("_check_arena_wave_completion")
 
 
 # 몹 피해 적용 시 무기별 누적 피해량을 기록합니다.
@@ -154,6 +269,9 @@ func _update_kill_count_hud() -> void:
 
 
 func _update_time_hud() -> void:
+	if _is_arena_mode() and _arena_director != null:
+		%TimeLabel.text = _arena_director.get_hud_text()
+		return
 	%TimeLabel.text = UiLocale.format_hud_time(_elapsed_seconds)
 
 
@@ -164,12 +282,18 @@ func _process(delta: float) -> void:
 		_tick_balance_timeline()
 		_apply_spawn_interval_from_phase()
 		_try_trigger_stage_clear()
+	elif _is_arena_clock_running():
+		_check_arena_wave_completion()
 	_update_time_hud()
 	_update_balance_phase_hud()
 
 
 func _is_balance_clock_running() -> bool:
-	return _game_started and not get_tree().paused
+	return _is_survival_mode() and _game_started and not get_tree().paused
+
+
+func _is_arena_clock_running() -> bool:
+	return _is_arena_mode() and _game_started and not get_tree().paused and not is_game_over()
 
 
 func get_elapsed_seconds() -> float:
@@ -182,7 +306,10 @@ func get_current_balance_phase() -> BalancePhase:
 
 # 몹 처치 XP·골드(예정) — KillRewards 단일 계산 경로.
 func get_kill_rewards_for_mob(mob_kind: StringName) -> Dictionary:
-	return KillRewards.compute(mob_kind, get_current_balance_phase())
+	var rewards := KillRewards.compute(mob_kind, get_current_balance_phase())
+	if _is_arena_mode():
+		rewards["xp"] = 0
+	return rewards
 
 
 func _query_balance_phase() -> BalancePhase:
@@ -257,21 +384,37 @@ func _apply_spawn_interval_from_phase(force: bool = false) -> void:
 
 
 func _update_balance_phase_hud() -> void:
+	if _is_arena_mode():
+		if _arena_director != null:
+			%BalanceNoticeBanner.update_arena_display(
+				_arena_director.get_notice_text(),
+				_arena_director.get_wave_progress(),
+				_arena_director.get_segment_text()
+			)
+		return
 	if not balance_table:
 		return
 	var segment := balance_table.get_keyframe_segment_for_time(_elapsed_seconds)
 	%BalanceNoticeBanner.update_display(segment)
 
 
+func get_alive_mob_count() -> int:
+	return _count_alive_mobs()
+
+
 func _count_alive_mobs() -> int:
 	return get_tree().get_nodes_in_group("mobs").size()
 
 
-func spawn_mob(forced_scene: PackedScene = null, ignore_alive_cap: bool = false) -> void:
+func spawn_mob(
+	forced_scene: PackedScene = null,
+	ignore_alive_cap: bool = false,
+	health_multiplier: float = -1.0
+):
 	if _run_cleared or _run_failed:
-		return
+		return null
 	if not ignore_alive_cap and _count_alive_mobs() >= max_alive_mobs:
-		return
+		return null
 
 	var phase := _query_balance_phase()
 	var mob_scene := forced_scene if forced_scene else MobSpawnSelector.pick_scene(phase)
@@ -286,12 +429,44 @@ func spawn_mob(forced_scene: PackedScene = null, ignore_alive_cap: bool = false)
 		new_mob.global_position = spawn_pos
 	if not new_mob:
 		push_error("Game.spawn_mob: spawn scene must instantiate a Mob.")
-		return
-	new_mob.initialize_spawn_health(phase.hp_multiplier)
+		return null
+	var spawn_health_multiplier := phase.hp_multiplier
+	if health_multiplier > 0.0:
+		spawn_health_multiplier = health_multiplier
+	new_mob.initialize_spawn_health(spawn_health_multiplier)
+	return new_mob
 
 
 func _on_timer_timeout():
+	if _is_arena_mode():
+		_spawn_next_arena_mob()
+		return
 	spawn_mob()
+
+
+func _on_arena_teleporter_activated() -> void:
+	if not _is_arena_mode() or not _game_started or not _arena_waiting_for_teleporter:
+		return
+	_arena_waiting_for_teleporter = false
+	%BalanceNoticeBanner.show_timeline_alert("아레나 시작", 2.0)
+	_start_next_arena_wave()
+
+
+func _on_arena_wave_started(_wave_number: int, title: String, _is_boss_wave: bool) -> void:
+	_update_time_hud()
+	%BalanceNoticeBanner.show_timeline_alert(title, 3.0)
+
+
+func _on_arena_wave_completed(wave_number: int) -> void:
+	$Timer.stop()
+	var next_wave_message := "Wave %d 클리어 · 텔레포터로 다음 웨이브 시작" % wave_number
+	_queue_arena_teleporter_after_weapon_select(next_wave_message)
+	if not show_weapon_select(&"weapon_select.arena_wave_clear"):
+		_enable_pending_arena_teleporter()
+
+
+func _on_arena_completed(_wave_number: int) -> void:
+	_trigger_stage_clear()
 
 
 func is_game_over() -> bool:
@@ -370,13 +545,15 @@ func show_inventory_swap_toast(message: String) -> void:
 
 func apply_inventory_loadout_to_player() -> void:
 	if not use_inventory_loadout or _inventory_menu == null:
+		InventoryCombatBridge.clear_loadout_from_player(%Player)
 		InventoryGameBridge.refresh_combat_set_hud(self, _inventory_menu)
 		return
 	var menu_service: InventoryService = _inventory_menu.get_service()
 	if menu_service == null:
+		InventoryCombatBridge.clear_loadout_from_player(%Player)
 		InventoryGameBridge.refresh_combat_set_hud(self, _inventory_menu)
 		return
-	InventoryCombatBridge.apply_active_weapon_to_player(
+	InventoryCombatBridge.apply_loadout_to_player(
 		%Player,
 		menu_service.registry,
 		menu_service.loadout

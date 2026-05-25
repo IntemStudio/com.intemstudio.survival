@@ -51,6 +51,18 @@ func update_display(segment: Dictionary) -> void:
 		%NoticeLabel.text = UiLocale.format_balance_notice(minute_int, intent)
 
 
+# 아레나 모드의 웨이브 상태를 밸런스 배너 영역에 표시합니다.
+func update_arena_display(notice: String, progress: float, segment_text: String) -> void:
+	_last_segment = {}
+	%PhaseProgressBar.value = clampf(progress, 0.0, 1.0) * 100.0
+	%SegmentLabel.text = segment_text
+
+	if _timeline_alert_remaining > 0.0 and not _timeline_alert_message.is_empty():
+		%NoticeLabel.text = _timeline_alert_message
+	else:
+		%NoticeLabel.text = notice
+
+
 func _apply_segment_labels(segment: Dictionary) -> void:
 	var progress: float = segment.get("progress", 0.0)
 	%PhaseProgressBar.value = progress * 100.0

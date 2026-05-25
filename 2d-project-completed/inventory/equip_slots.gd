@@ -13,6 +13,16 @@ const ACCESSORY := &"accessory"
 
 const BAG_SIZE := 8
 const SET_COUNT := 2
+## 방어구·악세는 항상 sets[0] — UI·스탯 합산 공통.
+const SHARED_ARMOR_SET_INDEX := 0
+
+const ARMOR_STAT_SLOTS: Array[StringName] = [
+	HELMET,
+	ARMOR,
+	GLOVES,
+	BOOTS,
+	ACCESSORY,
+]
 
 const ALL: Array[StringName] = [
 	WEAPON,

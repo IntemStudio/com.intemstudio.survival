@@ -65,7 +65,14 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(320, 64)
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
-text = "게임 시작"
+text = "서바이벌 시작"
+
+[node name="ArenaGameButton" type="Button" parent="MenuOverlay/CenterContainer/LobbyContent/Buttons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 64)
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "아레나 시작"
 
 [node name="QuitButton" type="Button" parent="MenuOverlay/CenterContainer/LobbyContent/Buttons"]
 unique_name_in_owner = true
@@ -75,4 +82,5 @@ theme_override_font_sizes/font_size = 28
 text = "게임 종료"
 
 [connection signal="pressed" from="MenuOverlay/CenterContainer/LobbyContent/Buttons/StartGameButton" to="." method="_on_start_game_button_pressed"]
+[connection signal="pressed" from="MenuOverlay/CenterContainer/LobbyContent/Buttons/ArenaGameButton" to="." method="_on_arena_game_button_pressed"]
 [connection signal="pressed" from="MenuOverlay/CenterContainer/LobbyContent/Buttons/QuitButton" to="." method="_on_quit_button_pressed"]

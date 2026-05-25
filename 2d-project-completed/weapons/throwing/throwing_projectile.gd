@@ -81,7 +81,7 @@ func _return_to_pool() -> void:
 
 
 func _deal_damage(body: Node) -> void:
-	var damage := _weapon.roll_damage()
+	var damage := LoadoutStatApply.roll_combat_damage(_weapon)
 	if _weapon.damage_element == "poison" and body.has_method("apply_poison"):
 		body.apply_poison(_weapon)
 
