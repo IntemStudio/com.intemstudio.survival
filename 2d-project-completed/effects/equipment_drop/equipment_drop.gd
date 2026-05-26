@@ -3,7 +3,7 @@ extends Area2D
 
 ## 월드에 떨어진 장비 item_id를 상호작용으로 런 인벤토리에 획득합니다.
 
-const INTERACT_KEY := KEY_E
+const INTERACT_ACTION := &"interact"
 const PROMPT_OFFSET := Vector2(-120.0, -72.0)
 const BASE_SCALE := Vector2(0.72, 0.72)
 
@@ -53,12 +53,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _is_interact_pressed(event: InputEvent) -> bool:
-	if InputMap.has_action("interact") and event.is_action_pressed("interact"):
-		return true
-	if not event is InputEventKey:
-		return false
-	var key_event := event as InputEventKey
-	return key_event.pressed and not key_event.echo and key_event.physical_keycode == INTERACT_KEY
+	return event.is_action_pressed(INTERACT_ACTION)
 
 
 func _try_acquire() -> void:
