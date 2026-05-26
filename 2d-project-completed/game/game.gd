@@ -294,7 +294,10 @@ func _prepare_arena_run() -> void:
 		_setup_arena_teleporter()
 	_arena_director.start()
 	$Timer.stop()
-	_enable_arena_teleporter("중앙 텔레포터에서 E로 아레나 시작", 4.0)
+	_enable_arena_teleporter(
+		UiLocale.t(&"arena_teleporter.start_notice") % InteractionInput.get_interact_label(),
+		4.0
+	)
 	_update_time_hud()
 	_update_balance_phase_hud()
 
