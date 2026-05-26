@@ -83,10 +83,13 @@ static func swap_equip_sets(game: Node, inventory_menu: CanvasLayer) -> void:
 
 
 static func handle_inventory_input(game: Node, inventory_menu: CanvasLayer, event: InputEvent) -> bool:
-	if event.is_action_pressed("toggle_inventory"):
+	if ActionManager.event_is_pressed(event, ActionManager.ACTION_TOGGLE_INVENTORY):
 		toggle_inventory(game, inventory_menu)
 		return true
-	if event.is_action_pressed("swap_combat_set") and can_swap_active_combat_set(game, inventory_menu):
+	if (
+		ActionManager.event_is_pressed(event, ActionManager.ACTION_SWAP_COMBAT_SET)
+		and can_swap_active_combat_set(game, inventory_menu)
+	):
 		swap_equip_sets(game, inventory_menu)
 		return true
 	if (

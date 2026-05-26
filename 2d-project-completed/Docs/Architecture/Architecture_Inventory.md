@@ -6,7 +6,7 @@
 
 ## Overview
 
-인벤토리는 **가방 8칸**과 **장비 세트 2개**를 관리한다. 각 세트는 `weapon`, `helmet`, `armor`, `gloves`, `boots`, `offhand`, `accessory` 7개 슬롯을 가진다. 전투에 쓰는 세트는 `active_set_index`로 고르며, W·닫힌 RMB·인벤의 비활성 weapon/offhand 좌클릭으로 전환한다.
+인벤토리는 **가방 8칸**과 **장비 세트 2개**를 관리한다. 각 세트는 `weapon`, `helmet`, `armor`, `gloves`, `boots`, `offhand`, `accessory` 7개 슬롯을 가진다. 전투에 쓰는 세트는 `active_set_index`로 고르며, Tab·닫힌 RMB·인벤의 비활성 weapon/offhand 좌클릭으로 전환한다.
 
 무기와 offhand는 세트 1·2를 동시에 보여 주고, 방어구 5칸과 악세사리는 `sets[0]`을 공유한다. 플레이어 상태에는 `item_id` 문자열만 저장하고, `WeaponData`와 `GearData`는 런타임에 `ItemRegistry`가 해석한다. 데모 기준 인벤토리는 런 한정이며, 가방·장비 세트·상자 보상·골드는 클리어, 패배, 로비 복귀, 새 런 시작 시 저장하지 않고 초기화한다.
 
@@ -48,7 +48,7 @@
 | `inventory/gear_stat_display.gd` | 장비 툴팁용 표시 문자열 생성 |
 | `inventory/inventory_service.gd` | UI가 호출하는 장착·해제·드래그·세트 전환 API |
 | `inventory/inventory_combat_bridge.gd` | 장착된 활성 weapon과 장비 스탯을 `Player`에 적용 |
-| `inventory/inventory_game_bridge.gd` | I/W/RMB 입력, 메뉴 열기/닫기, HUD 전투 세트 표시 연결 |
+| `inventory/inventory_game_bridge.gd` | I/Tab/RMB 입력, 메뉴 열기/닫기, HUD 전투 세트 표시 연결 |
 | `inventory/loadout_stat_apply.gd` | 이동·피해·공격속도·방어·체력 스탯을 플레이어 수치로 변환 |
 | `inventory/loadout_grant_passive.gd` | 장착 장비 grant 태그로 궤도, dash haste, dash darts, offhand 비주얼 적용 |
 | `ui/inventory/inventory_menu.gd` | 4칸 전투 슬롯, 공유 방어구, 가방 UI, `InventoryService` 호출 |
@@ -83,7 +83,7 @@ Game / TestArena
 6. 플레이어가 `EquipmentDrop`에 다가가 상호작용을 누르면 같은 `InventoryService.acquire_item()` 경로로 획득을 재시도한다. 장착 슬롯과 가방이 여전히 가득 차 있으면 오브젝트는 남아 있고, 성공하면 오브젝트를 제거한다.
 7. 가방 우클릭/더블클릭 또는 드래그는 항상 `InventoryService` API를 거쳐 상태를 바꾼다.
 8. weapon/offhand는 `active_set_index` 세트에 장착되고, 방어구·악세는 `sets[0]`에 장착된다.
-9. W·닫힌 RMB·비활성 전투 슬롯 좌클릭은 활성 세트를 바꾸고 HUD 갱신, 전투 재적용을 수행한다.
+9. Tab·닫힌 RMB·비활성 전투 슬롯 좌클릭은 활성 세트를 바꾸고 HUD 갱신, 전투 재적용을 수행한다.
 10. `InventoryCombatBridge.apply_loadout_to_player()`가 장착된 활성 세트 weapon/offhand와 공유 방어구의 스탯, grant 패시브, offhand 비주얼만 플레이어에 적용한다.
 11. 클리어, 패배, 로비 복귀, 새 런 시작 시 런 인벤토리 상태를 영구 저장하지 않고 폐기한다.
 

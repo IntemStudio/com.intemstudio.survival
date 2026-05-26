@@ -492,11 +492,12 @@ func _update_auto_target_hud() -> void:
 	var label := get_node_or_null("%AutoTargetLabel") as Label
 	if not label:
 		return
+	var action_label := ActionManager.get_action_label(ActionManager.ACTION_TOGGLE_AUTO_TARGET, "-")
 	if auto_target_enabled:
-		label.text = UiLocale.t(&"hud.auto_target_on")
+		label.text = UiLocale.t(&"hud.auto_target_on") % action_label
 		label.add_theme_color_override("font_color", Color(0.1, 0.45, 0.15))
 	else:
-		label.text = UiLocale.t(&"hud.auto_target_off")
+		label.text = UiLocale.t(&"hud.auto_target_off") % action_label
 		label.add_theme_color_override("font_color", Color(0.55, 0.12, 0.12))
 
 
@@ -504,18 +505,17 @@ func _update_auto_attack_hud() -> void:
 	var label := get_node_or_null("%AutoAttackLabel") as Label
 	if not label:
 		return
+	var action_label := ActionManager.get_action_label(ActionManager.ACTION_TOGGLE_AUTO_ATTACK, "-")
 	if auto_attack_enabled:
-		label.text = UiLocale.t(&"hud.auto_attack_on")
+		label.text = UiLocale.t(&"hud.auto_attack_on") % action_label
 		label.add_theme_color_override("font_color", Color(0.1, 0.45, 0.15))
 	else:
-		label.text = UiLocale.t(&"hud.auto_attack_off")
+		label.text = UiLocale.t(&"hud.auto_attack_off") % action_label
 		label.add_theme_color_override("font_color", Color(0.55, 0.12, 0.12))
 
 
 func _get_move_direction() -> Vector2:
-	if _uses_inventory_loadout_for_movement():
-		return _move_vector_excluding_physical_key(KEY_W)
-	return Input.get_vector("move_left", "move_right", "move_up", "move_down")
+	return ActionManager.get_move_vector()
 
 
 func _get_game_root() -> Node:
@@ -523,23 +523,6 @@ func _get_game_root() -> Node:
 	if game != null:
 		return game
 	return get_tree().current_scene
-
-
-func _uses_inventory_loadout_for_movement() -> bool:
-	var game := _get_game_root()
-	if game == null:
-		return false
-	return bool(game.get("use_inventory_loadout"))
-
-
-func _move_vector_excluding_physical_key(exclude: Key) -> Vector2:
-	var x := Input.get_axis("move_left", "move_right")
-	var y := 0.0
-	if Input.is_action_pressed("move_down"):
-		y += 1.0
-	if Input.is_action_pressed("move_up") and not Input.is_physical_key_pressed(exclude):
-		y -= 1.0
-	return Vector2(x, y)
 
 
 func _is_combat_input_blocked() -> bool:
@@ -560,12 +543,10 @@ func _is_combat_input_blocked() -> bool:
 func _unhandled_input(event: InputEvent) -> void:
 	if _is_combat_input_blocked():
 		return
-	if event is InputEventKey and event.echo:
-		return
-	if event.is_action_pressed("toggle_auto_target"):
+	if ActionManager.event_is_pressed(event, ActionManager.ACTION_TOGGLE_AUTO_TARGET):
 		toggle_auto_target()
 		get_viewport().set_input_as_handled()
-	elif event.is_action_pressed("toggle_auto_attack"):
+	elif ActionManager.event_is_pressed(event, ActionManager.ACTION_TOGGLE_AUTO_ATTACK):
 		toggle_auto_attack()
 		get_viewport().set_input_as_handled()
 
@@ -602,7 +583,7 @@ func _physics_process(delta: float) -> void:
 	if _dash_time_remaining > 0.0:
 		_dash_time_remaining -= delta
 		velocity = _dash_direction * DASH_SPEED
-	elif Input.is_action_just_pressed("dash") and _dash_cooldown_remaining <= 0.0:
+	elif ActionManager.is_just_pressed(ActionManager.ACTION_DASH) and _dash_cooldown_remaining <= 0.0:
 		var dash_dir := direction
 		if dash_dir.length_squared() < 0.01:
 			dash_dir = _last_move_direction

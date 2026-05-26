@@ -25,6 +25,7 @@
 
 | 문서 | 다룰 범위 | 제외할 범위 |
 |------|-----------|-------------|
+| `Architecture_Input.md` | `ActionManager`, 기본 바인딩, 리맵 저장/로드, 입력 호출부와 조작 설정 UI 계약 | 게임패드 지원, 튜토리얼 문구 |
 | `Architecture_Weapons.md` | `WeaponData`, 무기 카탈로그, `Gun`, 투사체·장판·궤도, 자동 공격, 무기별 피해 기록 | 무기별 데모 선정 기준, 성장 기획, 아이콘 정책 |
 | `Architecture_GameLoop_Balance.md` | 로비 이후 런 시작, 스폰 타이머, `BalanceTable`, `BalanceTimeline`, 클리어/게임오버, 보상 호출 경로 | 출시 일정, 플레이테스트 TODO, 장기 난이도 아이디어 |
 | `Architecture_Mobs.md` | `mob.gd` 공통 계약, 변종 씬, 원거리 공격, 접촉 피해, 사망·보상·풀 반환, 보스/특수몹 확장 지점 | 몹 역할 기획, 등장 체감, 데모 콘텐츠 우선순위 |

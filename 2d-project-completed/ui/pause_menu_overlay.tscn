@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://ui/pause_menu.gd" id="1_pause"]
 [ext_resource type="Script" path="res://ui/settings/tree_density_settings.gd" id="2_tree_density"]
@@ -7,6 +7,7 @@
 [ext_resource type="Script" path="res://ui/settings/gameplay_settings_ui.gd" id="5_gameplay_settings"]
 [ext_resource type="Script" path="res://ui/settings/locale_settings_ui.gd" id="6_locale_settings"]
 [ext_resource type="Script" path="res://ui/ui_viewport_layout.gd" id="7_ui_viewport_layout"]
+[ext_resource type="Script" path="res://ui/settings/input_binding_settings_ui.gd" id="8_input_settings"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_settings_panel"]
 bg_color = Color(0.11, 0.12, 0.15, 0.94)
@@ -505,6 +506,25 @@ theme_override_colors/font_color = Color(0.8, 0.84, 0.9, 1)
 theme_override_font_sizes/font_size = 18
 text = "자동 공격 (게임 시작 시)"
 button_pressed = true
+
+[node name="InputBindingSettingsGui" type="PanelContainer" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(480, 0)
+mouse_filter = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_settings_panel")
+
+[node name="InputBindingSettingsUi" type="VBoxContainer" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/InputBindingSettingsGui"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+script = ExtResource("8_input_settings")
+
+[node name="InputBindingSettingsTitle" type="Label" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/InputBindingSettingsGui/InputBindingSettingsUi"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.94, 0.98, 1)
+theme_override_font_sizes/font_size = 22
+text = "조작 키"
+horizontal_alignment = 1
 
 [node name="TreeDensityGui" type="PanelContainer" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox"]
 layout_mode = 2

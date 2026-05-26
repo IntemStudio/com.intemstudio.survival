@@ -79,7 +79,7 @@ WeaponSelectMenu
 4. 활성 전투 세트 weapon이 바뀌면 `InventoryCombatBridge`가 플레이어의 기존 weapon 적용을 정리하고 활성 `WeaponData`를 `Player.add_weapon()`으로 적용한다.
 5. `Player.add_weapon()`은 `gun.tscn`을 인스턴스화해 `%Weapons` 아래에 추가한다.
 6. `Gun.equip_weapon()`은 스프라이트, 공격 속도, 양손 스케일, 궤도 companion을 초기화한다.
-7. 활성 일반 무기는 자동 공격 on 또는 좌클릭 유지 상태에서 timer에 맞춰 `shoot()`를 호출한다. 활성 궤도 무기는 별도 companion이 physics tick에서 overlap 피해를 처리한다.
+7. 활성 일반 무기는 자동 공격 on 또는 `attack` 액션(기본 좌클릭) 유지 상태에서 timer에 맞춰 `shoot()`를 호출한다. 활성 궤도 무기는 별도 companion이 physics tick에서 overlap 피해를 처리한다.
 8. 비활성 세트나 가방의 weapon은 `Gun`을 만들지 않으며 자동 공격 on이어도 발사하지 않는다.
 9. `Gun.shoot()`는 `weapon_type`과 delivery helper에 따라 탄환, 근접 발사체, 마법 탄, 투척체, 장판을 스폰한다.
 10. 각 피해 오브젝트는 `LoadoutStatApply.roll_combat_damage()` 또는 플레이어의 `roll_weapon_damage()`를 통해 장착 장비 배율을 반영한 피해를 굴린다.
@@ -117,7 +117,7 @@ WeaponSelectMenu
 | 새 공격 방식 추가 | `WeaponData` helper, `Gun.shoot()` 분기, 풀링, 몹 피해 경로, 피해 통계 |
 | 새 projectile movement 추가 | 이동 스크립트, 사거리 종료, 관통/왕복/유도 규칙, 테스트 아레나 |
 | 피해 공식 변경 | `Player.roll_weapon_damage()`, `LoadoutStatApply`, 독/장판/궤도 피해가 장착 장비만 같은 규칙으로 쓰는지 |
-| 자동 공격 변경 | `Gun.refresh_auto_attack()`, 궤도 무기, HUD 라벨, 수동 좌클릭과 timer 충돌 여부 |
+| 자동 공격 변경 | `Gun.refresh_auto_attack()`, 궤도 무기, HUD 라벨, 수동 `attack` 액션과 timer 충돌 여부 |
 | 무기 획득 변경 | 인벤 자동 배치, 활성/비활성 weapon 슬롯, 가방 가득 참, `Player.add_weapon()` 직접 호출 제거 |
 | 피해 통계 변경 | `WeaponDamageTracker`, `Mob._register_weapon_damage()`, 게임오버·일시정지 UI |
 | 풀링 대상 변경 | `ScenePool`, `PoolUtil.release_node()`, `pool_reset()`, `pool_on_acquire()` |

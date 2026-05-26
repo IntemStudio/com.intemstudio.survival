@@ -79,6 +79,7 @@ func _ready() -> void:
 		push_error("TestArena: PauseMenu missing — check pause_menu_overlay.tscn.")
 	if _inventory_menu == null:
 		push_error("TestArena: InventoryMenu missing — check inventory_overlay.tscn.")
+	ActionManager.initialize()
 	LocaleSettings.load_and_apply()
 	DisplaySettings.load_and_apply()
 	AudioSettings.load_and_apply()

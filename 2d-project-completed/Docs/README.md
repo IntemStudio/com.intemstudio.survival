@@ -36,6 +36,7 @@
 ## 현재 주요 문서
 
 - [`Architecture/Architecture_Inventory.md`](Architecture/Architecture_Inventory.md)
+- [`Architecture/Architecture_Input.md`](Architecture/Architecture_Input.md)
 - [`Architecture/Architecture_Weapons.md`](Architecture/Architecture_Weapons.md)
 - [`Architecture/Architecture_GameLoop_Balance.md`](Architecture/Architecture_GameLoop_Balance.md)
 - [`Architecture/Architecture_Mobs.md`](Architecture/Architecture_Mobs.md)

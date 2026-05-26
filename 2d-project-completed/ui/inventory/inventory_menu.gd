@@ -96,7 +96,10 @@ func refresh_locale() -> void:
 		return
 	_title_label.text = UiLocale.t(&"inventory.title")
 	_bag_title_label.text = UiLocale.t(&"inventory.bag_title")
-	_hint_label.text = UiLocale.t(&"inventory.hint")
+	_hint_label.text = UiLocale.t(&"inventory.hint") % [
+		ActionManager.get_action_label(ActionManager.ACTION_TOGGLE_INVENTORY, "-"),
+		ActionManager.get_action_label(ActionManager.ACTION_SWAP_COMBAT_SET, "-"),
+	]
 	_close_button.text = UiLocale.t(&"inventory.close")
 	_tab_set0.text = UiLocale.t(&"inventory.set_tab") % 1
 	_tab_set1.text = UiLocale.t(&"inventory.set_tab") % 2
@@ -495,10 +498,10 @@ func show_status_message(message: String) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not visible:
 		return
-	if event.is_action_pressed("toggle_inventory"):
+	if ActionManager.event_is_pressed(event, ActionManager.ACTION_TOGGLE_INVENTORY):
 		_on_close_pressed()
 		get_viewport().set_input_as_handled()
-	elif event.is_action_pressed("pause"):
+	elif ActionManager.event_is_pressed(event, ActionManager.ACTION_PAUSE):
 		_on_close_pressed()
 		get_viewport().set_input_as_handled()
 

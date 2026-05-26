@@ -44,6 +44,7 @@ func _ready() -> void:
 	if _is_arena_mode():
 		_setup_arena_director()
 		_setup_arena_teleporter()
+	ActionManager.initialize()
 	LocaleSettings.load_and_apply()
 	DisplaySettings.load_and_apply()
 	AudioSettings.load_and_apply()

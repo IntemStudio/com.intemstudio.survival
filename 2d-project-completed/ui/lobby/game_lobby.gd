@@ -10,6 +10,7 @@ const GAME_SCENE_PATH := "res://survivors_game.tscn"
 
 
 func _ready() -> void:
+	ActionManager.initialize()
 	LocaleSettings.load_and_apply()
 	DisplaySettings.load_and_apply()
 	AudioSettings.load_and_apply()

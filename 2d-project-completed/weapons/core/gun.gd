@@ -229,7 +229,7 @@ func _handle_manual_fire_input() -> void:
 
 
 func _is_manual_fire_pressed() -> bool:
-	return Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+	return ActionManager.is_pressed(ActionManager.ACTION_ATTACK)
 
 
 func shoot() -> void:

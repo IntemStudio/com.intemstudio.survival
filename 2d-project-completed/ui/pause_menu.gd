@@ -5,6 +5,8 @@ const WEAPON_TYPE_FONT_COLORS := {
 	"Ranged": Color(0.68, 0.95, 0.78, 1),
 	"Magic": Color(0.78, 0.82, 0.98, 1),
 }
+const SETTINGS_SCROLL_MIN_SIZE := Vector2(560, 620)
+
 @onready var _owned_weapons_list: VBoxContainer = %PauseOwnedWeaponsList
 @onready var _main_content: VBoxContainer = %PauseMainContent
 @onready var _settings_panel: Control = %SettingsPanel
@@ -24,12 +26,14 @@ const WEAPON_TYPE_FONT_COLORS := {
 @onready var _video_display_settings: VBoxContainer = %VideoDisplaySettings
 @onready var _audio_settings: VBoxContainer = %AudioSettingsUi
 @onready var _gameplay_settings: VBoxContainer = %GameplaySettingsUi
+@onready var _input_binding_settings: VBoxContainer = %InputBindingSettingsUi
 @onready var _tree_density_settings: VBoxContainer = %TreeDensitySettings
 
 
 func _ready() -> void:
 	add_to_group(UiLocale.GROUP_REFRESH)
 	visibility_changed.connect(_on_visibility_changed)
+	_ensure_settings_scroll_layout()
 	hide()
 	_close_settings_view()
 	refresh_locale()
@@ -54,7 +58,7 @@ func _on_visibility_changed() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not event.is_action_pressed("pause"):
+	if not ActionManager.event_is_pressed(event, ActionManager.ACTION_PAUSE):
 		return
 
 	var game := _get_game()
@@ -113,6 +117,8 @@ func _on_settings_button_pressed() -> void:
 		_audio_settings.sync_from_audio()
 	if _gameplay_settings.has_method("sync_from_gameplay"):
 		_gameplay_settings.sync_from_gameplay()
+	if _input_binding_settings.has_method("sync_from_input_bindings"):
+		_input_binding_settings.sync_from_input_bindings()
 	if _tree_density_settings.has_method("sync_from_arena"):
 		_tree_density_settings.sync_from_arena()
 
@@ -123,8 +129,47 @@ func _on_settings_back_pressed() -> void:
 
 # 설정 화면을 닫고 일시정지 메인 목록을 다시 표시합니다.
 func _close_settings_view() -> void:
+	if _input_binding_settings.has_method("cancel_input_capture"):
+		_input_binding_settings.cancel_input_capture()
 	_settings_panel.hide()
 	_main_content.show()
+
+
+# 설정 항목이 길어져도 제목·뒤로가기 버튼은 고정하고 가운데 목록만 스크롤합니다.
+func _ensure_settings_scroll_layout() -> void:
+	var settings_vbox := _settings_back_button.get_parent() as VBoxContainer
+	if settings_vbox == null or settings_vbox.has_node("SettingsScroll"):
+		return
+
+	var scroll := ScrollContainer.new()
+	scroll.name = "SettingsScroll"
+	scroll.custom_minimum_size = SETTINGS_SCROLL_MIN_SIZE
+	scroll.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+
+	var content := VBoxContainer.new()
+	content.name = "SettingsContentVBox"
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.add_theme_constant_override("separation", 24)
+	scroll.add_child(content)
+
+	settings_vbox.add_child(scroll)
+	settings_vbox.move_child(scroll, 1)
+
+	for settings_ui in [
+		_locale_settings,
+		_video_display_settings,
+		_audio_settings,
+		_gameplay_settings,
+		_input_binding_settings,
+		_tree_density_settings,
+	]:
+		var panel := settings_ui.get_parent() as Control
+		if panel == null:
+			continue
+		panel.get_parent().remove_child(panel)
+		content.add_child(panel)
 
 
 # 일시정지 메뉴를 열 때 보유 무기·누적 피해량 목록을 갱신합니다.
