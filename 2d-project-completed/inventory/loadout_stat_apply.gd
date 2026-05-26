@@ -28,7 +28,7 @@ static func compute_attack_speed_mult(modifiers: Dictionary, weapon: WeaponData)
 		mult *= get_mult(modifiers, "magic_attack_speed_mult")
 	elif weapon.is_ranged() or weapon.is_throwing():
 		mult *= get_mult(modifiers, "ranged_attack_speed_mult")
-	if weapon.is_orbit_magic():
+	if weapon.is_orbit_attack():
 		mult *= get_mult(modifiers, "companion_attack_speed_mult")
 	return mult
 
@@ -56,7 +56,7 @@ static func compute_damage_mult(
 	elif weapon.is_ranged():
 		mult *= get_mult(modifiers, "ranged_damage_mult")
 
-	if weapon.is_orbit_magic():
+	if weapon.is_orbit_attack():
 		mult *= get_mult(modifiers, "companion_damage_mult")
 
 	mult *= _element_damage_mult(modifiers, weapon.damage_element, weapon)

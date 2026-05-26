@@ -40,7 +40,7 @@ func setup_weapon(thrower: Node2D, direction: Vector2, weapon_data: WeaponData) 
 	setup(
 		thrower,
 		direction,
-		weapon_data.roll_damage(),
+		0,
 		weapon_data.get_projectile_range(),
 		weapon_data.throw_speed
 	)
@@ -72,9 +72,28 @@ func _physics_process(delta: float) -> void:
 func _on_body_entered(body: Node2D) -> void:
 	if body == _thrower:
 		return
+	if _is_environment_body(body):
+		PoolUtil.release_node(self)
+		return
 	if not body.is_in_group("mobs"):
 		return
+	var hit_damage := _roll_weapon_damage()
 	if _weapon and body.has_method("apply_weapon_damage"):
-		body.apply_weapon_damage(damage, _weapon)
+		body.apply_weapon_damage(hit_damage, _weapon)
 	elif body.has_method("take_damage"):
-		body.take_damage(damage)
+		body.take_damage(hit_damage)
+
+
+func _is_environment_body(body: Node) -> bool:
+	return body is CollisionObject2D and PhysicsLayers.layer_matches(
+		(body as CollisionObject2D).collision_layer,
+		PhysicsLayers.ENVIRONMENT
+	)
+
+
+func _roll_weapon_damage() -> int:
+	if _weapon == null:
+		return maxi(damage, 1)
+	if is_instance_valid(_thrower) and _thrower.has_method("roll_weapon_damage"):
+		return _thrower.roll_weapon_damage(_weapon)
+	return _weapon.roll_damage()

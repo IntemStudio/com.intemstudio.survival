@@ -2,7 +2,7 @@
 
 **기간:** 1주차  
 **상위 계획:** [`../Plan_Release_Roadmap.md`](../Plan_Release_Roadmap.md)  
-**관련 위키:** [`../../Wiki/GameRules.md`](../../Wiki/GameRules.md), [`../../Wiki/Weapons.md`](../../Wiki/Weapons.md), [`../../Wiki/Mobs.md`](../../Wiki/Mobs.md), [`../../Wiki/Progression.md`](../../Wiki/Progression.md), [`../../Wiki/Items_Inventory.md`](../../Wiki/Items_Inventory.md)
+**관련 위키:** [`../../Wiki/GameRules.md`](../../Wiki/GameRules.md), [`../../Wiki/Weapons.md`](../../Wiki/Weapons.md), [`../../Wiki/Projectiles.md`](../../Wiki/Projectiles.md), [`../../Wiki/Mobs.md`](../../Wiki/Mobs.md), [`../../Wiki/Progression.md`](../../Wiki/Progression.md), [`../../Wiki/Items_Inventory.md`](../../Wiki/Items_Inventory.md)
 
 ---
 
@@ -57,7 +57,7 @@
 |----|------|------|-----------|------|
 | W01-01 | 데모 기본 모드/런 구조 결정 | Done | 기본 데모는 아레나 MVP, 서바이벌은 비교 가능 모드로 유지 | `GameRules.md` |
 | W01-02 | 인벤토리 노출 정책 결정 | Done | 런 한정 인벤토리로 노출하고 영구 장비 세이브와 분리 | `Items_Inventory.md` |
-| W01-03 | 데모 무기 풀 후보 선정 | Todo | 10~15종 후보와 제외 기준 기록 | `Weapons.md` |
+| W01-03 | 데모 무기 풀 후보 선정 | Todo | 10~15종 후보와 제외 기준, 대표 projectile movement 확인 | `Weapons.md`, `Projectiles.md` |
 | W01-04 | 보스/특수몹 데모 목표 결정 | Todo | 데모에서 고유 체감을 줄 몹 1~2종 선택 | `Mobs.md` |
 | W01-05 | 골드 정책 결정 | Done | 골드는 런 중 자원이며 웨이브 사이 상자 비용으로 사용 | `Progression.md` |
 | W01-06 | F5 기준선 플레이 기록 | Todo | 로비→게임 시작→패배/클리어 경로의 치명 갭 기록 | `Plan_Release_Roadmap.md` |

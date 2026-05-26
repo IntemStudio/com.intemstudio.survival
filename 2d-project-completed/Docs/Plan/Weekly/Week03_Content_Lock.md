@@ -3,7 +3,7 @@
 **기간:** 3주차  
 **상위 계획:** [`../Plan_Release_Roadmap.md`](../Plan_Release_Roadmap.md)  
 **이전 주:** [`Week02_Demo_Core.md`](Week02_Demo_Core.md)  
-**관련 위키:** [`../../Wiki/GameRules.md`](../../Wiki/GameRules.md), [`../../Wiki/Weapons.md`](../../Wiki/Weapons.md), [`../../Wiki/Mobs.md`](../../Wiki/Mobs.md), [`../../Wiki/Progression.md`](../../Wiki/Progression.md)
+**관련 위키:** [`../../Wiki/GameRules.md`](../../Wiki/GameRules.md), [`../../Wiki/Weapons.md`](../../Wiki/Weapons.md), [`../../Wiki/Projectiles.md`](../../Wiki/Projectiles.md), [`../../Wiki/Mobs.md`](../../Wiki/Mobs.md), [`../../Wiki/Progression.md`](../../Wiki/Progression.md)
 
 ---
 
@@ -17,7 +17,7 @@
 
 ## Success Criteria
 
-- 데모 무기 풀이 최종 확정된다.
+- 데모 무기 풀과 각 대표 projectile movement가 최종 확정된다.
 - 데모에 등장할 몹 종류와 이벤트 시각이 확정된다.
 - 보스/엘리트/특수몹의 데모용 역할이 확정된다.
 - 기본 BGM/SFX 최소 세트가 연결되거나, 연결할 파일·위치가 명확히 남는다.
@@ -54,7 +54,7 @@
 
 | ID | 작업 | 상태 | 완료 기준 | 관련 |
 |----|------|------|-----------|------|
-| W03-01 | 데모 무기 풀 최종 확정 | Todo | 포함/제외 무기 목록과 제외 이유 기록 | `Weapons.md` |
+| W03-01 | 데모 무기 풀 최종 확정 | Todo | 포함/제외 무기 목록, 제외 이유, 대표 projectile movement 기록 | `Weapons.md`, `Projectiles.md` |
 | W03-02 | 데모 몹 구성 확정 | Todo | basic/fast/ranged/elite/special/boss 중 등장 목록 확정 | `Mobs.md` |
 | W03-03 | 데모 이벤트 타임라인 확정 | Todo | 9분, 11분, 25분, 28분 이벤트 사용 여부 기록 | `Plan_Balance_VS_Curve_Alignment.md` |
 | W03-04 | 기본 사운드 최소 세트 마무리 | Todo | BGM, 피격, 레벨업, 보스, 클리어 중 적용/보류 기록 | `Plan_Release_Roadmap.md` |

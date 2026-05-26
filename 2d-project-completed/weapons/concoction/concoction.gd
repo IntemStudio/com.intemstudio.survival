@@ -18,6 +18,25 @@ var _last_position := Vector2.ZERO
 var _has_exploded := false
 
 
+func pool_reset() -> void:
+	_thrower = null
+	_weapon = null
+	_direction = Vector2.RIGHT
+	_speed = 650.0
+	_max_range = 400.0
+	_start_position = Vector2.ZERO
+	_target_position = Vector2.ZERO
+	_flight_duration = 1.0
+	_flight_time = 0.0
+	_last_position = Vector2.ZERO
+	_has_exploded = false
+	rotation = 0.0
+
+
+func pool_on_acquire() -> void:
+	PhysicsLayers.apply_player_projectile(self)
+
+
 func setup_weapon(thrower: Node2D, aim_position: Vector2, weapon_data: WeaponData) -> void:
 	_thrower = thrower
 	_weapon = weapon_data
@@ -61,6 +80,16 @@ func _physics_process(delta: float) -> void:
 		_explode_at(_target_position)
 
 
+func _on_body_entered(body: Node2D) -> void:
+	if _has_exploded:
+		return
+	if _is_environment_body(body):
+		if _weapon:
+			_explode_at(global_position)
+		else:
+			PoolUtil.release_node(self)
+
+
 func _explode_at(impact_position: Vector2) -> void:
 	if _has_exploded or not _weapon:
 		return
@@ -69,7 +98,7 @@ func _explode_at(impact_position: Vector2) -> void:
 	var radius := _weapon.aoe_radius
 	_spawn_explosion_visual(impact_position, radius)
 	_spawn_area_damage_zone(impact_position, radius)
-	queue_free()
+	PoolUtil.release_node(self)
 
 
 func _spawn_area_damage_zone(impact_position: Vector2, radius: float) -> void:
@@ -87,6 +116,13 @@ func _spawn_area_damage_zone(impact_position: Vector2, radius: float) -> void:
 
 	zone.global_position = impact_position
 	zone.setup_circle(_weapon, radius, true)
+
+
+func _is_environment_body(body: Node) -> bool:
+	return body is CollisionObject2D and PhysicsLayers.layer_matches(
+		(body as CollisionObject2D).collision_layer,
+		PhysicsLayers.ENVIRONMENT
+	)
 
 
 func _spawn_explosion_visual(impact_position: Vector2, radius: float) -> void:

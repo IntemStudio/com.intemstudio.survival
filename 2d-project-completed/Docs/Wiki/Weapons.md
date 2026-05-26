@@ -1,7 +1,7 @@
 # Wiki - Weapons
 
-**역할:** 무기 타입, 공격 방식, 획득 UI, 성장 정책을 정리합니다.
-**관련:** [`Combat.md`](Combat.md), [`Progression.md`](Progression.md), [`../Architecture/Architecture_Weapons.md`](../Architecture/Architecture_Weapons.md), [`../../BACKLOG.md`](../../BACKLOG.md)
+**역할:** 무기 타입, 획득 UI, 자동 공격, 성장 정책을 정리합니다.
+**관련:** [`Projectiles.md`](Projectiles.md), [`Combat.md`](Combat.md), [`Progression.md`](Progression.md), [`../Architecture/Architecture_Weapons.md`](../Architecture/Architecture_Weapons.md), [`../../BACKLOG.md`](../../BACKLOG.md)
 
 ---
 
@@ -12,19 +12,12 @@
 | 타입 | 기대 역할 | 현재 공격 방식 |
 |------|-----------|----------------|
 | Ranged | 안정적인 단일 대상 또는 직선 화력 | 탄환 발사 |
-| Melee | 가까운 범위 제압, 관통, 넓은 스윙감 | 근접 관통 발사체 |
+| Melee | 가까운 범위 제압, 관통, 넓은 스윙감 | 검기형 근접 관통 발사체 |
 | Magic | 궤도, 추적, 속성 피해, 특수 효과 | 마법 탄·궤도 |
 | Throwing / Area | 착지 지점 제어, 독, 장판 | 투척체 후 영역 존 |
 
-## 공격 전달 방식
+공격이 날아가고 맞는 방식은 [`Projectiles.md`](Projectiles.md)에서 관리한다.
 
-| 방식 | 규칙 |
-|------|------|
-| 탄환 | 사거리 안 최근접 몹을 향해 발사한다. |
-| 근접 관통 탄 | 타겟이 없어도 근접 공격 모션처럼 발사할 수 있어야 한다. |
-| 영역 존 | 착지 후 원형 또는 사각 영역을 만들고, 영역 안 몹에게 피해를 준다. |
-| 궤도 | 플레이어 주변을 돌며 충돌한 몹에게 피해를 준다. |
-| 독/상태 피해 | 원본 무기 귀속을 유지해 피해 통계에 반영한다. |
 
 ## 무기 획득 UI
 
@@ -76,6 +69,7 @@
 - 툴팁이 공격 방식과 핵심 효과를 설명한다.
 - 피해 통계에 올바른 이름으로 잡힌다.
 - F6 테스트 아레나에서 기본 몹과 더미 상대로 검증된다.
+- F6 테스트 아레나에서 벽·나무 충돌 시 반환, 폭발, 장판 생성 규칙이 확인된다.
 - 자동 공격 on/off에서 이상 동작이 없다.
 - 풀 반환 또는 수명 종료가 안정적이다.
 

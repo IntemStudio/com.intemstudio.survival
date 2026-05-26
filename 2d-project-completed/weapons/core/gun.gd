@@ -28,7 +28,7 @@ func equip_weapon(new_weapon: WeaponData) -> void:
 	weapon = new_weapon
 	_burst_shots_remaining = 0
 	_apply_weapon_data()
-	if weapon.is_orbit_magic():
+	if weapon.is_orbit_attack():
 		_spawn_orbit_companion()
 	call_deferred("_reset_fire_state")
 	call_deferred("refresh_auto_attack")
@@ -66,7 +66,7 @@ func refresh_targeting_mode() -> void:
 
 # 플레이어 자동 공격 토글(G)에 맞춰 타이머를 켜거나 끕니다.
 func refresh_auto_attack() -> void:
-	if not weapon or not is_inside_tree() or weapon.is_orbit_magic():
+	if not weapon or not is_inside_tree() or weapon.is_orbit_attack():
 		return
 	if _is_auto_attack_enabled():
 		if _shoot_timer.time_left <= 0.0 and not _is_manual_fire_pressed():
@@ -124,7 +124,7 @@ func _get_attack_range() -> float:
 func get_display_attack_range() -> float:
 	if not weapon:
 		return 0.0
-	if weapon.is_orbit_magic():
+	if weapon.is_orbit_attack():
 		return weapon.get_orbit_radius()
 	return weapon._get_attack_range()
 
@@ -195,7 +195,7 @@ func _process(_delta: float) -> void:
 
 # 자동 공격 ON이면 타이머로 연속 발사합니다(마우스 불필요).
 func _handle_auto_attack() -> void:
-	if not weapon or weapon.is_orbit_magic():
+	if not weapon or weapon.is_orbit_attack():
 		return
 	if not _is_auto_attack_enabled() or _is_manual_fire_pressed():
 		return
@@ -211,7 +211,7 @@ func _handle_auto_attack() -> void:
 
 # 마우스 좌클릭을 누르고 있는 동안 공격 속도에 맞춰 발사합니다.
 func _handle_manual_fire_input() -> void:
-	if not weapon or weapon.is_orbit_magic():
+	if not weapon or weapon.is_orbit_attack():
 		return
 	if not _is_manual_fire_pressed():
 		# 자동 공격 타이머는 유지 — OFF일 때만 정지
@@ -345,7 +345,7 @@ func _spawn_orbit_companion() -> void:
 
 
 func _shoot_magic() -> void:
-	if weapon.is_orbit_magic():
+	if weapon.is_orbit_attack():
 		return
 
 	var game := get_node_or_null("/root/Game")
@@ -369,6 +369,9 @@ func _shoot_melee_projectile() -> void:
 	if spread_count <= 1:
 		_spawn_melee_projectile(game, weapon, base_transform, owner)
 		return
+	if weapon.has_melee_parallel_spawn():
+		_shoot_parallel_melee_projectiles(game, owner, base_transform, spread_count)
+		return
 
 	var origin := base_transform.origin
 	var base_angle := base_transform.get_rotation()
@@ -379,6 +382,22 @@ func _shoot_melee_projectile() -> void:
 		var angle := base_angle - half_spread + t * half_spread * 2.0
 		var spread_transform := Transform2D(angle, origin)
 		_spawn_melee_projectile(game, weapon, spread_transform, owner)
+
+
+func _shoot_parallel_melee_projectiles(
+	game: Node,
+	owner: Node2D,
+	base_transform: Transform2D,
+	spread_count: int
+) -> void:
+	var origin := base_transform.origin
+	var angle := base_transform.get_rotation()
+	var perpendicular := Vector2.RIGHT.rotated(angle).orthogonal()
+	var center_index := float(spread_count - 1) * 0.5
+	for index in spread_count:
+		var lane_offset := (float(index) - center_index) * weapon.melee_parallel_offset * 2.0
+		var parallel_transform := Transform2D(angle, origin + perpendicular * lane_offset)
+		_spawn_melee_projectile(game, weapon, parallel_transform, owner)
 
 
 func _spawn_melee_projectile(
@@ -444,7 +463,7 @@ func _on_timer_timeout() -> void:
 	if not weapon:
 		return
 
-	if weapon.is_orbit_magic():
+	if weapon.is_orbit_attack():
 		return
 
 	var auto_attack := _is_auto_attack_enabled()

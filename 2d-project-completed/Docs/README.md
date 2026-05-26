@@ -26,7 +26,7 @@
 ## 작성 규칙
 
 - 같은 내용을 여러 문서에 길게 복사하지 않습니다. 상위 문서는 요약과 링크만 둡니다.
-- 구현 구조와 플레이어 규칙을 섞지 않습니다. 예를 들어 무기 공격 체감은 `Wiki/Weapons.md`, `Gun`과 발사체 흐름은 `Architecture/Architecture_Weapons.md`에 둡니다.
+- 구현 구조와 플레이어 규칙을 섞지 않습니다. 예를 들어 무기 공격 체감은 `Wiki/Weapons.md`와 `Wiki/Projectiles.md`, `Gun` 이후 발사체 흐름은 `Architecture/Architecture_Projectiles.md`에 둡니다.
 - 완료된 구현 이력은 필요할 때만 짧게 남기고, 긴 Phase/PR 기록은 Plan 또는 Backlog로 옮깁니다.
 - Architecture 문서는 가능한 한 `Overview`, `Responsibilities & Boundaries`, `Key Types & Relationships`, `Flow`, `Invariants & Gotchas`, `Change Guidelines` 구조를 따릅니다.
 - Wiki 문서는 코드 경로를 최소화하고, “현재 구현됨 / 부분 구현 / 미정 / 후속”을 구분합니다.
@@ -38,6 +38,7 @@
 - [`Architecture/Architecture_Inventory.md`](Architecture/Architecture_Inventory.md)
 - [`Architecture/Architecture_Input.md`](Architecture/Architecture_Input.md)
 - [`Architecture/Architecture_Weapons.md`](Architecture/Architecture_Weapons.md)
+- [`Architecture/Architecture_Projectiles.md`](Architecture/Architecture_Projectiles.md)
 - [`Architecture/Architecture_GameLoop_Balance.md`](Architecture/Architecture_GameLoop_Balance.md)
 - [`Architecture/Architecture_Mobs.md`](Architecture/Architecture_Mobs.md)
 - [`Agents/README.md`](Agents/README.md)

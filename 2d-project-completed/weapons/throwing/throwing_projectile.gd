@@ -61,6 +61,9 @@ func _physics_process(delta: float) -> void:
 func _on_body_entered(body: Node2D) -> void:
 	if body == _thrower or not _weapon:
 		return
+	if _is_environment_body(body):
+		call_deferred(&"_return_to_pool")
+		return
 	if not body.is_in_group("mobs"):
 		return
 
@@ -78,6 +81,13 @@ func _on_body_entered(body: Node2D) -> void:
 
 func _return_to_pool() -> void:
 	PoolUtil.release_node(self)
+
+
+func _is_environment_body(body: Node) -> bool:
+	return body is CollisionObject2D and PhysicsLayers.layer_matches(
+		(body as CollisionObject2D).collision_layer,
+		PhysicsLayers.ENVIRONMENT
+	)
 
 
 func _deal_damage(body: Node) -> void:

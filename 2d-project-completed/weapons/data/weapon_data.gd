@@ -19,6 +19,8 @@ const PROJECTILE_RANGE_BY_TYPE := {
 const PROJECTILE_MOVEMENT_STRAIGHT := "Straight"
 const PROJECTILE_MOVEMENT_STRAIGHT_PIERCE := "StraightPierce"
 const PROJECTILE_MOVEMENT_RETURN := "Return"
+const PROJECTILE_MOVEMENT_CURVED_RETURN := "CurvedReturn"
+const PROJECTILE_MOVEMENT_DECELERATE := "Decelerate"
 const PROJECTILE_MOVEMENT_HOMING := "Homing"
 const PROJECTILE_MOVEMENT_ARC := "Arc"
 const PROJECTILE_MOVEMENT_ORBIT := "Orbit"
@@ -27,13 +29,15 @@ const PROJECTILE_MOVEMENT_LABELS_KO := {
 	"Straight": "직선",
 	"StraightPierce": "직선 관통",
 	"Return": "왕복",
+	"CurvedReturn": "곡선 왕복",
+	"Decelerate": "감속",
 	"Homing": "유도",
 	"Arc": "포물선",
 	"Orbit": "궤도",
 }
 
 const PROJECTILE_MOVEMENT_OPTIONS_BY_TYPE := {
-	"Melee": ["StraightPierce", "Return"],
+	"Melee": ["StraightPierce", "Return", "CurvedReturn", "Decelerate", "Orbit"],
 	"Ranged": ["Straight", "Return", "Arc"],
 	"Magic": ["Straight", "Homing", "Orbit"],
 }
@@ -74,6 +78,8 @@ const PROJECTILE_MOVEMENT_OPTIONS_BY_TYPE := {
 @export var melee_spread_count := 1
 ## 부채꼴 전체 각도(도). 조준 방향을 중심으로 좌우 분배
 @export var melee_spread_angle_deg := 0.0
+## 병렬 근접탄이 중심선에서 좌우로 떨어지는 거리
+@export var melee_parallel_offset := 0.0
 @export var homing_strength := 0.0
 @export var applies_nettles := false
 @export var nettles_duration := 8.0
@@ -82,7 +88,7 @@ const PROJECTILE_MOVEMENT_OPTIONS_BY_TYPE := {
 @export var uses_arc_throw := false
 ## Projectile = 탄·비행체, AreaZone = 짧은 고정 히트존(연금 착지 등)
 @export var attack_delivery := "Projectile"
-## 발사체 비행 패턴 — Straight / StraightPierce / Return / Homing / Arc / Orbit
+## 발사체 비행 패턴 — Straight / StraightPierce / Return / CurvedReturn / Decelerate / Homing / Arc / Orbit
 @export var projectile_movement := "Straight"
 ## 궤도 마법(왕의 성경 등) 회전 속도(라디안/초)
 @export var orbit_speed := 2.8
@@ -145,13 +151,15 @@ func _build_select_tooltip_bbcode_ko() -> String:
 		lines.append("쐐기: %.1f초" % nettles_duration)
 	if not get_projectile_movement_label_ko().is_empty():
 		lines.append("움직임: %s" % get_projectile_movement_label_ko())
-	if is_melee():
+	if is_melee() and not is_orbit_attack():
 		lines.append("공격 방식: 관통 탄")
-	if has_melee_spread():
+	if has_melee_parallel_spawn():
+		lines.append("병렬 탄막: %d발 (좌우 %d)" % [get_melee_spread_count(), int(melee_parallel_offset)])
+	elif has_melee_spread():
 		lines.append("탄막: %d발 (부채꼴 %.0f°)" % [get_melee_spread_count(), melee_spread_angle_deg])
 	if is_area_zone_attack():
 		lines.append("공격 방식: 영역")
-	if is_orbit_magic():
+	if is_orbit_attack():
 		lines.append("공격 방식: 궤도")
 	if homing_strength > 0.0:
 		lines.append("유도 탄")
@@ -192,14 +200,17 @@ func _build_select_tooltip_bbcode_en() -> String:
 	if applies_nettles:
 		lines.append("Nettles: %.1fs" % nettles_duration)
 	if not get_projectile_movement_label_ko().is_empty():
-		lines.append("Movement: %s" % projectile_movement)
-	if is_melee():
+		var movement_label_en := PROJECTILE_MOVEMENT_ORBIT if is_orbit_attack() else projectile_movement
+		lines.append("Movement: %s" % movement_label_en)
+	if is_melee() and not is_orbit_attack():
 		lines.append("Delivery: piercing projectile")
-	if has_melee_spread():
+	if has_melee_parallel_spawn():
+		lines.append("Parallel volley: %d projectiles (%d each side)" % [get_melee_spread_count(), int(melee_parallel_offset)])
+	elif has_melee_spread():
 		lines.append("Volley: %d projectiles (%.0f° fan)" % [get_melee_spread_count(), melee_spread_angle_deg])
 	if is_area_zone_attack():
 		lines.append("Delivery: area zone")
-	if is_orbit_magic():
+	if is_orbit_attack():
 		lines.append("Delivery: orbit")
 	if homing_strength > 0.0:
 		lines.append("Homing")
@@ -272,6 +283,8 @@ func _range_type_en() -> String:
 
 
 func _get_attack_range() -> float:
+	if is_orbit_attack():
+		return get_orbit_radius()
 	if is_melee():
 		return get_melee_range()
 	if is_throwing():
@@ -316,7 +329,11 @@ func is_magic() -> bool:
 
 
 func is_orbit_magic() -> bool:
-	return is_magic() and magic_attack_style == "Orbit"
+	return is_magic() and is_orbit_attack()
+
+
+func is_orbit_attack() -> bool:
+	return magic_attack_style == "Orbit" or projectile_movement == PROJECTILE_MOVEMENT_ORBIT
 
 
 func is_ranged() -> bool:
@@ -361,6 +378,10 @@ func has_melee_spread() -> bool:
 	return is_melee() and melee_spread_count > 1
 
 
+func has_melee_parallel_spawn() -> bool:
+	return is_melee() and melee_spread_count > 1 and melee_parallel_offset > 0.0
+
+
 func get_melee_spread_count() -> int:
 	return maxi(melee_spread_count, 1)
 
@@ -399,25 +420,68 @@ func get_projectile_pierce_label_en() -> String:
 
 
 func get_projectile_movement_options() -> Array[String]:
-	var options: Array = PROJECTILE_MOVEMENT_OPTIONS_BY_TYPE.get(weapon_type, ["Straight"])
 	var result: Array[String] = []
-	for entry in options:
-		result.append(str(entry))
+
+	if is_area_zone_attack():
+		result.append(PROJECTILE_MOVEMENT_ARC)
+	elif is_melee():
+		result.append(PROJECTILE_MOVEMENT_STRAIGHT_PIERCE)
+		result.append(PROJECTILE_MOVEMENT_RETURN)
+		result.append(PROJECTILE_MOVEMENT_CURVED_RETURN)
+		result.append(PROJECTILE_MOVEMENT_DECELERATE)
+		result.append(PROJECTILE_MOVEMENT_ORBIT)
+	elif is_ranged():
+		if is_throwing():
+			if projectile_scene == null:
+				result.append(PROJECTILE_MOVEMENT_STRAIGHT)
+				result.append(PROJECTILE_MOVEMENT_RETURN)
+			elif uses_arc_throw:
+				result.append(PROJECTILE_MOVEMENT_ARC)
+			elif returns_to_owner:
+				result.append(PROJECTILE_MOVEMENT_RETURN)
+			else:
+				result.append(PROJECTILE_MOVEMENT_STRAIGHT)
+		else:
+			result.append(PROJECTILE_MOVEMENT_STRAIGHT)
+	elif is_magic():
+		if is_orbit_attack():
+			result.append(PROJECTILE_MOVEMENT_ORBIT)
+		else:
+			result.append(PROJECTILE_MOVEMENT_STRAIGHT)
+			result.append(PROJECTILE_MOVEMENT_HOMING)
+			result.append(PROJECTILE_MOVEMENT_ORBIT)
+	else:
+		result.append(PROJECTILE_MOVEMENT_STRAIGHT)
+
 	return result
 
 
 func get_projectile_movement_label_ko() -> String:
+	if is_orbit_attack():
+		return PROJECTILE_MOVEMENT_LABELS_KO[PROJECTILE_MOVEMENT_ORBIT]
 	return PROJECTILE_MOVEMENT_LABELS_KO.get(projectile_movement, projectile_movement)
 
 
 func should_projectile_return() -> bool:
-	return projectile_movement == PROJECTILE_MOVEMENT_RETURN or returns_to_owner
+	return (
+		projectile_movement == PROJECTILE_MOVEMENT_RETURN
+		or projectile_movement == PROJECTILE_MOVEMENT_CURVED_RETURN
+		or returns_to_owner
+	)
+
+
+func should_projectile_curve_return() -> bool:
+	return projectile_movement == PROJECTILE_MOVEMENT_CURVED_RETURN
+
+
+func should_projectile_decelerate() -> bool:
+	return projectile_movement == PROJECTILE_MOVEMENT_DECELERATE
 
 
 # projectile_movement에 맞춰 returns_to_owner·uses_arc_throw 등 레거시 플래그를 맞춥니다.
 func apply_projectile_movement_side_effects() -> void:
 	match projectile_movement:
-		PROJECTILE_MOVEMENT_RETURN:
+		PROJECTILE_MOVEMENT_RETURN, PROJECTILE_MOVEMENT_CURVED_RETURN:
 			returns_to_owner = true
 		PROJECTILE_MOVEMENT_ARC:
 			returns_to_owner = false
@@ -445,7 +509,7 @@ func normalize_projectile_movement_from_legacy() -> void:
 		projectile_movement = PROJECTILE_MOVEMENT_STRAIGHT_PIERCE
 	elif uses_arc_throw:
 		projectile_movement = PROJECTILE_MOVEMENT_ARC
-	elif is_orbit_magic():
+	elif is_orbit_attack():
 		projectile_movement = PROJECTILE_MOVEMENT_ORBIT
 	elif homing_strength > 0.0:
 		projectile_movement = PROJECTILE_MOVEMENT_HOMING

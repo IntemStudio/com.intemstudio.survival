@@ -1,7 +1,7 @@
 # Wiki - Combat
 
 **역할:** 전투 피해, 피격, 방어, 상태이상 규칙을 플레이어 경험 기준으로 정리합니다.  
-**관련:** [`GameRules.md`](GameRules.md), [`Weapons.md`](Weapons.md), [`Mobs.md`](Mobs.md), [`Items_Inventory.md`](Items_Inventory.md), [`../Architecture/Architecture_Mobs.md`](../Architecture/Architecture_Mobs.md)
+**관련:** [`GameRules.md`](GameRules.md), [`Weapons.md`](Weapons.md), [`Projectiles.md`](Projectiles.md), [`Mobs.md`](Mobs.md), [`Items_Inventory.md`](Items_Inventory.md), [`../Architecture/Architecture_Mobs.md`](../Architecture/Architecture_Mobs.md)
 
 ---
 
@@ -23,11 +23,13 @@
 
 ## 플레이어가 주는 피해
 
+공격이 이동하고 맞는 방식은 [`Projectiles.md`](Projectiles.md)에서 관리하고, 이 문서는 피해 귀속과 전투 피드백을 중심으로 정리한다.
+
 | 방식 | 규칙 |
 |------|------|
-| 원거리 탄 | 탄환이 몹에 맞으면 무기 피해로 기록하고 소멸한다. |
-| 근접 관통 탄 | 근접 무기도 발사체처럼 나가며, 관통 수와 짧은 연타 규칙을 가진다. |
-| 영역 존 | 연금 등은 착지 지점에 영역을 만들고, 영역 안의 몹에게 주기 피해를 준다. |
+| 원거리 탄 | 탄환이 몹에 맞으면 무기 피해로 기록하고 소멸한다. 벽·나무에 맞으면 막히며, 폭발형은 그 지점에서 폭발한다. |
+| 근접 관통 탄 | 근접 무기도 발사체처럼 나가며, 관통 수와 짧은 연타 규칙을 가진다. 벽·나무에 맞으면 막힌다. |
+| 영역 존 | 연금 등은 착지 지점에 영역을 만들고, 영역 안의 몹에게 주기 피해를 준다. 투척 중 장애물에 닿으면 그 지점에 착지한 것으로 본다. |
 | 마법 궤도 | 궤도 무기는 플레이어 주변을 돌며 닿은 몹에게 피해를 준다. |
 | 독 피해 | 독 스택에 원본 무기를 기억하고, 독 틱 피해도 해당 무기에 귀속한다. |
 

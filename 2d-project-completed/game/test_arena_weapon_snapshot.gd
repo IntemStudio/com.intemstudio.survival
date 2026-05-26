@@ -17,6 +17,7 @@ const FIELD_DEFS_BY_TYPE := {
 	"Melee": [
 		{"property": "melee_spread_count", "label": "탄막 수", "min": 1.0, "max": 32.0, "step": 1.0},
 		{"property": "melee_spread_angle_deg", "label": "부채꼴(°)", "min": 0.0, "max": 360.0, "step": 1.0},
+		{"property": "melee_parallel_offset", "label": "병렬 오프셋", "min": 0.0, "max": 160.0, "step": 2.0},
 		{"property": "melee_projectile_speed", "label": "탄속", "min": 50.0, "max": 4000.0, "step": 25.0},
 		{"property": "hit_count", "label": "타격 횟수", "min": 1.0, "max": 20.0, "step": 1.0},
 		PIERCE_FIELD_DEF,
@@ -95,7 +96,7 @@ func save_to_disk() -> void:
 func get_field_defs(weapon: WeaponData) -> Array:
 	if weapon == null:
 		return []
-	if weapon.is_orbit_magic():
+	if weapon.is_orbit_attack():
 		return FIELD_DEFS_ORBIT.duplicate()
 	if weapon.is_area_zone_attack():
 		return FIELD_DEFS_AREA_ZONE.duplicate()
@@ -109,9 +110,9 @@ func supports_projectile_tuning(weapon: WeaponData) -> bool:
 func supports_projectile_movement_tuning(weapon: WeaponData) -> bool:
 	if weapon == null:
 		return false
-	if weapon.is_orbit_magic() or weapon.is_area_zone_attack():
+	if weapon.is_orbit_attack() or weapon.is_area_zone_attack():
 		return false
-	return supports_projectile_tuning(weapon)
+	return supports_projectile_tuning(weapon) and weapon.get_projectile_movement_options().size() > 1
 
 
 func build_tuned_weapon(catalog_weapon: WeaponData) -> WeaponData:
@@ -121,6 +122,7 @@ func build_tuned_weapon(catalog_weapon: WeaponData) -> WeaponData:
 	_apply_overrides(tuned, _saved.get(weapon_id, {}))
 	_apply_overrides(tuned, _session.get(weapon_id, {}))
 	tuned.normalize_projectile_movement_from_legacy()
+	_clamp_projectile_movement(tuned)
 	tuned.apply_projectile_movement_side_effects()
 	return tuned
 
@@ -161,3 +163,10 @@ func reset_weapon(weapon_id: String) -> void:
 func _apply_overrides(weapon: WeaponData, overrides: Dictionary) -> void:
 	for key in overrides:
 		weapon.set(key, overrides[key])
+
+
+func _clamp_projectile_movement(weapon: WeaponData) -> void:
+	var movement_options := weapon.get_projectile_movement_options()
+	if movement_options.is_empty() or movement_options.has(weapon.projectile_movement):
+		return
+	weapon.projectile_movement = movement_options[0]

@@ -3,7 +3,7 @@
 **기간:** 2주차  
 **상위 계획:** [`../Plan_Release_Roadmap.md`](../Plan_Release_Roadmap.md)  
 **이전 주:** [`Week01_Demo_ScopeLock.md`](Week01_Demo_ScopeLock.md)  
-**관련 위키:** [`../../Wiki/Weapons.md`](../../Wiki/Weapons.md), [`../../Wiki/Mobs.md`](../../Wiki/Mobs.md), [`../../Wiki/Combat.md`](../../Wiki/Combat.md), [`../../Wiki/Progression.md`](../../Wiki/Progression.md)
+**관련 위키:** [`../../Wiki/Weapons.md`](../../Wiki/Weapons.md), [`../../Wiki/Projectiles.md`](../../Wiki/Projectiles.md), [`../../Wiki/Mobs.md`](../../Wiki/Mobs.md), [`../../Wiki/Combat.md`](../../Wiki/Combat.md), [`../../Wiki/Progression.md`](../../Wiki/Progression.md)
 
 ---
 
@@ -31,7 +31,7 @@
 - 데모 무기 풀의 최소 성장 체감 구현 또는 대체안 적용.
 - 보스/엘리트/특수몹 1~2종의 고유 체감 구현.
 - 게임오버·클리어 통계 UI 보강.
-- 데모 무기 풀의 툴팁·피해 통계·자동 공격 동작 확인.
+- 데모 무기 풀의 툴팁·피해 통계·자동 공격·projectile movement 동작 확인.
 - 기본 사운드 연결을 위한 재생 지점 목록 정리 또는 1차 연결.
 - 골드 상자 최소 흐름 이후 가격·확률·보상 체감 튜닝.
 
@@ -54,7 +54,7 @@
 | ID | 작업 | 상태 | 완료 기준 | 관련 |
 |----|------|------|-----------|------|
 | W02-01 | 무기 성장 대체안 구현 | Todo | 보유 무기 강화 또는 선택한 대체안이 F5에서 체감됨 | `Weapons.md` |
-| W02-02 | 데모 무기 풀 1차 검증 | Todo | 후보 10~15종을 F6 더미/기본 몹 상대로 확인 | `Weapons.md` |
+| W02-02 | 데모 무기 풀 1차 검증 | Todo | 후보 10~15종을 F6 더미/기본 몹 상대로 movement와 피해 통계까지 확인 | `Weapons.md`, `Projectiles.md` |
 | W02-03 | 보스/특수몹 고유 체감 1종 구현 | Todo | 일반몹과 다른 행동, 경고, 보상, 연출 중 하나 이상 | `Mobs.md` |
 | W02-04 | 게임오버·클리어 통계 보강 | Todo | 생존 시간, 레벨, 처치 수 중 최소 2개 표시 | `GameRules.md` |
 | W02-05 | 기본 사운드 연결 지점 확정 | Todo | BGM, 피격, 레벨업, 보스, 클리어 후보 위치 기록 | `Plan_Release_Roadmap.md` |
