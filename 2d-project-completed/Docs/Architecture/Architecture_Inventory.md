@@ -43,7 +43,8 @@
 | `weapons/data/weapon_data.gd` | 무기 데이터. 인벤에서는 `weapon_id`를 `item_id`처럼 사용한다. |
 | `inventory/gear_data.gd` | 방어구·악세·offhand 장비 데이터 |
 | `inventory/player_loadout_state.gd` | 세트/가방/활성 세트 상태 저장 모델 |
-| `inventory/item_registry.gd` | weapon/gear 등록·해석, 슬롯 검증, loadout 스탯 합산 |
+| `inventory/item_registry.gd` | weapon/gear 등록·해석, 슬롯 검증, 상자 보상 기본 슬롯 분류, loadout 스탯 합산 |
+| `inventory/item_reward_picker.gd` | 상자 보상 후보를 슬롯 필터, 등급, 중복 제외 조건으로 추린다 |
 | `inventory/gear_stat_merge.gd` | `*_mult` 곱연산, min/max 합산, 태그 누적 같은 스탯 병합 규칙 |
 | `inventory/gear_stat_display.gd` | 장비 툴팁용 표시 문자열 생성 |
 | `inventory/inventory_service.gd` | UI가 호출하는 장착·해제·드래그·세트 전환·버리기 API |
@@ -53,6 +54,8 @@
 | `inventory/loadout_grant_passive.gd` | 장착 장비 grant 태그로 궤도, dash haste, dash darts, offhand 비주얼 적용 |
 | `ui/inventory/inventory_menu.gd` | 4칸 전투 슬롯, 공유 방어구, 가방 UI, `InventoryService` 호출, 버린 장비 월드 드롭 위임 |
 | `ui/inventory/inventory_slot.gd` | 슬롯 1칸 표시·드래그·입력 위젯, 왼쪽 Shift 상태 추적 |
+| `game/rewards/gold_chest.gd` | 웨이브 사이 월드 상자, 가격 라벨, 구매 UI 요청 |
+| `ui/chest_purchase_menu.gd` | 상자 구매 확인, 보유 골드·가격·부위·등급 확률·실패 사유 표시 |
 
 관계는 아래처럼 유지한다.
 
@@ -79,14 +82,16 @@ Game / TestArena
 2. 시작 보상, 레벨업 보상, 상자에서 `weapon`을 획득하면 활성 세트 `weapon` 빈 슬롯, 비활성 세트 `weapon` 빈 슬롯, 가방 순서로 배치한다.
 3. `offhand`를 획득하면 활성 세트 `offhand` 빈 슬롯을 먼저 확인하되, 같은 세트의 weapon이 양손이면 막힌 것으로 본다. 즉 `offhand 1`은 `weapon 1`이 양손이 아닐 때만, `offhand 2`는 `weapon 2`가 양손이 아닐 때만 장착할 수 있다. 활성 세트에 넣을 수 없으면 같은 규칙으로 비활성 세트 `offhand`를 확인한 뒤 가방으로 보낸다.
 4. `helmet`, `armor`, `gloves`, `boots`, `accessory`를 획득하면 공유 방어구 슬롯이 비어 있을 때 바로 장착하고, 이미 차 있으면 가방에 넣는다.
-5. 무기 획득 UI에서 `weapon` 자동 배치가 가방 가득 참으로 실패하면 선택한 무기를 월드의 `EquipmentDrop` 오브젝트로 떨어뜨린 뒤 보상 흐름을 종료한다.
-6. 플레이어가 `EquipmentDrop`에 다가가 상호작용을 누르면 같은 `InventoryService.acquire_item()` 경로로 획득을 재시도한다. 장착 슬롯과 가방이 여전히 가득 차 있으면 오브젝트는 남아 있고, 성공하면 오브젝트를 제거한다.
-7. 가방 우클릭/더블클릭 또는 드래그는 항상 `InventoryService` API를 거쳐 상태를 바꾼다.
-8. 인벤토리에서 왼쪽 Shift+좌클릭으로 가방 또는 장착 슬롯 장비를 버리면 `Game.can_drop_equipment_item()`을 먼저 확인한 뒤 슬롯을 비우고 `EquipmentDrop`을 플레이어 앞에 생성한다. 생성 실패 시 같은 슬롯에 원래 `item_id`를 복원한다.
-9. weapon/offhand는 `active_set_index` 세트에 장착되고, 방어구·악세는 `sets[0]`에 장착된다.
-10. Tab·닫힌 RMB·비활성 전투 슬롯 좌클릭은 활성 세트를 바꾸고 HUD 갱신, 전투 재적용을 수행한다.
-11. `InventoryCombatBridge.apply_loadout_to_player()`가 장착된 활성 세트 weapon/offhand와 공유 방어구의 스탯, grant 패시브, offhand 비주얼만 플레이어에 적용한다.
-12. 클리어, 패배, 로비 복귀, 새 런 시작 시 런 인벤토리 상태를 영구 저장하지 않고 폐기한다.
+5. 아레나 웨이브 클리어 보상에서는 무기 획득 UI가 끝난 뒤 중앙 주변에 전체/부위 `GoldChest`가 배치된다. 상자는 가격 라벨을 표시하고 상호작용 시 `ChestPurchaseMenu`를 연다.
+6. 상자 구매는 골드 확인 → `ItemRewardPicker` 슬롯/등급/중복 제외 후보 선택 → `InventoryService.can_acquire_item()` 배치 가능성 확인 → 골드 차감 → `InventoryService.acquire_item()` 순서로 처리한다. 실패 시 골드를 차감하지 않거나 환불하고, 가방 가득 참 같은 실제 실패 사유를 표시한다.
+7. 무기 획득 UI에서 `weapon` 자동 배치가 가방 가득 참으로 실패하면 선택한 무기를 월드의 `EquipmentDrop` 오브젝트로 떨어뜨린 뒤 보상 흐름을 종료한다.
+8. 플레이어가 `EquipmentDrop`에 다가가 상호작용을 누르면 같은 `InventoryService.acquire_item()` 경로로 획득을 재시도한다. 장착 슬롯과 가방이 여전히 가득 차 있으면 오브젝트는 남아 있고, 성공하면 오브젝트를 제거한다.
+9. 가방 우클릭/더블클릭 또는 드래그는 항상 `InventoryService` API를 거쳐 상태를 바꾼다.
+10. 인벤토리에서 왼쪽 Shift+좌클릭으로 가방 또는 장착 슬롯 장비를 버리면 `Game.can_drop_equipment_item()`을 먼저 확인한 뒤 슬롯을 비우고 `EquipmentDrop`을 플레이어 앞에 생성한다. 생성 실패 시 같은 슬롯에 원래 `item_id`를 복원한다.
+11. weapon/offhand는 `active_set_index` 세트에 장착되고, 방어구·악세는 `sets[0]`에 장착된다.
+12. Tab·닫힌 RMB·비활성 전투 슬롯 좌클릭은 활성 세트를 바꾸고 HUD 갱신, 전투 재적용을 수행한다.
+13. `InventoryCombatBridge.apply_loadout_to_player()`가 장착된 활성 세트 weapon/offhand와 공유 방어구의 스탯, grant 패시브, offhand 비주얼만 플레이어에 적용한다.
+14. 클리어, 패배, 로비 복귀, 새 런 시작 시 런 인벤토리 상태를 영구 저장하지 않고 폐기한다.
 
 ### Editor / Data
 
@@ -117,6 +122,7 @@ Game / TestArena
 | `*_mult` 스탯은 더하지 말고 곱한다. | 장비 배율이 선형 합산되어 과도하게 왜곡되는 것을 막는다. |
 | `damage_element == "magic"`인 마법 무기는 `magic_damage_mult`를 타입·원소 중 한 번만 곱한다. | 마법 타입과 magic 원소의 중복 배율을 방지한다. |
 | 상자 지급은 슬롯 필터, 등급 필터, 중복 제외를 모두 통과해야 한다. | 부위 상자와 1~10웨이브 `Common`/`Uncommon` 제한을 지킨다. |
+| 상자 슬롯 필터는 `ItemRegistry.get_item_reward_slot()` 기준으로 판정한다. | 한손 weapon이 `offhand`에 착용 가능하더라도 보조손 상자 결과로 나오지 않게 한다. |
 
 ## Change Guidelines
 

@@ -1,0 +1,129 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://ui/chest_purchase_menu.gd" id="1_menu"]
+[ext_resource type="Script" path="res://ui/ui_viewport_layout.gd" id="2_ui_layout"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.1, 0.08, 0.05, 0.96)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.8, 0.55, 0.12, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+content_margin_left = 28.0
+content_margin_top = 24.0
+content_margin_right = 28.0
+content_margin_bottom = 24.0
+
+[node name="ChestPurchaseMenu" type="CanvasLayer"]
+layer = 39
+process_mode = 3
+visible = false
+script = ExtResource("1_menu")
+
+[node name="MenuOverlay" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 1920.0
+offset_bottom = 1080.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 0
+script = ExtResource("2_ui_layout")
+align_mode = 1
+pass_mouse_to_game = false
+
+[node name="ColorRect" type="ColorRect" parent="MenuOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.48)
+
+[node name="CenterContainer" type="CenterContainer" parent="MenuOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="MainPanel" type="PanelContainer" parent="MenuOverlay/CenterContainer"]
+custom_minimum_size = Vector2(720, 420)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="VBox" type="VBoxContainer" parent="MenuOverlay/CenterContainer/MainPanel"]
+layout_mode = 2
+theme_override_constants/separation = 18
+alignment = 1
+
+[node name="TitleLabel" type="Label" parent="MenuOverlay/CenterContainer/MainPanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 40
+text = "골드 상자"
+horizontal_alignment = 1
+
+[node name="SlotLabel" type="Label" parent="MenuOverlay/CenterContainer/MainPanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "부위: 전체"
+horizontal_alignment = 1
+
+[node name="OddsLabel" type="Label" parent="MenuOverlay/CenterContainer/MainPanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "등급 확률: Common 90% / Uncommon 10%"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="GoldLabel" type="Label" parent="MenuOverlay/CenterContainer/MainPanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.84, 0.28, 1)
+theme_override_font_sizes/font_size = 24
+text = "보유 골드: 0 / 가격: 100"
+horizontal_alignment = 1
+
+[node name="StatusLabel" type="Label" parent="MenuOverlay/CenterContainer/MainPanel/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.78, 0.52, 1)
+theme_override_font_sizes/font_size = 20
+text = "구매하면 현재 런 인벤토리에 장비가 추가됩니다."
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="ButtonRow" type="HBoxContainer" parent="MenuOverlay/CenterContainer/MainPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="BuyButton" type="Button" parent="MenuOverlay/CenterContainer/MainPanel/VBox/ButtonRow"]
+unique_name_in_owner = true
+process_mode = 3
+custom_minimum_size = Vector2(180, 54)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "구매"
+
+[node name="CancelButton" type="Button" parent="MenuOverlay/CenterContainer/MainPanel/VBox/ButtonRow"]
+unique_name_in_owner = true
+process_mode = 3
+custom_minimum_size = Vector2(180, 54)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "취소"

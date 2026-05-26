@@ -460,6 +460,25 @@ func gain_gold(amount: int) -> void:
 	_update_gold_hud()
 
 
+func can_spend_gold(amount: int) -> bool:
+	return amount >= 0 and gold >= amount
+
+
+# 상자 구매 등 런 한정 비용을 지불합니다.
+func spend_gold(amount: int) -> bool:
+	if amount <= 0:
+		return true
+	if gold < amount:
+		return false
+	gold -= amount
+	_update_gold_hud()
+	return true
+
+
+func refund_gold(amount: int) -> void:
+	gain_gold(amount)
+
+
 func _update_experience_hud() -> void:
 	var hud := get_node_or_null("/root/Game/HUD")
 	if not hud:
@@ -534,6 +553,8 @@ func _is_combat_input_blocked() -> bool:
 	if game.has_method("is_pause_menu_open") and game.call("is_pause_menu_open"):
 		return true
 	if game.has_method("is_inventory_open") and game.call("is_inventory_open"):
+		return true
+	if game.has_method("is_chest_purchase_open") and game.call("is_chest_purchase_open"):
 		return true
 	if game.has_method("is_game_over") and game.call("is_game_over"):
 		return true

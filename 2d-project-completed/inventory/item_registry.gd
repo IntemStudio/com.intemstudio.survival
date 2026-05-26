@@ -78,6 +78,52 @@ func resolve_gear_or_weapon(item_id: String) -> Resource:
 	return null
 
 
+func get_all_item_ids() -> Array[String]:
+	var ids: Array[String] = []
+	for key in _weapons.keys():
+		ids.append(String(key))
+	for key in _gear.keys():
+		ids.append(String(key))
+	return ids
+
+
+func get_items_for_slot(slot_key: StringName) -> Array[String]:
+	var ids: Array[String] = []
+	if not EquipSlots.is_valid_slot_key(slot_key):
+		return ids
+	for item_id in get_all_item_ids():
+		if get_item_reward_slot(item_id) == slot_key:
+			ids.append(item_id)
+	return ids
+
+
+func get_item_reward_slot(item_id: String) -> StringName:
+	var key := item_id.strip_edges()
+	if _weapons.has(key):
+		return EquipSlots.WEAPON
+	var gear := resolve_gear(key)
+	if gear == null:
+		return &""
+	if EquipSlots.is_valid_slot_key(gear.gear_slot):
+		return gear.gear_slot
+	for slot in gear.equip_slots:
+		var slot_key := StringName(String(slot))
+		if EquipSlots.is_valid_slot_key(slot_key):
+			return slot_key
+	return &""
+
+
+func get_item_rarity(item_id: String) -> String:
+	var key := item_id.strip_edges()
+	var weapon := resolve_weapon(key)
+	if weapon != null:
+		return _normalize_rarity(weapon.rarity)
+	var gear := resolve_gear(key)
+	if gear != null:
+		return _normalize_rarity(gear.rarity)
+	return "Common"
+
+
 func is_two_handed_weapon(item_id: String) -> bool:
 	var weapon := resolve_weapon(item_id)
 	return weapon != null and weapon.hand == "Two-Handed"
@@ -147,3 +193,8 @@ func _merge_gear_stat_for_item(totals: Dictionary, item_id: String) -> void:
 	if gear == null:
 		return
 	GearStatMerge.merge_into(totals, gear.stat_modifiers)
+
+
+static func _normalize_rarity(rarity: String) -> String:
+	var value := rarity.strip_edges()
+	return value if not value.is_empty() else "Common"

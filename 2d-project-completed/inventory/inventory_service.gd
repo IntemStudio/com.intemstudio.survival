@@ -136,6 +136,11 @@ func acquire_item(item_id: String) -> StringName:
 	return _place_item_in_bag(key)
 
 
+func can_acquire_item(item_id: String) -> StringName:
+	var preview := InventoryService.new(registry, loadout.duplicate_state())
+	return preview.acquire_item(item_id)
+
+
 # 드롭 가능 여부(UI 하이라이트용) — 상태 변경 없음.
 func can_drop(source: Dictionary, target: Dictionary) -> bool:
 	return try_drop(source, target, true).is_empty()

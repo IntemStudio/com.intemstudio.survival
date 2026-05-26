@@ -29,6 +29,8 @@ func _is_blocked() -> bool:
 		return true
 	if _game.is_weapon_select_open() or _game.is_pause_menu_open() or _game.is_game_over():
 		return true
+	if _game.has_method("is_chest_purchase_open") and _game.call("is_chest_purchase_open"):
+		return true
 	return false
 
 

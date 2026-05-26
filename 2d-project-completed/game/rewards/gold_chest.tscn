@@ -1,0 +1,64 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://game/rewards/gold_chest.gd" id="1_chest"]
+[ext_resource type="Texture2D" path="res://art/shared/fx/circle.png" id="2_circle"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_interact"]
+radius = 72.0
+
+[node name="GoldChest" type="Area2D"]
+z_index = 35
+z_as_relative = false
+script = ExtResource("1_chest")
+
+[node name="ShadowSprite" type="Sprite2D" parent="."]
+modulate = Color(0.03, 0.02, 0.01, 0.45)
+scale = Vector2(1.55, 0.7)
+texture = ExtResource("2_circle")
+
+[node name="ChestSprite" type="Sprite2D" parent="."]
+unique_name_in_owner = true
+z_index = 1
+modulate = Color(1, 0.68, 0.16, 1)
+scale = Vector2(1.1, 1.1)
+texture = ExtResource("2_circle")
+
+[node name="CoreSprite" type="Sprite2D" parent="."]
+z_index = 2
+modulate = Color(1, 0.92, 0.42, 1)
+scale = Vector2(0.48, 0.48)
+texture = ExtResource("2_circle")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_interact")
+
+[node name="PriceLabel" type="Label" parent="."]
+unique_name_in_owner = true
+z_index = 4
+offset_left = -100.0
+offset_top = -128.0
+offset_right = 100.0
+offset_bottom = -90.0
+theme_override_colors/font_color = Color(1, 0.9, 0.38, 1)
+theme_override_colors/font_outline_color = Color(0.08, 0.04, 0.0, 0.98)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 26
+text = "100G"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="PromptLabel" type="Label" parent="."]
+unique_name_in_owner = true
+visible = false
+z_index = 4
+offset_left = -120.0
+offset_top = -88.0
+offset_right = 120.0
+offset_bottom = -48.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0.02, 0.04, 0.08, 0.95)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 22
+text = "상호작용: 상자 구매"
+horizontal_alignment = 1
+vertical_alignment = 1

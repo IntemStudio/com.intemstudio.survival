@@ -3,10 +3,26 @@ extends Node2D
 const RunConfigScript = preload("res://game/run_config.gd")
 const ArenaWaveDirectorScript = preload("res://game/arena/arena_wave_director.gd")
 const ARENA_TELEPORTER_SCENE := preload("res://game/arena/arena_teleporter.tscn")
+const GOLD_CHEST_SCENE := preload("res://game/rewards/gold_chest.tscn")
+const CHEST_PURCHASE_MENU_SCENE := preload("res://ui/chest_purchase_menu.tscn")
 const EQUIPMENT_DROP_SCENE := preload("res://effects/equipment_drop/equipment_drop.tscn")
 const DEFAULT_BALANCE_TABLE := preload("res://game/balance/default_balance_table.tres")
 const DEFAULT_BALANCE_TIMELINE := preload("res://game/balance/default_balance_timeline.tres")
 const RUN_CLEAR_CURVE_MINUTES := 30.0
+const ARENA_CHEST_RADIUS := 240.0
+const ARENA_CHEST_SPECIFIC_PRICE := 120
+const ARENA_CHEST_ALL_PRICE := 90
+const ARENA_CHEST_PRICE_PER_WAVE := 10
+const ARENA_CHEST_CONFIGS := [
+	{"id": "all", "title_key": &"chest.type.all", "slot_filter": ItemRewardPicker.SLOT_ALL, "price": ARENA_CHEST_ALL_PRICE},
+	{"id": "weapon", "title_key": &"chest.type.weapon", "slot_filter": EquipSlots.WEAPON, "price": ARENA_CHEST_SPECIFIC_PRICE},
+	{"id": "helmet", "title_key": &"chest.type.helmet", "slot_filter": EquipSlots.HELMET, "price": ARENA_CHEST_SPECIFIC_PRICE},
+	{"id": "armor", "title_key": &"chest.type.armor", "slot_filter": EquipSlots.ARMOR, "price": ARENA_CHEST_SPECIFIC_PRICE},
+	{"id": "gloves", "title_key": &"chest.type.gloves", "slot_filter": EquipSlots.GLOVES, "price": ARENA_CHEST_SPECIFIC_PRICE},
+	{"id": "boots", "title_key": &"chest.type.boots", "slot_filter": EquipSlots.BOOTS, "price": ARENA_CHEST_SPECIFIC_PRICE},
+	{"id": "offhand", "title_key": &"chest.type.offhand", "slot_filter": EquipSlots.OFFHAND, "price": ARENA_CHEST_SPECIFIC_PRICE},
+	{"id": "accessory", "title_key": &"chest.type.accessory", "slot_filter": EquipSlots.ACCESSORY, "price": ARENA_CHEST_SPECIFIC_PRICE},
+]
 
 @export var balance_table: BalanceTable
 @export var balance_timeline: BalanceTimeline
@@ -36,10 +52,15 @@ var _arena_pending_teleporter_message := ""
 var _pause_menu: CanvasLayer
 var _weapon_select_menu: CanvasLayer
 var _inventory_menu: CanvasLayer
+var _chest_purchase_menu: ChestPurchaseMenu
+var _active_gold_chests: Array[GoldChest] = []
+var _pending_arena_chest_reward_wave := 0
+var _chest_rng := RandomNumberGenerator.new()
 
 
 func _ready() -> void:
 	_bind_ui_nodes()
+	_chest_rng.randomize()
 	_game_mode = RunConfigScript.get_game_mode()
 	if _is_arena_mode():
 		_setup_arena_director()
@@ -86,6 +107,10 @@ func is_inventory_open() -> bool:
 	return InventoryGameBridge.is_inventory_open(_inventory_menu)
 
 
+func is_chest_purchase_open() -> bool:
+	return _chest_purchase_menu != null and _chest_purchase_menu.visible
+
+
 func show_weapon_select(title_key: StringName = &"weapon_select.level_up") -> bool:
 	if _weapon_select_menu == null:
 		push_error("Game: WeaponSelectMenu node missing.")
@@ -128,6 +153,7 @@ func _finish_weapon_reward_flow(weapon: WeaponData, acquired: bool) -> void:
 	_ensure_game_started()
 	_consume_pending_weapon_select()
 	if _arena_enable_teleporter_after_weapon_select:
+		_show_pending_arena_chest_reward()
 		_enable_pending_arena_teleporter()
 
 
@@ -258,6 +284,15 @@ func _bind_ui_nodes() -> void:
 	_pause_menu = get_node_or_null("PauseMenu") as CanvasLayer
 	_weapon_select_menu = get_node_or_null("WeaponSelectMenu") as CanvasLayer
 	_inventory_menu = get_node_or_null("InventoryMenu") as CanvasLayer
+	_chest_purchase_menu = get_node_or_null("ChestPurchaseMenu") as ChestPurchaseMenu
+	if _chest_purchase_menu == null:
+		_chest_purchase_menu = CHEST_PURCHASE_MENU_SCENE.instantiate() as ChestPurchaseMenu
+		if _chest_purchase_menu != null:
+			_chest_purchase_menu.name = "ChestPurchaseMenu"
+			add_child(_chest_purchase_menu)
+	if _chest_purchase_menu != null:
+		_chest_purchase_menu.purchase_requested.connect(_on_chest_purchase_requested)
+		_chest_purchase_menu.close_requested.connect(_on_chest_purchase_close_requested)
 	if _pause_menu == null:
 		push_error("Game: PauseMenu missing — check res://ui/pause_menu_overlay.tscn loads in survivors_game.tscn.")
 	if _inventory_menu == null:
@@ -335,6 +370,45 @@ func _enable_pending_arena_teleporter() -> void:
 	if message.is_empty():
 		message = "텔레포터로 다음 웨이브 시작"
 	_enable_arena_teleporter(message, 4.0)
+
+
+func _show_pending_arena_chest_reward() -> void:
+	if _pending_arena_chest_reward_wave <= 0:
+		return
+	_spawn_arena_gold_chests(_pending_arena_chest_reward_wave)
+	_pending_arena_chest_reward_wave = 0
+
+
+# 웨이브 클리어 후 중앙 주변에 선택형 골드 상자를 배치합니다.
+func _spawn_arena_gold_chests(wave_number: int) -> void:
+	_clear_arena_gold_chests()
+	if not use_inventory_loadout or GOLD_CHEST_SCENE == null:
+		return
+	var count := ARENA_CHEST_CONFIGS.size()
+	for i in count:
+		var chest := GOLD_CHEST_SCENE.instantiate() as GoldChest
+		if chest == null:
+			continue
+		add_child(chest)
+		var angle := TAU * float(i) / float(count) - PI * 0.5
+		chest.global_position = Vector2(cos(angle), sin(angle)) * ARENA_CHEST_RADIUS
+		chest.setup(_build_arena_chest_config(ARENA_CHEST_CONFIGS[i], wave_number))
+		chest.purchase_requested.connect(_on_gold_chest_purchase_requested)
+		_active_gold_chests.append(chest)
+
+
+func _build_arena_chest_config(base_config: Dictionary, wave_number: int) -> Dictionary:
+	var config := base_config.duplicate()
+	config["price"] = int(config.get("price", ARENA_CHEST_SPECIFIC_PRICE)) + wave_number * ARENA_CHEST_PRICE_PER_WAVE
+	config["wave_number"] = wave_number
+	return config
+
+
+func _clear_arena_gold_chests() -> void:
+	for chest in _active_gold_chests:
+		if is_instance_valid(chest):
+			chest.queue_free()
+	_active_gold_chests.clear()
 
 
 func _start_next_arena_wave() -> void:
@@ -590,6 +664,8 @@ func _on_arena_teleporter_activated() -> void:
 	if not _is_arena_mode() or not _game_started or not _arena_waiting_for_teleporter:
 		return
 	_arena_waiting_for_teleporter = false
+	_hide_chest_purchase_menu()
+	_clear_arena_gold_chests()
 	%BalanceNoticeBanner.show_timeline_alert("아레나 시작", 2.0)
 	_start_next_arena_wave()
 
@@ -601,14 +677,219 @@ func _on_arena_wave_started(_wave_number: int, title: String, _is_boss_wave: boo
 
 func _on_arena_wave_completed(wave_number: int) -> void:
 	$Timer.stop()
+	_pending_arena_chest_reward_wave = wave_number
 	var next_wave_message := "Wave %d 클리어 · 텔레포터로 다음 웨이브 시작" % wave_number
 	_queue_arena_teleporter_after_weapon_select(next_wave_message)
 	if not show_weapon_select(&"weapon_select.arena_wave_clear"):
+		_show_pending_arena_chest_reward()
 		_enable_pending_arena_teleporter()
 
 
 func _on_arena_completed(_wave_number: int) -> void:
+	_hide_chest_purchase_menu()
+	_clear_arena_gold_chests()
 	_trigger_stage_clear()
+
+
+func _on_gold_chest_purchase_requested(chest: GoldChest) -> void:
+	_show_chest_purchase_menu(chest)
+
+
+func _show_chest_purchase_menu(chest: GoldChest) -> void:
+	if chest == null or _chest_purchase_menu == null or not is_instance_valid(chest):
+		return
+	_chest_purchase_menu.present_chest(chest, _build_chest_purchase_details(chest))
+	_chest_purchase_menu.show()
+	get_tree().paused = true
+
+
+func _hide_chest_purchase_menu() -> void:
+	if _chest_purchase_menu == null:
+		return
+	_chest_purchase_menu.hide()
+	if not is_game_over() and not is_inventory_open() and not is_weapon_select_open() and not is_pause_menu_open():
+		get_tree().paused = false
+
+
+func _on_chest_purchase_close_requested() -> void:
+	_hide_chest_purchase_menu()
+
+
+func _on_chest_purchase_requested(chest: GoldChest) -> void:
+	try_purchase_gold_chest(chest)
+
+
+# 골드 상자 결제와 인벤토리 배치를 한 경로에서 처리합니다.
+func try_purchase_gold_chest(chest: GoldChest) -> void:
+	if chest == null or not is_instance_valid(chest):
+		return
+	var service := _get_inventory_service()
+	if service == null:
+		_show_chest_purchase_error(chest, UiLocale.t(InventoryService.ERROR_UNKNOWN_ITEM))
+		return
+	var config := chest.get_config()
+	var price := int(config.get("price", 0))
+	if not %Player.can_spend_gold(price):
+		_show_chest_purchase_error(chest, UiLocale.t(&"chest.error.not_enough_gold"))
+		return
+	var pick := _pick_purchasable_chest_item(service, config)
+	var pick_error: StringName = pick.get("error", &"")
+	if not pick_error.is_empty():
+		_show_chest_purchase_error(chest, UiLocale.t(pick_error))
+		return
+	var item_id := String(pick.get("item_id", ""))
+	if not %Player.spend_gold(price):
+		_show_chest_purchase_error(chest, UiLocale.t(&"chest.error.not_enough_gold"))
+		return
+	var err := service.acquire_item(item_id)
+	if not err.is_empty():
+		%Player.refund_gold(price)
+		_show_chest_purchase_error(chest, UiLocale.t(err))
+		return
+	_refresh_inventory_after_reward()
+	apply_inventory_loadout_to_player()
+	chest.set_available(false)
+	_active_gold_chests.erase(chest)
+	chest.queue_free()
+	var item_name := _get_item_display_name(service.registry, item_id)
+	_chest_purchase_menu.show_result(UiLocale.t(&"chest.result.acquired") % item_name)
+
+
+func _show_chest_purchase_error(chest: GoldChest, message: String) -> void:
+	if _chest_purchase_menu == null:
+		return
+	_chest_purchase_menu.show_error(message, _build_chest_purchase_details(chest))
+
+
+func _build_chest_purchase_details(chest: GoldChest) -> Dictionary:
+	var config := chest.get_config()
+	var price := int(config.get("price", 0))
+	var slot_filter := StringName(config.get("slot_filter", ItemRewardPicker.SLOT_ALL))
+	var wave_number := int(config.get("wave_number", _get_current_arena_wave_number()))
+	var target_rarity := _roll_preview_rarity_for_wave(wave_number)
+	var odds_text := _format_rarity_odds_for_wave(wave_number)
+	var status_text := UiLocale.t(&"chest.purchase.ready")
+	var can_purchase := true
+	var service := _get_inventory_service()
+	if not %Player.can_spend_gold(price):
+		status_text = UiLocale.t(&"chest.error.not_enough_gold")
+		can_purchase = false
+	elif service == null:
+		status_text = UiLocale.t(InventoryService.ERROR_UNKNOWN_ITEM)
+		can_purchase = false
+	else:
+		var blocker := _get_chest_purchase_blocker(service, slot_filter, target_rarity)
+		if not blocker.is_empty():
+			status_text = UiLocale.t(blocker)
+			can_purchase = false
+	return {
+		"title": UiLocale.t(StringName(config.get("title_key", &"chest.purchase.title"))),
+		"slot_text": UiLocale.t(&"chest.purchase.slot") % _get_slot_filter_label(slot_filter),
+		"odds_text": UiLocale.t(&"chest.purchase.odds") % odds_text,
+		"gold_text": UiLocale.t(&"chest.purchase.gold") % [%Player.gold, price],
+		"status_text": status_text,
+		"can_purchase": can_purchase,
+	}
+
+
+func _pick_purchasable_chest_item(service: InventoryService, config: Dictionary) -> Dictionary:
+	var slot_filter := StringName(config.get("slot_filter", ItemRewardPicker.SLOT_ALL))
+	var target_rarity := _roll_rarity_for_wave(int(config.get("wave_number", _get_current_arena_wave_number())))
+	var first_blocker: StringName = &""
+	for rarity in ItemRewardPicker.get_rarity_fallback_chain(target_rarity):
+		var candidates := ItemRewardPicker.collect_candidates(
+			service.registry,
+			service.loadout,
+			slot_filter,
+			rarity
+		)
+		var purchasable: Array[String] = []
+		for item_id in candidates:
+			var err := service.can_acquire_item(item_id)
+			if err.is_empty():
+				purchasable.append(item_id)
+			elif first_blocker.is_empty():
+				first_blocker = err
+		if purchasable.is_empty():
+			continue
+		var index := _chest_rng.randi_range(0, purchasable.size() - 1)
+		return {"error": &"", "item_id": purchasable[index], "rarity": rarity}
+	if not first_blocker.is_empty():
+		return {"error": first_blocker, "item_id": "", "rarity": ""}
+	return {"error": ItemRewardPicker.ERROR_NO_CANDIDATE, "item_id": "", "rarity": ""}
+
+
+func _get_chest_purchase_blocker(
+	service: InventoryService,
+	slot_filter: StringName,
+	target_rarity: String
+) -> StringName:
+	var first_blocker: StringName = &""
+	for rarity in ItemRewardPicker.get_rarity_fallback_chain(target_rarity):
+		var candidates := ItemRewardPicker.collect_candidates(
+			service.registry,
+			service.loadout,
+			slot_filter,
+			rarity
+		)
+		for item_id in candidates:
+			var err := service.can_acquire_item(item_id)
+			if err.is_empty():
+				return &""
+			if first_blocker.is_empty():
+				first_blocker = err
+	if not first_blocker.is_empty():
+		return first_blocker
+	return ItemRewardPicker.ERROR_NO_CANDIDATE
+
+
+func _roll_rarity_for_wave(wave_number: int) -> String:
+	var uncommon_chance := _get_uncommon_chance_for_wave(wave_number)
+	return "Uncommon" if _chest_rng.randf() < uncommon_chance else "Common"
+
+
+func _roll_preview_rarity_for_wave(wave_number: int) -> String:
+	var uncommon_chance := _get_uncommon_chance_for_wave(wave_number)
+	return "Uncommon" if uncommon_chance > 0.0 else "Common"
+
+
+func _get_uncommon_chance_for_wave(wave_number: int) -> float:
+	if wave_number <= 2:
+		return 0.10
+	if wave_number <= 4:
+		return 0.20
+	if wave_number == 5:
+		return 0.30
+	if wave_number <= 7:
+		return 0.40
+	if wave_number <= 9:
+		return 0.50
+	return 0.60
+
+
+func _format_rarity_odds_for_wave(wave_number: int) -> String:
+	var uncommon := int(round(_get_uncommon_chance_for_wave(wave_number) * 100.0))
+	var common := 100 - uncommon
+	return "Common %d%% / Uncommon %d%%" % [common, uncommon]
+
+
+func _get_current_arena_wave_number() -> int:
+	if _arena_director == null:
+		return 1
+	return maxi(_arena_director.current_wave, 1)
+
+
+func _get_slot_filter_label(slot_filter: StringName) -> String:
+	if slot_filter == ItemRewardPicker.SLOT_ALL:
+		return UiLocale.t(&"slot.all")
+	return UiLocale.t(StringName("slot.%s" % String(slot_filter)))
+
+
+func _get_item_display_name(registry: ItemRegistry, item_id: String) -> String:
+	var resource := registry.resolve_gear_or_weapon(item_id)
+	if resource != null and resource.has_method("get_display_name_localized"):
+		return resource.call("get_display_name_localized")
+	return item_id
 
 
 func is_game_over() -> bool:
@@ -638,6 +919,8 @@ func _try_trigger_stage_clear() -> void:
 func _trigger_stage_clear() -> void:
 	_run_cleared = true
 	$Timer.stop()
+	_hide_chest_purchase_menu()
+	_clear_arena_gold_chests()
 	var mobs := get_tree().get_nodes_in_group("mobs").duplicate()
 	for node in mobs:
 		var mob := node as Mob
@@ -654,7 +937,7 @@ func _show_stage_clear() -> void:
 
 
 func show_pause_menu() -> void:
-	if is_weapon_select_open() or is_inventory_open() or _pause_menu == null:
+	if is_weapon_select_open() or is_inventory_open() or is_chest_purchase_open() or _pause_menu == null:
 		return
 	_pause_menu.refresh_owned_weapons()
 	_pause_menu.show()
@@ -665,7 +948,7 @@ func resume_game() -> void:
 	if _pause_menu == null:
 		return
 	_pause_menu.hide()
-	if not is_game_over() and not is_inventory_open():
+	if not is_game_over() and not is_inventory_open() and not is_chest_purchase_open():
 		get_tree().paused = false
 
 
@@ -711,6 +994,8 @@ func _unhandled_input(event: InputEvent) -> void:
 func _on_player_health_depleted():
 	_run_failed = true
 	$Timer.stop()
+	_hide_chest_purchase_menu()
+	_clear_arena_gold_chests()
 	_populate_game_over_weapon_damage()
 	%GameOver.show()
 	_refresh_game_over_title()

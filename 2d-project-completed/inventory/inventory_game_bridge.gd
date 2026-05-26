@@ -13,6 +13,8 @@ static func is_inventory_blocked(game: Node) -> bool:
 		return true
 	if game.has_method("is_pause_menu_open") and game.call("is_pause_menu_open"):
 		return true
+	if game.has_method("is_chest_purchase_open") and game.call("is_chest_purchase_open"):
+		return true
 	if game.has_method("is_game_over") and game.call("is_game_over"):
 		return true
 	return false
