@@ -8,7 +8,7 @@
 
 무기는 `WeaponData` 리소스를 중심으로 동작한다. 메인 루프에서는 무기 획득 UI가 카탈로그에서 후보를 뽑고, 선택된 `WeaponData`의 `weapon_id`를 런 인벤토리에 넣는다. 인벤토리는 빈 weapon 슬롯 자동 배치 규칙을 적용하고, 활성 전투 세트의 weapon만 `Player.add_weapon()`과 `Gun` 경로로 전투에 반영한다.
 
-피해는 발사체나 장판이 몹에 닿을 때 `Mob.apply_weapon_damage(amount, weapon)`로 들어간다. 이 경로는 `Game.register_weapon_damage()`를 통해 `WeaponDamageTracker`에 누적되어 게임오버와 일시정지 피해 목록에 표시된다. 플레이어 발사체는 환경 레이어 장애물에 막히며, 일반 발사체는 반환되고 폭발/연금 투척체는 충돌 지점에서 효과를 만든다. 비활성 세트나 가방에 있는 weapon은 보유 중이어도 `Gun`을 만들지 않고 피해 통계에 직접 참여하지 않는다.
+피해는 발사체나 장판이 몹에 닿을 때 `Mob.apply_weapon_damage(amount, weapon)`로 들어간다. 이 경로는 `Game.register_weapon_damage()`를 통해 `WeaponDamageTracker`에 누적되어 게임오버와 일시정지 피해 목록에 표시된다. `WeaponData.status_effects`는 같은 경로에서 몹 상태이상으로 적용되고, DoT 피해도 source weapon을 유지해 같은 피해 통계에 누적된다. 플레이어 발사체는 환경 레이어 장애물에 막히며, 일반 발사체는 반환되고 폭발/연금 투척체는 충돌 지점에서 효과를 만든다.
 
 ## Responsibilities & Boundaries
 
@@ -22,6 +22,7 @@
 | 조준·발사 | `Gun`이 최근접 몹 조준, 자동 공격/수동 공격, burst, delivery 분기 처리 |
 | 피해 전달 | 발사체·장판·궤도 스크립트가 weapon 귀속 피해를 적용하도록 연결 |
 | 피해 통계 | `WeaponDamageTracker`가 `WeaponData.get_unique_key()` 기준으로 누적 피해 표시 |
+| 상태이상 부여 | `WeaponData.status_effects`를 `Mob`의 `StatusEffectController`에 전달 |
 | 장비 스탯 연동 | 장착된 loadout 장비의 피해·APS 배율만 `Player` 계산 경로에서 반영 |
 | 무기 조건부 버프 | wave start 같은 런 이벤트에서 `BuffTriggerRouter`가 weapon id를 보고 런타임 버프 부여 |
 
@@ -55,6 +56,7 @@
 | `weapons/concoction/concoction.gd` | 포물선 투척 후 독 장판 생성, 장애물 충돌 지점 착지 처리 |
 | `weapons/area/area_damage_zone.gd` | 원형/사각 영역 피해, poison 적용, 짧은 lifetime |
 | `entities/mob/mob.gd` | weapon 귀속 피해 수신, 상태이상 적용, 피해 통계 등록 |
+| `status/status_effect_catalog.gd` | 무기가 부여하는 상태이상 id의 런타임 정의 |
 | `game/weapon_damage_tracker.gd` | weapon key별 누적 피해와 표시 행 생성 |
 | `buff/buff_trigger_router.gd` | `rapier`의 wave start `en_garde` 같은 무기 조건부 버프 연결 |
 
@@ -87,8 +89,9 @@ WeaponSelectMenu
 9. `Gun.shoot()`는 `weapon_type`과 delivery helper에 따라 탄환, 근접 발사체, 마법 탄, 투척체, 장판을 스폰한다. 카탈로그 Melee는 대부분 판정상 발사체지만 `melee_projectile.tscn`의 검기형 폴리곤 비주얼로 총알과 구분한다. 근접 movement는 직선 관통(`StraightPierce`), 직선 왕복(`Return`), 타원형 곡선 왕복(`CurvedReturn`), 감속 직선(`Decelerate`), 궤도(`Orbit`)로 나뉜다.
 10. 각 피해 오브젝트는 `LoadoutStatApply.roll_combat_damage()` 또는 플레이어의 `roll_weapon_damage()`를 통해 장착 장비 배율을 반영한 피해를 굴린다.
 11. 플레이어 발사체가 환경 레이어 장애물에 닿으면 막힌 것으로 처리한다. 일반/관통/투척/부메랑은 풀로 반환하고, 폭발형 탄·마법과 연금 투척체는 충돌 지점에서 폭발 또는 장판을 만든 뒤 반환한다.
-12. 몹에 닿으면 `Mob.apply_weapon_damage()`가 HP 감소, 피격 연출, 상태이상, 피해 통계 등록을 처리한다.
-13. 게임오버·일시정지 UI는 `WeaponDamageTracker.build_display_rows()`로 활성화되어 피해를 낸 무기와 누적 피해를 표시한다.
+12. 몹에 닿으면 `Mob.apply_weapon_damage()`가 상태이상 피해 증폭, HP 감소, 피격 연출, `status_effects` 적용, 피해 통계 등록을 처리한다.
+13. 상태이상 DoT는 `Mob.apply_status_tick_damage()`로 들어가 source weapon 기준 피해 통계를 유지한다.
+14. 게임오버·일시정지 UI는 `WeaponDamageTracker.build_display_rows()`로 활성화되어 피해를 낸 무기와 누적 피해를 표시한다.
 
 ### Editor / Data
 
@@ -96,7 +99,7 @@ WeaponSelectMenu
 2. 카탈로그 생성 필드는 `WeaponData` helper가 이해하는 타입과 delivery 값만 사용한다.
 3. 새 delivery나 projectile movement를 만들면 `WeaponData` helper, `Gun.shoot()` 분기, 실제 피해 오브젝트, 테스트 아레나 필터/스냅샷을 함께 확인한다. F6 스냅샷은 현재 지원하지 않는 movement 값을 기본 지원값으로 보정한다.
 4. 새 발사체나 이펙트는 `ScenePool` 대상이면 `pool_reset()`과 `pool_on_acquire()` 계약을 구현한다.
-5. 툴팁에 표시되는 새 수치는 `WeaponData.build_select_tooltip_bbcode()` 양 언어 경로를 함께 갱신한다.
+5. 툴팁에 표시되는 새 수치와 상태이상은 `WeaponData.build_select_tooltip_bbcode()` 양 언어 경로를 함께 갱신한다.
 
 ## Invariants & Gotchas
 
@@ -123,6 +126,7 @@ WeaponSelectMenu
 | 새 공격 방식 추가 | `WeaponData` helper, `Gun.shoot()` 분기, 풀링, 몹 피해 경로, 피해 통계 |
 | 새 projectile movement 추가 | 이동 스크립트, 사거리 종료, 관통/왕복/유도 규칙, 환경 충돌 처리, 테스트 아레나 옵션/스냅샷 |
 | 피해 공식 변경 | `Player.roll_weapon_damage()`, `LoadoutStatApply`, 독/장판/궤도 피해가 장착 장비만 같은 규칙으로 쓰는지 |
+| 상태이상 변경 | `WeaponData.status_effects`, `StatusEffectCatalog`, `Mob.apply_weapon_damage()`, DoT 피해 통계 |
 | 자동 공격 변경 | `Gun.refresh_auto_attack()`, 궤도 무기, HUD 라벨, 수동 `attack` 액션과 timer 충돌 여부 |
 | 무기 조건부 버프 변경 | `WeaponData.effect` 표시 문구, `BuffTriggerRouter`, `BuffCatalog`, APS 타이머 갱신 |
 | 무기 획득 변경 | 인벤 자동 배치, 활성/비활성 weapon 슬롯, 가방 가득 참, `Player.add_weapon()` 직접 호출 제거 |

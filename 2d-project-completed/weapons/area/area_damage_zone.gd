@@ -90,7 +90,7 @@ func _pulse_damage() -> void:
 		if hits_done >= _weapon.hit_count:
 			continue
 
-		if _apply_poison and body.has_method("apply_poison"):
+		if _apply_poison and _weapon.status_effects.is_empty() and body.has_method("apply_poison"):
 			body.apply_poison(_weapon)
 		if body.has_method("apply_weapon_damage"):
 			body.apply_weapon_damage(LoadoutStatApply.roll_combat_damage(_weapon), _weapon)

@@ -92,7 +92,7 @@ func _is_environment_body(body: Node) -> bool:
 
 func _deal_damage(body: Node) -> void:
 	var damage := LoadoutStatApply.roll_combat_damage(_weapon)
-	if _weapon.damage_element == "poison" and body.has_method("apply_poison"):
+	if _weapon.damage_element == "poison" and _weapon.status_effects.is_empty() and body.has_method("apply_poison"):
 		body.apply_poison(_weapon)
 
 	if body.has_method("apply_weapon_damage"):

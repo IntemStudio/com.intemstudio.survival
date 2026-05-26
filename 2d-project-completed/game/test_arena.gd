@@ -5,7 +5,6 @@ extends Node2D
 const RangedWeaponCatalog = preload("res://weapons/catalogs/ranged_weapon_catalog.gd")
 const MeleeWeaponCatalog = preload("res://weapons/catalogs/melee_weapon_catalog.gd")
 const MagicWeaponCatalog = preload("res://weapons/catalogs/magic_weapon_catalog.gd")
-const TestArenaWeaponSnapshot = preload("res://game/test_arena_weapon_snapshot.gd")
 const EQUIPMENT_DROP_SCENE := preload("res://effects/equipment_drop/equipment_drop.tscn")
 
 const START_WEAPON := preload("res://weapons/data/revolver.tres")
@@ -475,7 +474,7 @@ func _refresh_projectile_tuning_ui() -> void:
 	_tuning_ui_refreshing = true
 	var show_movement := _weapon_snapshots.supports_projectile_movement_tuning(catalog_weapon)
 	if show_movement:
-		_populate_projectile_movement_dropdown(catalog_weapon, tuned)
+		_populate_projectile_movement_dropdown(tuned)
 	%ProjectileMovementRow.visible = show_movement
 	for field_def in field_defs:
 		_add_projectile_tuning_row(catalog_weapon, field_def, tuned)
@@ -574,7 +573,7 @@ func _on_tuning_spin_step_pressed(
 	_sync_tuning_spin_display(property, catalog_weapon)
 
 
-func _populate_projectile_movement_dropdown(catalog_weapon: WeaponData, tuned: WeaponData) -> void:
+func _populate_projectile_movement_dropdown(tuned: WeaponData) -> void:
 	var option: OptionButton = %ProjectileMovementOption
 	option.clear()
 	var movement_options := tuned.get_projectile_movement_options()

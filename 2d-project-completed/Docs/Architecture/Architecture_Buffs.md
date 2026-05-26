@@ -6,7 +6,7 @@
 
 ## Overview
 
-버프는 `buff/` 아래의 `BuffData` 정의와 `ActiveBuff` 런타임 상태로 나뉜다. `BuffController`는 대상별 활성 버프를 보관하고, 초·웨이브·충전 수 기반 만료를 처리한 뒤 `stat_modifiers`를 합산한다. 플레이어는 장비 modifier와 활성 버프 modifier를 `CharacterStats`에 source로 전달하고, `CharacterStats`가 이동속도, 무기 피해, APS 계산에 반영한다. 현재 1차 구현은 플레이어 능력치 버프 중심이며, 몹의 poison/nettles 상태이상은 아직 `mob.gd` 기존 경로에 남아 있다.
+버프는 `buff/` 아래의 `BuffData` 정의와 `ActiveBuff` 런타임 상태로 나뉜다. `BuffController`는 대상별 활성 버프를 보관하고, 초·웨이브·충전 수 기반 만료를 처리한 뒤 `stat_modifiers`를 합산한다. 플레이어는 장비 modifier와 활성 버프 modifier를 `CharacterStats`에 source로 전달하고, `CharacterStats`가 이동속도, 무기 피해, APS 계산에 반영한다. 몹에게 적용되는 출혈·화상·독·냉기 같은 상태이상은 `status/`의 `StatusEffectController` 범위이며, 플레이어 능력치 버프와 수명/피해 통계 규칙을 섞지 않는다.
 
 ## Responsibilities & Boundaries
 
@@ -28,7 +28,7 @@
 | 영구 성장 스탯 | 저장 데이터나 런 시작 기본값 계층에서 다룰 대상이며 `ActiveBuff`로 보관하지 않는다. |
 | 장비 상시 스탯 | `InventoryCombatBridge`, `GearStatMerge`, `LoadoutStatApply` 흐름을 유지한다. |
 | HUD 버프 아이콘 | 현재는 `get_active_buff_summaries()` 조회 API만 제공하고 UI는 후속 범위다. |
-| 몹 상태이상 통합 | poison/nettles는 후속 마이그레이션 대상이며 피해 통계 경로를 보존해야 한다. |
+| 몹 상태이상 | `status/`가 담당한다. DoT 피해 통계와 풀 reset 규칙은 `Architecture_Mobs.md`를 따른다. |
 | 발사체별 특수 효과 | 발사체 이동·충돌은 `Architecture_Projectiles.md` 범위다. |
 
 ## Key Types & Relationships
@@ -94,7 +94,7 @@ Game wave event / Player dash / Loadout grant
 | 웨이브 지속 버프는 아레나 `wave_completed` 기준으로 감소한다. | 아레나 난이도 축은 시간이 아니라 웨이브 번호다. |
 | 현재 플레이어 적용 범위는 이동속도, 무기 피해, APS다. | 방어·체력 버프를 추가하려면 `get_max_health()`와 피해 경감 경로를 함께 확장해야 한다. |
 | burst 무기 APS는 `Gun`의 burst 타이머 경로를 별도로 확인한다. | 일반 타이머 갱신만으로 burst 주기가 바뀌지 않을 수 있다. |
-| 몹 DoT를 버프로 옮겨도 `Mob.apply_weapon_damage()` / `_apply_poison_tick()`의 피해 통계 귀속은 유지한다. | 게임오버 피해 목록과 처치 보상 경로가 깨지지 않아야 한다. |
+| 몹 DoT는 `buff/`로 옮기지 않고 `status/`에서 source weapon 피해 통계를 유지한다. | 게임오버 피해 목록과 처치 보상 경로가 깨지지 않아야 한다. |
 
 ## Change Guidelines
 
@@ -106,6 +106,6 @@ Game wave event / Player dash / Loadout grant
 | 웨이브 트리거 변경 | `Game._on_arena_wave_started`, `_on_arena_wave_completed`, 보상 UI pause 흐름 |
 | 대시 트리거 변경 | `Player._apply_loadout_on_dash`, `LoadoutGrantPassive`, dash darts와 동시 발동 |
 | 버프 UI 추가 | `get_active_buff_summaries()`, UI 스케일 규칙, pause 중 표시 갱신 |
-| 몹 상태이상 통합 | `mob.gd` poison/nettles, 피해 통계, 사망/풀 reset, 플로팅 텍스트 |
+| 몹 상태이상 변경 | `status/`, `mob.gd`, 피해 통계, 사망/풀 reset, 플로팅 텍스트 |
 
 최소 검증은 F5 아레나에서 `rapier` 장착 후 웨이브 시작 시 `en_garde`가 8초 동안 APS를 올리고 만료되는지, `geta` 장착 후 대시 시 `dash_haste`가 2초 동안 이동속도를 올리는지 확인하는 것이다. 이어서 세트 전환, 비활성 장비 미적용, 자동 공격 타이머 갱신, 기존 poison/nettles 동작을 회귀 확인한다.

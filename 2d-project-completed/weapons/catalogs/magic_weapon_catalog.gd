@@ -24,9 +24,10 @@ static func _build_cache() -> void:
 			"max": 115,
 			"aps": 3.0,
 			"range": "Medium",
-			"element": "striking",
+			"element": "cold",
 			"style": "Projectile",
-			"effect": "Primary attack deals striking damage.",
+			"effect": "Primary attack deals cold damage.",
+			"status": [&"chill", &"frostbite"],
 		},
 		{
 			"id": "magic_missile_wand",
@@ -38,10 +39,11 @@ static func _build_cache() -> void:
 			"max": 110,
 			"aps": 2.0,
 			"range": "Very Far",
-			"element": "thrusting",
+			"element": "lightning",
 			"style": "Projectile",
 			"homing": 6.0,
-			"effect": "Primary attack deals thrusting damage.",
+			"effect": "Primary attack deals lightning damage.",
+			"status": [&"zap"],
 		},
 		{
 			"id": "oak_staff",
@@ -84,6 +86,7 @@ static func _build_cache() -> void:
 			"element": "fire",
 			"style": "Orbit",
 			"effect": "Orbital fire damage (loadout grant).",
+			"status": [&"scorch"],
 		},
 		{
 			"id": "king_bible",
@@ -113,6 +116,7 @@ static func _build_cache() -> void:
 			"style": "Explosion",
 			"explosion": 95.0,
 			"effect": "Primary attack deals fire damage.",
+			"status": [&"burn"],
 		},
 		{
 			"id": "fey_lute",
@@ -180,6 +184,9 @@ static func _create_weapon(entry: Dictionary) -> WeaponData:
 	weapon.max_damage = entry["max"]
 	weapon.attacks_per_second = entry["aps"]
 	weapon.damage_element = entry["element"]
+	for status_id in entry.get("status", []):
+		weapon.status_effects.append(status_id)
+	weapon.status_chance = entry.get("status_chance", 1.0)
 	weapon.magic_attack_style = entry["style"]
 	weapon.projectile_speed = entry.get("speed", 950.0)
 	weapon.homing_strength = entry.get("homing", 0.0)

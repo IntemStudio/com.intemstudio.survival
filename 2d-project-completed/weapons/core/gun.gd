@@ -375,14 +375,14 @@ func _shoot_melee_projectile() -> void:
 		return
 
 	_refresh_current_target()
-	var owner := _get_player()
+	var projectile_owner := _get_player()
 	var base_transform := _get_spawn_transform()
 	var spread_count := weapon.get_melee_spread_count()
 	if spread_count <= 1:
-		_spawn_melee_projectile(game, weapon, base_transform, owner)
+		_spawn_melee_projectile(game, weapon, base_transform, projectile_owner)
 		return
 	if weapon.has_melee_parallel_spawn():
-		_shoot_parallel_melee_projectiles(game, owner, base_transform, spread_count)
+		_shoot_parallel_melee_projectiles(game, projectile_owner, base_transform, spread_count)
 		return
 
 	var origin := base_transform.origin
@@ -393,12 +393,12 @@ func _shoot_melee_projectile() -> void:
 		var t := float(index) / float(last_index)
 		var angle := base_angle - half_spread + t * half_spread * 2.0
 		var spread_transform := Transform2D(angle, origin)
-		_spawn_melee_projectile(game, weapon, spread_transform, owner)
+		_spawn_melee_projectile(game, weapon, spread_transform, projectile_owner)
 
 
 func _shoot_parallel_melee_projectiles(
 	game: Node,
-	owner: Node2D,
+	projectile_owner: Node2D,
 	base_transform: Transform2D,
 	spread_count: int
 ) -> void:
@@ -409,17 +409,17 @@ func _shoot_parallel_melee_projectiles(
 	for index in spread_count:
 		var lane_offset := (float(index) - center_index) * weapon.melee_parallel_offset * 2.0
 		var parallel_transform := Transform2D(angle, origin + perpendicular * lane_offset)
-		_spawn_melee_projectile(game, weapon, parallel_transform, owner)
+		_spawn_melee_projectile(game, weapon, parallel_transform, projectile_owner)
 
 
 func _spawn_melee_projectile(
 	game: Node,
 	weapon_data: WeaponData,
 	spawn_transform: Transform2D,
-	owner: Node2D
+	projectile_owner: Node2D
 ) -> void:
 	var projectile: Area2D = _spawn_from_pool(game, MELEE_PROJECTILE_SCENE) as Area2D
-	projectile.setup(weapon_data, spawn_transform, owner)
+	projectile.setup(weapon_data, spawn_transform, projectile_owner)
 
 
 func _shoot_bullet() -> void:

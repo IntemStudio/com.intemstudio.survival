@@ -16,12 +16,12 @@ static func _build_cache() -> void:
 	var entries: Array[Dictionary] = [
 		{"id": "dagger", "en": "Dagger", "ko": "단검", "subtype": "Dagger", "hand": 1, "min": 90, "max": 185, "aps": 2.0, "range": "Short", "effect": "Primary attack deals thrusting damage.", "movement": "Return"},
 		{"id": "spiky_flail", "en": "Spiky Flail", "ko": "가시 철퇴", "subtype": "Flail", "hand": 1, "min": 55, "max": 100, "aps": 1.0, "range": "Medium", "effect": "Primary attack spins a flail that deals striking damage.", "movement": "Orbit"},
-		{"id": "katana", "en": "Katana", "ko": "카타나", "subtype": "Two Handed Sword", "hand": 2, "min": 55, "max": 125, "aps": 2.5, "range": "Far", "effect": "Primary attack deals slashing damage.", "movement": "CurvedReturn"},
+		{"id": "katana", "en": "Katana", "ko": "카타나", "subtype": "Two Handed Sword", "hand": 2, "min": 55, "max": 125, "aps": 2.5, "range": "Far", "effect": "Primary attack deals slashing damage.", "status": [&"bleed"], "movement": "CurvedReturn"},
 		{"id": "broken_hero_sword", "en": "Broken Hero Sword", "ko": "부서진 영웅의 검", "subtype": "One Handed Sword", "hand": 1, "min": 80, "max": 155, "aps": 2.0, "range": "Very Short", "effect": "Primary attack deals slashing damage."},
 		{"id": "hand_axe", "en": "Hand Axe", "ko": "손도끼", "subtype": "Axe", "hand": 1, "min": 100, "max": 200, "aps": 2.0, "range": "Medium", "effect": "Primary attack deals slashing damage."},
-		{"id": "sickles", "en": "Sickles", "ko": "낫", "subtype": "Sickles", "hand": 2, "min": 30, "max": 65, "aps": 3.0, "range": "Medium", "effect": "Primary attacks deal slashing damage and can hit multiple times.", "hits": 3, "spread": 2, "parallel_offset": 18.0, "movement": "Decelerate", "speed": 900.0},
+		{"id": "sickles", "en": "Sickles", "ko": "낫", "subtype": "Sickles", "hand": 2, "min": 30, "max": 65, "aps": 3.0, "range": "Medium", "effect": "Primary attacks deal slashing damage and can hit multiple times.", "status": [&"bleed"], "hits": 3, "spread": 2, "parallel_offset": 18.0, "movement": "Decelerate", "speed": 900.0},
 		{"id": "club", "en": "Club", "ko": "곤봉", "subtype": "Mace", "hand": 1, "min": 105, "max": 215, "aps": 2.0, "range": "Short", "effect": "Primary attack deals striking damage."},
-		{"id": "crop_scythe", "en": "Crop Scythe", "ko": "작물 낫", "subtype": "Scythe", "hand": 2, "min": 65, "max": 150, "aps": 2.0, "range": "Medium", "effect": "Primary attack deals slashing damage.", "spread": 1, "spread_angle": 0.0, "movement": "CurvedReturn"},
+		{"id": "crop_scythe", "en": "Crop Scythe", "ko": "작물 낫", "subtype": "Scythe", "hand": 2, "min": 65, "max": 150, "aps": 2.0, "range": "Medium", "effect": "Primary attack deals slashing damage.", "status": [&"bleed"], "spread": 1, "spread_angle": 0.0, "movement": "CurvedReturn"},
 		{"id": "spear", "en": "Spear", "ko": "창", "subtype": "Spear", "hand": 2, "min": 100, "max": 210, "aps": 2.0, "range": "Medium", "effect": "Primary attack deals thrusting damage.", "movement": "Return"},
 		{"id": "broadsword", "en": "Broadsword", "ko": "브로드소드", "subtype": "One Handed Sword", "hand": 1, "min": 80, "max": 165, "aps": 2.5, "range": "Short", "effect": "Primary attack deals slashing damage."},
 		{"id": "shortsword", "en": "Shortsword", "ko": "숏소드", "subtype": "One Handed Sword", "hand": 1, "min": 80, "max": 165, "aps": 2.5, "range": "Short", "effect": "Primary attack deals slashing damage."},
@@ -60,6 +60,9 @@ static func _create_weapon(entry: Dictionary) -> WeaponData:
 	weapon.min_damage = entry["min"]
 	weapon.max_damage = entry["max"]
 	weapon.attacks_per_second = entry["aps"]
+	for status_id in entry.get("status", []):
+		weapon.status_effects.append(status_id)
+	weapon.status_chance = entry.get("status_chance", 1.0)
 	weapon.hit_count = entry.get("hits", 1)
 	weapon.melee_spread_count = entry.get("spread", 1)
 	weapon.melee_spread_angle_deg = entry.get("spread_angle", 0.0)

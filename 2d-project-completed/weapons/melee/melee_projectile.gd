@@ -6,6 +6,10 @@ const CURVED_RETURN_WIDTH_RATIO := 0.45
 const DECELERATE_DRAG := 6.0
 const DECELERATE_RELEASE_SPEED := 12.0
 const DECELERATE_RELEASE_DELAY_RANGE := Vector2(0.5, 0.75)
+const DEFAULT_COLLISION_RADIUS := 12.0
+const CLUB_WEAPON_ID := "club"
+const CLUB_COLLISION_SIZE := Vector2(84.0, 32.0)
+const CLUB_COLLISION_OFFSET := Vector2(28.0, 0.0)
 
 var _weapon: WeaponData
 var _owner: Node2D
@@ -63,6 +67,7 @@ func setup(weapon_data: WeaponData, spawn_transform: Transform2D, owner: Node2D 
 	_distinct_mob_hits = 0
 
 	_apply_visual_tint(weapon_data)
+	_apply_projectile_shape(weapon_data)
 
 
 func _physics_process(delta: float) -> void:
@@ -202,6 +207,7 @@ func _is_environment_body(body: Node) -> bool:
 
 # 무기 계열 색으로 짧은 검기 비주얼을 구분합니다.
 func _apply_visual_tint(weapon_data: WeaponData) -> void:
+	_apply_visual_shape(weapon_data)
 	var base_color := weapon_data.get_element_color()
 	if weapon_data.damage_element.is_empty():
 		base_color = weapon_data.sprite_modulate
@@ -216,6 +222,68 @@ func _apply_visual_tint(weapon_data: WeaponData) -> void:
 			minf(base_color.b + 0.22, 1.0),
 			0.92
 		)
+
+
+# 곤봉은 보이는 타격 면적과 실제 충돌 판정을 같은 사각형으로 맞춥니다.
+func _apply_projectile_shape(weapon_data: WeaponData) -> void:
+	var collision := get_node_or_null("CollisionShape2D") as CollisionShape2D
+	if not collision:
+		return
+	if _is_club_weapon(weapon_data):
+		var rectangle := RectangleShape2D.new()
+		rectangle.size = CLUB_COLLISION_SIZE
+		collision.shape = rectangle
+		collision.position = CLUB_COLLISION_OFFSET
+		return
+
+	var circle := CircleShape2D.new()
+	circle.radius = DEFAULT_COLLISION_RADIUS
+	collision.shape = circle
+	collision.position = Vector2.ZERO
+
+
+func _apply_visual_shape(weapon_data: WeaponData) -> void:
+	var glow := get_node_or_null("SlashGlow") as Polygon2D
+	var core := get_node_or_null("SlashCore") as Polygon2D
+	if _is_club_weapon(weapon_data):
+		if glow:
+			glow.polygon = PackedVector2Array([
+				Vector2(-12.0, -20.0),
+				Vector2(72.0, -20.0),
+				Vector2(72.0, 20.0),
+				Vector2(-12.0, 20.0),
+			])
+		if core:
+			core.polygon = PackedVector2Array([
+				Vector2(0.0, -13.0),
+				Vector2(62.0, -13.0),
+				Vector2(62.0, 13.0),
+				Vector2(0.0, 13.0),
+			])
+		return
+
+	if glow:
+		glow.polygon = PackedVector2Array([
+			Vector2(-24.0, -9.0),
+			Vector2(6.0, -14.0),
+			Vector2(44.0, 0.0),
+			Vector2(6.0, 14.0),
+			Vector2(-24.0, 9.0),
+			Vector2(-12.0, 0.0),
+		])
+	if core:
+		core.polygon = PackedVector2Array([
+			Vector2(-18.0, -5.0),
+			Vector2(8.0, -8.0),
+			Vector2(34.0, 0.0),
+			Vector2(8.0, 8.0),
+			Vector2(-18.0, 5.0),
+			Vector2(-8.0, 0.0),
+		])
+
+
+func _is_club_weapon(weapon_data: WeaponData) -> bool:
+	return weapon_data and weapon_data.get_unique_key() == CLUB_WEAPON_ID
 
 
 func _on_scheduled_hit(generation: int, mob_id: int) -> void:

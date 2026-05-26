@@ -8,7 +8,7 @@
 
 플레이 몹은 대부분 `entities/mob/mob.gd`를 공유하고, 각 변종 씬은 export 값으로 속도, 체력, 색상, `mob_kind`, 원거리 공격 여부를 바꾼다. `Game.spawn_mob()`은 `MobSpawnSelector`가 고른 프리팹을 `ScenePool`에서 acquire하고, 현재 `BalancePhase.hp_multiplier`로 `initialize_spawn_health()`를 호출한다.
 
-근접 몹은 플레이어 발밑 그림자 중심을 추적하고, standoff 거리 안에서 접촉 공격 주기 피해를 제공한다. 원거리 몹은 사거리 안에서 멈추고 머리 위 예고 마크를 띄운 뒤 `mob_projectile`을 발사한다. 몹이 일반 사망하면 처치 수, XP, 골드, 낮은 확률 픽업을 만들고 풀로 반환되며, 30분 클리어 사망은 드랍과 처치 집계를 만들지 않는다.
+근접 몹은 플레이어 발밑 그림자 중심을 추적하고, standoff 거리 안에서 접촉 공격 주기 피해를 제공한다. 원거리 몹은 사거리 안에서 멈추고 머리 위 예고 마크를 띄운 뒤 `mob_projectile`을 발사한다. 몹 상태이상은 `status/` 런타임 컨트롤러가 DoT, 받는 피해 배율, 이동속도 배율을 처리하고, 몹이 일반 사망하면 처치 수, XP, 골드, 낮은 확률 픽업을 만들고 풀로 반환된다.
 
 ## Responsibilities & Boundaries
 
@@ -44,6 +44,10 @@
 | `entities/mob/mob_projectile.gd` | 원거리 몹 투사체, sweep 보정, 플레이어 피해 적용 |
 | `entities/mob/mob_attack_mark.gd` | 원거리 공격 windup 중 머리 위 예고 마크 |
 | `entities/mob/target_indicator_ring.gd` | 플레이어 무기의 현재 조준 대상 표시 |
+| `status/status_effect_data.gd` | 몹 상태이상 정의, DoT/피해 증폭/둔화 수치 |
+| `status/active_status_effect.gd` | 적용 중인 상태이상의 남은 시간, 중첩, tick 상태, source weapon |
+| `status/status_effect_controller.gd` | 몹별 상태이상 적용, tick, 만료, 피해/이동 배율 계산 |
+| `status/status_effect_catalog.gd` | 출혈, 화상, 독, 냉기, 번개 등 기본 상태이상 카탈로그 |
 | `characters/shared/ground_shadow_footprint.gd` | 발밑 그림자 기준 중심·충돌·거리 계산 |
 | `game/balance/mob_spawn_selector.gd` | 현재 phase 비율로 몹 프리팹 선택 |
 | `game/pool/scene_pool.gd` | 몹, 몹 투사체, 공격 마크 prewarm/acquire |
@@ -77,10 +81,11 @@ Game.spawn_mob()
 4. 매 physics tick에서 이동 가능 몹은 플레이어 발밑 중심을 향해 이동하되 standoff 거리 안에서는 멈춘다.
 5. 근접 몹은 `Player` 쪽 접촉 피해 루프가 `is_player_in_contact_attack_range()`와 `tick_contact_attack()`을 통해 주기 피해를 받는다.
 6. 원거리 몹은 사거리 안에서 windup을 시작하고, `mob_attack_mark`를 표시한 뒤 delay가 끝나면 `mob_projectile`을 발사한다.
-7. 무기/독/장판 피해는 `apply_weapon_damage()`, `take_magic_damage()`, `apply_poison()`으로 들어와 HP 감소, hit flash, health bar, floating text, weapon damage 등록을 처리한다.
-8. HP가 0 이하가 되면 `_request_die()`가 중복 사망을 막고 `_die()`를 deferred 호출한다.
-9. 일반 사망은 `died` 시그널, 연기, `Game.register_kill()`, `KillRewards`, XP/골드/자석/체력 픽업을 처리한 뒤 풀로 반환한다.
-10. 클리어 사망은 `_stage_clear_death`를 켜고 드랍·처치 집계 없이 풀로 반환한다.
+7. 무기/장판 피해는 `apply_weapon_damage()`로 들어와 상태이상 받는 피해 배율, HP 감소, hit flash, health bar, floating text, weapon damage 등록을 처리한다.
+8. 무기가 가진 `status_effects`는 `StatusEffectController`에 적용되고, 매 physics tick마다 DoT/만료/둔화 배율을 갱신한다.
+9. HP가 0 이하가 되면 `_request_die()`가 중복 사망을 막고 `_die()`를 deferred 호출한다.
+10. 일반 사망은 `died` 시그널, 연기, `Game.register_kill()`, `KillRewards`, XP/골드/자석/체력 픽업을 처리한 뒤 풀로 반환한다.
+11. 클리어 사망은 `_stage_clear_death`를 켜고 드랍·처치 집계 없이 풀로 반환한다.
 
 ### Editor / Data
 
@@ -102,6 +107,7 @@ Game.spawn_mob()
 | 원거리 투사체는 sweep으로 이동 구간 충돌을 보강한다. | 빠른 탄이 플레이어를 통과하는 터널링을 줄인다. |
 | 일반 사망과 클리어 사망을 섞지 않는다. | 클리어 시 대량 드랍과 처치 수 인플레를 막는다. |
 | 풀링 대상은 `pool_reset()`에서 상태, 타이머, 예고 마크, 물리 레이어를 정리해야 한다. | 재사용 시 이전 몹의 상태가 새 몹에 남지 않게 한다. |
+| 상태이상 DoT도 source `WeaponData`를 통해 `Game.register_weapon_damage()`에 기록해야 한다. | 게임오버·일시정지 피해 목록에서 DoT 피해 귀속이 누락되지 않게 한다. |
 | `mob_kind`를 바꾸면 보상, Wiki, 테스트 아레나 라벨을 함께 확인한다. | 보상과 UI가 다른 종류로 표시되는 것을 막는다. |
 
 ## Change Guidelines
@@ -115,5 +121,6 @@ Game.spawn_mob()
 | 사망 보상 변경 | 일반 사망과 클리어 사망 분리, XP/골드 풀링, 자석/체력 저확률 드랍 |
 | 풀링 변경 | `ScenePool` prewarm, `pool_reset()`, `pool_on_acquire()`, active attack mark release |
 | 피드백 UI 변경 | 체력바 설정, target indicator, attack range ring, floating damage, hit flash |
+| 상태이상 변경 | `StatusEffectCatalog`, `Mob.apply_weapon_damage()`, DoT 피해 통계, 풀 reset, F6 테스트 아레나 |
 
 최소 검증은 F6 테스트 아레나에서 basic/fast/ranged/dummy를 각각 스폰하고, 이동·공격·피격·사망·리스폰·풀 반환이 정상인지 확인하는 것이다. 메인 F5에서는 현재 밸런스 표에서 8분 이후 원거리 몹과 25분 보스 이벤트가 정상 스폰되는지도 확인한다.

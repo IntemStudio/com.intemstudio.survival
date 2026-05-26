@@ -28,8 +28,8 @@ var speed := 200.0
 var max_health := base_max_health
 var health := base_max_health
 
-var _poison_stacks: Array[Dictionary] = []
 var _nettles_timer := 0.0
+var _status_effects := StatusEffectController.new()
 var _is_targeted := false
 var _target_pulse := 0.0
 var _is_dying := false
@@ -68,8 +68,8 @@ func initialize_spawn_health(hp_multiplier: float) -> void:
 func pool_reset() -> void:
 	if is_in_group("mobs"):
 		remove_from_group("mobs")
-	_poison_stacks.clear()
 	_nettles_timer = 0.0
+	_status_effects.clear()
 	_is_dying = false
 	_stage_clear_death = false
 	_is_targeted = false
@@ -239,7 +239,7 @@ func _physics_process(delta: float) -> void:
 		var stop_distance := _get_contact_standoff_distance()
 
 		if distance > stop_distance:
-			velocity = offset / distance * speed
+			velocity = offset / distance * _get_effective_speed()
 		else:
 			velocity = Vector2.ZERO
 			if (
@@ -256,7 +256,7 @@ func _physics_process(delta: float) -> void:
 	if movement_enabled:
 		_apply_mob_separation()
 		_clamp_velocity_away_from_player()
-	_process_poison(delta)
+	_status_effects.tick(delta, self)
 	_process_nettles(delta)
 	move_and_slide()
 
@@ -274,8 +274,13 @@ func _apply_mob_separation() -> void:
 		if dist > 0.0 and dist < SEPARATION_RADIUS:
 			velocity += push.normalized() * (SEPARATION_RADIUS - dist) * SEPARATION_FORCE
 
-	if velocity.length() > speed:
-		velocity = velocity.normalized() * speed
+	var effective_speed := _get_effective_speed()
+	if velocity.length() > effective_speed:
+		velocity = velocity.normalized() * effective_speed
+
+
+func _get_effective_speed() -> float:
+	return speed * _status_effects.get_move_speed_mult()
 
 
 # 접촉 공격 판정·범위 링에 쓰는 중심 간 거리(플레이어 global_position 기준).
@@ -459,35 +464,7 @@ func _process_nettles(delta: float) -> void:
 
 
 func apply_poison(weapon: WeaponData) -> void:
-	_poison_stacks.append({
-		"weapon": weapon,
-		"damage_min": weapon.poison_damage_min,
-		"damage_max": weapon.poison_damage_max,
-		"duration": weapon.poison_duration,
-		"tick_interval": 1.0 / weapon.poison_ticks_per_second,
-		"tick_timer": 0.0,
-	})
-
-
-func _process_poison(delta: float) -> void:
-	var index := _poison_stacks.size() - 1
-	while index >= 0:
-		var stack: Dictionary = _poison_stacks[index]
-		stack["duration"] = stack["duration"] - delta
-		stack["tick_timer"] = stack["tick_timer"] - delta
-
-		if stack["tick_timer"] <= 0.0:
-			var poison_damage := randi_range(stack["damage_min"], stack["damage_max"])
-			if has_nettles():
-				poison_damage = int(poison_damage * 1.5)
-			var poison_weapon: WeaponData = stack.get("weapon")
-			_apply_poison_tick(poison_damage, poison_weapon)
-			stack["tick_timer"] = stack["tick_interval"]
-
-		if stack["duration"] <= 0.0:
-			_poison_stacks.remove_at(index)
-
-		index -= 1
+	apply_status(&"poison", weapon)
 
 
 func _play_hit_flash() -> void:
@@ -496,15 +473,32 @@ func _play_hit_flash() -> void:
 	HitFlash.play(%Slime, slime_tint)
 
 
-func _apply_poison_tick(amount: int, weapon: WeaponData = null) -> void:
-	if amount <= 0:
+func apply_status(status_id: StringName, weapon: WeaponData = null) -> void:
+	var active := _status_effects.apply_status(status_id, weapon)
+	if active != null and active.data != null:
+		FloatingStatusEffectText.spawn_status_applied(global_position, active.data)
+
+
+func apply_status_tick_damage(
+	amount: int,
+	damage_element: StringName,
+	weapon: WeaponData = null,
+	color: Color = Color.WHITE
+) -> void:
+	if _is_dying or amount <= 0:
+		return
+
+	var final_amount := _apply_damage_taken_mult(amount, String(damage_element))
+	if has_nettles() and damage_element == &"poison":
+		final_amount = int(final_amount * 1.5)
+	if final_amount <= 0:
 		return
 
 	_play_hit_flash()
-	_register_weapon_damage(weapon, amount)
-	health -= amount
+	_register_weapon_damage(weapon, final_amount)
+	health -= final_amount
 	_reveal_health_bar()
-	FloatingDamageText.spawn_poison_damage(global_position, amount)
+	FloatingDamageText.spawn_weapon_damage(global_position, final_amount, color)
 
 	if health <= 0:
 		_request_die()
@@ -528,15 +522,20 @@ func apply_weapon_damage(amount: int, weapon: WeaponData) -> void:
 	if _is_dying or amount <= 0 or not weapon:
 		return
 
-	_register_weapon_damage(weapon, amount)
+	var final_amount := _apply_damage_taken_mult(amount, weapon.damage_element)
+	if final_amount <= 0:
+		return
+
+	_register_weapon_damage(weapon, final_amount)
 	_play_hit_flash()
 	%Slime.play_hurt()
-	health -= amount
+	health -= final_amount
 	_reveal_health_bar()
-	FloatingDamageText.spawn_weapon_damage(global_position, amount, weapon.get_element_color())
+	FloatingDamageText.spawn_weapon_damage(global_position, final_amount, weapon.get_element_color())
 
 	if weapon.applies_nettles:
 		apply_nettles(weapon.nettles_duration)
+	_apply_weapon_status_effects(weapon)
 
 	if health <= 0:
 		_request_die()
@@ -552,6 +551,22 @@ func _register_weapon_damage(weapon: WeaponData, amount: int) -> void:
 	var game := get_node_or_null("/root/Game")
 	if game and game.has_method(&"register_weapon_damage"):
 		game.register_weapon_damage(weapon, amount)
+
+
+func _apply_weapon_status_effects(weapon: WeaponData) -> void:
+	if weapon == null or weapon.status_effects.is_empty():
+		return
+	for status_id in weapon.status_effects:
+		if randf() > weapon.status_chance:
+			continue
+		apply_status(status_id, weapon)
+
+
+func _apply_damage_taken_mult(amount: int, damage_element: String) -> int:
+	if damage_element.is_empty():
+		return amount
+	var mult := _status_effects.get_damage_taken_mult(damage_element)
+	return maxi(0, roundi(float(amount) * mult))
 
 
 # 30분 클리어 시 전장 정리용 — 드랍·처치 집계 없이 사망 처리합니다.

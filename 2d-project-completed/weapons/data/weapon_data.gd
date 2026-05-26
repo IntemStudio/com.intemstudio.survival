@@ -62,6 +62,8 @@ const PROJECTILE_MOVEMENT_OPTIONS_BY_TYPE := {
 @export var poison_damage_max := 20
 @export var poison_duration := 4.0
 @export var poison_ticks_per_second := 2.0
+@export var status_effects: Array[StringName] = []
+@export var status_chance := 1.0
 @export var min_damage := 1
 @export var max_damage := 1
 @export var attacks_per_second := 1.0
@@ -131,6 +133,8 @@ func _build_select_tooltip_bbcode_ko() -> String:
 	lines.append("%s / %s" % [_weapon_type_ko(), weapon_subtype])
 	if not damage_element.is_empty():
 		lines.append("[color=#c9a87a]피해 속성: %s[/color]" % _damage_element_ko())
+	if not status_effects.is_empty():
+		lines.append("[color=#a9d6ff]상태이상: %s[/color]" % _status_effects_label())
 	lines.append("데미지: %d-%d" % [min_damage, max_damage])
 	lines.append("공격 속도: %.2f APS" % attacks_per_second)
 	if has_burst():
@@ -181,6 +185,8 @@ func _build_select_tooltip_bbcode_en() -> String:
 	lines.append("%s / %s" % [UiLocale.weapon_type_label(weapon_type), weapon_subtype])
 	if not damage_element.is_empty():
 		lines.append("[color=#c9a87a]Damage type: %s[/color]" % _damage_element_en())
+	if not status_effects.is_empty():
+		lines.append("[color=#a9d6ff]Status: %s[/color]" % _status_effects_label())
 	lines.append("Damage: %d-%d" % [min_damage, max_damage])
 	lines.append("Attack speed: %.2f APS" % attacks_per_second)
 	if has_burst():
@@ -242,10 +248,16 @@ func _damage_element_ko() -> String:
 			return "타격"
 		"poison":
 			return "독"
+		"physical":
+			return "물리"
 		"explosion":
 			return "폭발"
 		"fire":
 			return "화염"
+		"lightning":
+			return "번개"
+		"cold":
+			return "냉기"
 		"nature":
 			return "자연"
 		"radiant":
@@ -276,6 +288,13 @@ func _range_type_ko() -> String:
 
 func _damage_element_en() -> String:
 	return damage_element
+
+
+func _status_effects_label() -> String:
+	var names: PackedStringArray = []
+	for status_id in status_effects:
+		names.append(StatusEffectCatalog.get_display_name(status_id))
+	return ", ".join(names)
 
 
 func _range_type_en() -> String:
@@ -309,8 +328,11 @@ func _effect_ko() -> String:
 	text = text.replace("slashing damage", "베기 피해")
 	text = text.replace("striking damage", "타격 피해")
 	text = text.replace("poison damage", "독 피해")
+	text = text.replace("physical damage", "물리 피해")
 	text = text.replace("explosion damage", "폭발 피해")
 	text = text.replace("fire damage", "화염 피해")
+	text = text.replace("lightning damage", "번개 피해")
+	text = text.replace("cold damage", "냉기 피해")
 	text = text.replace("magical damage", "마법 피해")
 	text = text.replace("nature damage", "자연 피해")
 	text = text.replace("radiant damage", "광휘 피해")
@@ -527,6 +549,10 @@ func get_element_color() -> Color:
 	match damage_element:
 		"fire":
 			return Color(1.0, 0.45, 0.2)
+		"lightning":
+			return Color(0.55, 0.85, 1.0)
+		"cold":
+			return Color(0.65, 0.95, 1.0)
 		"nature":
 			return Color(0.45, 0.95, 0.35)
 		"radiant":
@@ -541,6 +567,8 @@ func get_element_color() -> Color:
 			return Color(0.9, 0.9, 0.95)
 		"slashing":
 			return Color(0.95, 0.82, 0.65)
+		"physical":
+			return Color(0.9, 0.78, 0.7)
 		"poison":
 			return Color(0.5, 0.92, 0.35)
 		"explosion":

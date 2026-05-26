@@ -99,8 +99,16 @@ static func _element_damage_mult(
 	if weapon != null and weapon.is_magic() and element == "magic":
 		return 1.0
 	match element:
+		"physical":
+			return get_mult(modifiers, "physical_damage_mult")
 		"fire":
 			return get_mult(modifiers, "fire_damage_mult")
+		"lightning":
+			return get_mult(modifiers, "lightning_damage_mult")
+		"cold":
+			return get_mult(modifiers, "cold_damage_mult")
+		"poison":
+			return get_mult(modifiers, "poison_damage_mult")
 		"nature":
 			return get_mult(modifiers, "nature_damage_mult")
 		"magic":

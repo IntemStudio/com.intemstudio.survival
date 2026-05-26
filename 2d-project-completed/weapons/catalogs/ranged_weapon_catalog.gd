@@ -45,6 +45,7 @@ static func _build_cache() -> void:
 			"projectile": "concoction",
 			"arc": true,
 			"effect": "Primary attack deals poison damage.",
+			"status": [&"poison", &"toxic"],
 			"poison_min": 10,
 			"poison_max": 20,
 		},
@@ -71,6 +72,9 @@ static func _create_weapon(entry: Dictionary) -> WeaponData:
 	weapon.max_damage = entry["max"]
 	weapon.attacks_per_second = entry["aps"]
 	weapon.damage_element = entry["element"]
+	for status_id in entry.get("status", []):
+		weapon.status_effects.append(status_id)
+	weapon.status_chance = entry.get("status_chance", 1.0)
 	weapon.ranged_attack_style = entry.get("style", "Bullet")
 	weapon.projectile_speed = entry.get("speed", 1000.0)
 	weapon.throw_speed = entry.get("throw_speed", 720.0)

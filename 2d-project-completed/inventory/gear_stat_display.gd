@@ -35,8 +35,12 @@ const _STAT_SKIP_KEYS: Array[String] = [
 	"magic_attack_speed_mult",
 	"magic_damage_mult",
 	"energy_damage_mult",
+	"physical_damage_mult",
 	"nature_damage_mult",
 	"fire_damage_mult",
+	"lightning_damage_mult",
+	"cold_damage_mult",
+	"poison_damage_mult",
 	"throwing_damage_mult",
 	"companion_damage_mult",
 	"mana_recovery_mult",
@@ -96,8 +100,12 @@ static func format_stat_lines(modifiers: Dictionary) -> PackedStringArray:
 	_append_mult_bonus_line(lines, stats, "damage_mult", "Damage", "피해")
 	_append_mult_bonus_line(lines, stats, "melee_damage_mult", "Melee Damage", "근접 피해")
 	_append_mult_bonus_line(lines, stats, "ranged_damage_mult", "Ranged Damage", "원거리 피해")
+	_append_mult_bonus_line(lines, stats, "physical_damage_mult", "Physical Damage", "물리 피해")
 	_append_mult_bonus_line(lines, stats, "nature_damage_mult", "Nature Damage", "자연 피해")
 	_append_mult_bonus_line(lines, stats, "fire_damage_mult", "Fire Damage", "화염 피해")
+	_append_mult_bonus_line(lines, stats, "lightning_damage_mult", "Lightning Damage", "번개 피해")
+	_append_mult_bonus_line(lines, stats, "cold_damage_mult", "Cold Damage", "냉기 피해")
+	_append_mult_bonus_line(lines, stats, "poison_damage_mult", "Poison Damage", "독 피해")
 	_append_mult_bonus_line(lines, stats, "magic_damage_mult", "Magic Damage", "마법 피해")
 	_append_mult_bonus_line(lines, stats, "throwing_damage_mult", "Throwing Damage", "투척 피해")
 	_append_mult_bonus_line(lines, stats, "companion_damage_mult", "Companion Damage", "동료 피해")
