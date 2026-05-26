@@ -6,6 +6,7 @@ const RangedWeaponCatalog = preload("res://weapons/catalogs/ranged_weapon_catalo
 const MeleeWeaponCatalog = preload("res://weapons/catalogs/melee_weapon_catalog.gd")
 const MagicWeaponCatalog = preload("res://weapons/catalogs/magic_weapon_catalog.gd")
 const TestArenaWeaponSnapshot = preload("res://game/test_arena_weapon_snapshot.gd")
+const EQUIPMENT_DROP_SCENE := preload("res://effects/equipment_drop/equipment_drop.tscn")
 
 const START_WEAPON := preload("res://weapons/data/revolver.tres")
 const PLAYER_RESPAWN_DELAY := 3.0
@@ -179,6 +180,33 @@ func try_acquire_dropped_equipment_item(item_id: String) -> StringName:
 		_inventory_menu.refresh_all_slots()
 	apply_inventory_loadout_to_player()
 	return &""
+
+
+# 인벤토리에서 버린 장비를 플레이어 앞에 월드 드롭으로 생성합니다.
+func can_drop_equipment_item(item_id: String) -> bool:
+	return not item_id.strip_edges().is_empty() and EQUIPMENT_DROP_SCENE != null
+
+
+func drop_equipment_item(item_id: String) -> bool:
+	if item_id.is_empty():
+		return false
+	var drop := EQUIPMENT_DROP_SCENE.instantiate() as EquipmentDrop
+	if drop == null:
+		push_error("TestArena: EquipmentDrop scene must instantiate EquipmentDrop.")
+		return false
+	add_child(drop)
+	drop.global_position = _get_equipment_drop_position()
+	drop.setup(item_id)
+	return true
+
+
+func _get_equipment_drop_position() -> Vector2:
+	var direction := Vector2.RIGHT
+	if %Player.has_method("get_last_move_direction"):
+		direction = %Player.get_last_move_direction()
+	if direction.length_squared() < 0.01:
+		direction = Vector2.RIGHT
+	return %Player.global_position + direction.normalized() * 96.0
 
 
 func apply_inventory_loadout_to_player() -> void:

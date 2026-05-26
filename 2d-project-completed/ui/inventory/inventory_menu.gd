@@ -309,10 +309,15 @@ func _on_slot_unhovered(_slot: InventorySlot) -> void:
 	pass
 
 
-func _on_slot_pressed(slot: InventorySlot, mouse_button: int) -> void:
+func _on_slot_pressed(slot: InventorySlot, mouse_button: int, left_shift_pressed: bool) -> void:
 	if service == null:
 		return
 	var desc := slot.get_slot_descriptor()
+	if mouse_button == MOUSE_BUTTON_LEFT and left_shift_pressed:
+		if _try_discard_slot(slot, desc):
+			refresh_all_slots()
+			_sync_combat_loadout()
+		return
 	if mouse_button == MOUSE_BUTTON_LEFT and desc.get("kind") == &"set":
 		if _try_select_combat_set(desc):
 			return
@@ -410,6 +415,44 @@ func _try_equip_from_bag_slot(bag_index: int) -> bool:
 	var err := service.try_equip_from_bag_smart(bag_index, EquipSlots.SHARED_ARMOR_SET_INDEX)
 	_show_error(err)
 	return err.is_empty()
+
+
+# 왼쪽 Shift+좌클릭으로 슬롯 장비를 월드에 내려놓습니다.
+func _try_discard_slot(_slot: InventorySlot, desc: Dictionary) -> bool:
+	if service == null or desc.is_empty():
+		return false
+	var item_id := service.get_item_id_at(desc)
+	if item_id.is_empty():
+		_show_error(InventoryService.ERROR_EMPTY)
+		return false
+	if not _can_drop_discarded_equipment_item(item_id):
+		_show_error(InventoryService.ERROR_DROP_UNAVAILABLE)
+		return false
+	var err := service.try_discard(desc)
+	_show_error(err)
+	if not err.is_empty():
+		return false
+	if not _drop_discarded_equipment_item(item_id):
+		service.try_restore_item_at(desc, item_id)
+		_show_error(InventoryService.ERROR_DROP_UNAVAILABLE)
+		return false
+	persist_loadout_if_enabled()
+	show_status_message(UiLocale.t(&"inventory.discarded"))
+	return true
+
+
+func _can_drop_discarded_equipment_item(item_id: String) -> bool:
+	var game := _get_game()
+	if game == null or not game.has_method("can_drop_equipment_item"):
+		return false
+	return bool(game.call("can_drop_equipment_item", item_id))
+
+
+func _drop_discarded_equipment_item(item_id: String) -> bool:
+	var game := _get_game()
+	if game == null or not game.has_method("drop_equipment_item"):
+		return false
+	return bool(game.call("drop_equipment_item", item_id))
 
 
 func _try_acknowledge_active_combat_slot(slot: InventorySlot, desc: Dictionary) -> bool:

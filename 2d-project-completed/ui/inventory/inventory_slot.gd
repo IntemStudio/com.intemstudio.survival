@@ -5,7 +5,7 @@ class_name InventorySlot
 
 signal slot_hovered(slot_ref: InventorySlot)
 signal slot_unhovered(slot_ref: InventorySlot)
-signal slot_pressed(slot_ref: InventorySlot, mouse_button: int)
+signal slot_pressed(slot_ref: InventorySlot, mouse_button: int, left_shift_pressed: bool)
 signal slot_dropped(source: Dictionary, target: InventorySlot)
 
 const EMPTY_MODULATE := Color(0.45, 0.48, 0.55, 0.35)
@@ -23,6 +23,7 @@ var slot_key: StringName = &""
 var item_id := ""
 var blocked := false
 var combat_active := true
+var _left_shift_down := false
 
 @onready var _icon: TextureRect = %Icon
 @onready var _hint: Label = %HintLabel
@@ -126,14 +127,25 @@ func _on_mouse_exited() -> void:
 	slot_unhovered.emit(self)
 
 
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.keycode == KEY_SHIFT:
+		if event.location == KEY_LOCATION_RIGHT:
+			return
+		if event.location == KEY_LOCATION_LEFT or event.location == KEY_LOCATION_UNSPECIFIED:
+			_left_shift_down = event.pressed
+
+
 func _on_gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var mb := event as InputEventMouseButton
 		if not mb.pressed:
 			return
-		if mb.button_index == MOUSE_BUTTON_LEFT and mb.double_click:
-			slot_pressed.emit(self, MOUSE_BUTTON_LEFT)
+		if mb.button_index == MOUSE_BUTTON_LEFT and _left_shift_down:
+			slot_pressed.emit(self, MOUSE_BUTTON_LEFT, true)
+			accept_event()
+		elif mb.button_index == MOUSE_BUTTON_LEFT and mb.double_click:
+			slot_pressed.emit(self, MOUSE_BUTTON_LEFT, false)
 			accept_event()
 		elif mb.button_index == MOUSE_BUTTON_RIGHT:
-			slot_pressed.emit(self, MOUSE_BUTTON_RIGHT)
+			slot_pressed.emit(self, MOUSE_BUTTON_RIGHT, false)
 			accept_event()

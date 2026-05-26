@@ -10,6 +10,7 @@ const ERROR_OFFHAND_BLOCKED := &"inventory.error.offhand_blocked"
 const ERROR_UNKNOWN_ITEM := &"inventory.error.unknown_item"
 const ERROR_CROSS_SET := &"inventory.error.cross_set"
 const ERROR_TWO_HAND_BAG_FULL := &"inventory.error.two_hand_bag_full"
+const ERROR_DROP_UNAVAILABLE := &"inventory.error.drop_unavailable"
 
 var registry: ItemRegistry
 var loadout: PlayerLoadoutState
@@ -41,6 +42,78 @@ func swap_equip_sets() -> void:
 
 func set_active_combat_set(index: int) -> void:
 	loadout.set_active_set_index(index)
+
+
+# 슬롯 설명자가 가리키는 item_id를 조회합니다.
+func get_item_id_at(source: Dictionary) -> String:
+	var source_kind: StringName = source.get("kind", &"")
+	if source_kind == &"bag":
+		var bag_index: int = source.get("bag_index", -1)
+		if bag_index < 0 or bag_index >= loadout.bag_ids.size():
+			return ""
+		return loadout.get_bag_item_id(bag_index)
+	if source_kind == &"set":
+		var set_index: int = source.get("set_index", -1)
+		var slot_key: StringName = source.get("slot_key", &"")
+		if set_index < 0 or set_index >= loadout.sets.size():
+			return ""
+		if not EquipSlots.is_valid_slot_key(slot_key):
+			return ""
+		return loadout.get_set_item_id(set_index, slot_key)
+	return ""
+
+
+# 슬롯 설명자가 가리키는 장비를 인벤 상태에서 제거합니다.
+func try_discard(source: Dictionary) -> StringName:
+	var source_kind: StringName = source.get("kind", &"")
+	if source_kind == &"bag":
+		var bag_index: int = source.get("bag_index", -1)
+		if bag_index < 0 or bag_index >= loadout.bag_ids.size():
+			return ERROR_INVALID_SLOT
+		if loadout.get_bag_item_id(bag_index).is_empty():
+			return ERROR_EMPTY
+		loadout.set_bag_item_id(bag_index, "")
+		return &""
+	if source_kind == &"set":
+		var set_index: int = source.get("set_index", -1)
+		var slot_key: StringName = source.get("slot_key", &"")
+		if set_index < 0 or set_index >= loadout.sets.size():
+			return ERROR_INVALID_SLOT
+		if not EquipSlots.is_valid_slot_key(slot_key):
+			return ERROR_INVALID_SLOT
+		if loadout.get_set_item_id(set_index, slot_key).is_empty():
+			return ERROR_EMPTY
+		loadout.set_set_item_id(set_index, slot_key, "")
+		return &""
+	return ERROR_INVALID_SLOT
+
+
+# 실패 롤백용 — 버리기 직전 슬롯에 같은 item_id를 되돌립니다.
+func try_restore_item_at(target: Dictionary, item_id: String) -> StringName:
+	var key := item_id.strip_edges()
+	if key.is_empty():
+		return ERROR_UNKNOWN_ITEM
+	var target_kind: StringName = target.get("kind", &"")
+	if target_kind == &"bag":
+		var bag_index: int = target.get("bag_index", -1)
+		if bag_index < 0 or bag_index >= loadout.bag_ids.size():
+			return ERROR_INVALID_SLOT
+		if not loadout.get_bag_item_id(bag_index).is_empty():
+			return ERROR_INVALID_SLOT
+		loadout.set_bag_item_id(bag_index, key)
+		return &""
+	if target_kind == &"set":
+		var set_index: int = target.get("set_index", -1)
+		var slot_key: StringName = target.get("slot_key", &"")
+		if set_index < 0 or set_index >= loadout.sets.size():
+			return ERROR_INVALID_SLOT
+		if not EquipSlots.is_valid_slot_key(slot_key):
+			return ERROR_INVALID_SLOT
+		if not loadout.get_set_item_id(set_index, slot_key).is_empty():
+			return ERROR_INVALID_SLOT
+		loadout.set_set_item_id(set_index, slot_key, key)
+		return &""
+	return ERROR_INVALID_SLOT
 
 
 # 획득 아이템을 규칙에 따라 장착 슬롯 또는 가방에 자동 배치합니다.
