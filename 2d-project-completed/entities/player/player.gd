@@ -31,13 +31,11 @@ var _health_depleted_emitted := false
 var _hurtbox_overlap_mob_ids: Dictionary = {}
 var _hit_flash_target: CanvasItem
 var _hit_flash_base_modulate := Color.WHITE
-var _loadout_stats_active := false
-var _loadout_stat_modifiers: Dictionary = {}
+var _stats := CharacterStats.new()
 var _loadout_registry: ItemRegistry
 var _loadout_state: PlayerLoadoutState
 var _grant_orbital_nodes: Array = []
 var _buff_controller := BuffController.new()
-var _buff_stat_modifiers: Dictionary = {}
 
 
 func _ready() -> void:
@@ -253,14 +251,13 @@ func clear_weapons() -> void:
 
 # loadout 장비 stat_modifiers를 캐시하고 이동·무기 배율을 갱신합니다.
 func refresh_stats_from_loadout(registry: ItemRegistry, loadout: PlayerLoadoutState) -> void:
-	_loadout_stats_active = true
 	if registry == null or loadout == null:
-		_loadout_stat_modifiers = {}
+		_stats.set_loadout_modifiers({}, true)
 		_loadout_registry = null
 		_loadout_state = null
 		_clear_loadout_grant_passives()
 	else:
-		_loadout_stat_modifiers = registry.sum_stat_modifiers_for_loadout(loadout)
+		_stats.set_loadout_modifiers(registry.sum_stat_modifiers_for_loadout(loadout), true)
 	_loadout_registry = registry
 	_loadout_state = loadout
 	_sync_health_bar_max()
@@ -270,10 +267,9 @@ func refresh_stats_from_loadout(registry: ItemRegistry, loadout: PlayerLoadoutSt
 
 # use_inventory_loadout off 시 기본 이동·무기 수치로 되돌립니다.
 func clear_loadout_stats() -> void:
-	if not _loadout_stats_active:
+	if not _stats.is_loadout_active():
 		return
-	_loadout_stats_active = false
-	_loadout_stat_modifiers = {}
+	_stats.clear_loadout_modifiers()
 	_loadout_registry = null
 	_loadout_state = null
 	_clear_loadout_grant_passives()
@@ -282,13 +278,11 @@ func clear_loadout_stats() -> void:
 
 
 func is_loadout_stats_active() -> bool:
-	return _loadout_stats_active
+	return _stats.is_loadout_active()
 
 
 func get_max_health() -> float:
-	if not _loadout_stats_active:
-		return LoadoutStatApply.BASE_MAX_HEALTH
-	return LoadoutStatApply.compute_max_health(_loadout_stat_modifiers)
+	return _stats.get_max_health()
 
 
 # 장비 heart_* 반영 후 체력바 상한을 맞춥니다.
@@ -304,19 +298,11 @@ func _sync_health_bar_max() -> void:
 
 # loadout 방어구·방패가 있으면 피해를 줄입니다.
 func _resolve_incoming_damage(raw_amount: int) -> int:
-	if raw_amount <= 0:
-		return 0
-	if not _loadout_stats_active:
-		return raw_amount
-	return LoadoutStatApply.mitigate_incoming_damage(_loadout_stat_modifiers, raw_amount)
+	return _stats.mitigate_incoming_damage(raw_amount)
 
 
 func get_move_speed() -> float:
-	var speed := BASE_MOVE_SPEED
-	if _loadout_stats_active:
-		speed *= LoadoutStatApply.compute_move_speed_mult(_loadout_stat_modifiers)
-	speed *= LoadoutStatApply.compute_move_speed_mult(_buff_stat_modifiers)
-	return speed
+	return _stats.get_move_speed(BASE_MOVE_SPEED)
 
 
 func get_last_move_direction() -> Vector2:
@@ -342,11 +328,12 @@ func get_active_buff_summaries() -> Array[Dictionary]:
 
 
 func _refresh_loadout_grant_passives() -> void:
-	if not _loadout_stats_active:
+	if not _stats.is_loadout_active():
 		_clear_loadout_grant_passives()
 		return
+	var loadout_modifiers := _stats.get_loadout_modifiers()
 	LoadoutGrantPassive.refresh_orbitals(
-		self, _loadout_registry, _loadout_stat_modifiers, _grant_orbital_nodes
+		self, _loadout_registry, loadout_modifiers, _grant_orbital_nodes
 	)
 	LoadoutGrantPassive.refresh_offhand_visual(self, _loadout_registry, _loadout_state)
 
@@ -359,32 +346,19 @@ func _clear_loadout_grant_passives() -> void:
 
 
 func _apply_loadout_on_dash() -> void:
-	if not _loadout_stats_active:
+	if not _stats.is_loadout_active():
 		return
-	LoadoutGrantPassive.apply_on_dash(self, _loadout_registry, _loadout_stat_modifiers)
+	LoadoutGrantPassive.apply_on_dash(self, _loadout_registry, _stats.get_loadout_modifiers())
 
 
-# 장비 배율을 반영한 무기 피해 롤.
+# 장비·버프 배율을 반영한 무기 피해 롤.
 func roll_weapon_damage(weapon: WeaponData) -> int:
-	if weapon == null:
-		return 1
-	var rolled := weapon.roll_damage()
-	var mult := 1.0
-	if _loadout_stats_active:
-		mult *= LoadoutStatApply.compute_damage_mult(_loadout_stat_modifiers, weapon, level)
-	mult *= LoadoutStatApply.compute_damage_mult(_buff_stat_modifiers, weapon, level)
-	return maxi(1, roundi(float(rolled) * mult))
+	return _stats.roll_weapon_damage(weapon, level)
 
 
-# 장비 배율을 반영한 무기 APS.
+# 장비·버프 배율을 반영한 무기 APS.
 func get_effective_attacks_per_second(weapon: WeaponData) -> float:
-	if weapon == null:
-		return 1.0
-	var base_aps := weapon.attacks_per_second
-	var mult := LoadoutStatApply.compute_attack_speed_mult(_buff_stat_modifiers, weapon)
-	if _loadout_stats_active:
-		mult *= LoadoutStatApply.compute_attack_speed_mult(_loadout_stat_modifiers, weapon)
-	return base_aps * mult
+	return _stats.get_effective_attacks_per_second(weapon)
 
 
 func _refresh_weapon_combat_modifiers() -> void:
@@ -395,7 +369,7 @@ func _refresh_weapon_combat_modifiers() -> void:
 
 
 func _on_buffs_changed() -> void:
-	_buff_stat_modifiers = _buff_controller.get_stat_modifiers()
+	_stats.set_buff_modifiers(_buff_controller.get_stat_modifiers())
 	_refresh_weapon_combat_modifiers()
 
 

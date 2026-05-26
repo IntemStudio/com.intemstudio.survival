@@ -51,7 +51,8 @@
 | `inventory/inventory_service.gd` | UI가 호출하는 장착·해제·드래그·세트 전환·버리기 API |
 | `inventory/inventory_combat_bridge.gd` | 장착된 활성 weapon과 장비 스탯을 `Player`에 적용 |
 | `inventory/inventory_game_bridge.gd` | I/Tab/RMB 입력, 메뉴 열기/닫기, HUD 전투 세트 표시 연결 |
-| `inventory/loadout_stat_apply.gd` | 이동·피해·공격속도·방어·체력 스탯을 플레이어 수치로 변환 |
+| `inventory/loadout_stat_apply.gd` | 이동·피해·공격속도·방어·체력 스탯 공식 제공 |
+| `entities/player/stats/character_stats.gd` | 장비·버프 modifier source를 보관하고 `LoadoutStatApply` 공식으로 최종 플레이어 수치 계산 |
 | `inventory/loadout_grant_passive.gd` | 장착 장비 grant 태그로 궤도, dash haste 버프, dash darts, offhand 비주얼 적용 |
 | `ui/inventory/inventory_menu.gd` | 4칸 전투 슬롯, 공유 방어구, 가방 UI, `InventoryService` 호출, 버린 장비 월드 드롭 위임 |
 | `ui/inventory/inventory_slot.gd` | 슬롯 1칸 표시·드래그·입력 위젯, 왼쪽 Shift 상태 추적 |
@@ -71,6 +72,7 @@ Game / TestArena
   -> InventoryGameBridge
   -> InventoryCombatBridge
   -> Player.refresh_stats_from_loadout()
+  -> CharacterStats.set_loadout_modifiers()
 ```
 
 장비 카탈로그는 `gear_catalog.gd`와 `gear_catalog_entries.gd`가 담당한다. 현재 Common 장비는 offhand, helmet, armor, gloves, boots, accessory에 등록되어 있으며, 새 장비는 카탈로그에 추가한 뒤 `ItemRegistry` 해석과 툴팁 표시가 함께 맞아야 한다.
@@ -91,7 +93,7 @@ Game / TestArena
 10. 인벤토리에서 왼쪽 Shift+좌클릭으로 가방 또는 장착 슬롯 장비를 버리면 `Game.can_drop_equipment_item()`을 먼저 확인한 뒤 슬롯을 비우고 `EquipmentDrop`을 플레이어 앞에 생성한다. 생성 실패 시 같은 슬롯에 원래 `item_id`를 복원한다.
 11. weapon/offhand는 `active_set_index` 세트에 장착되고, 방어구·악세는 `sets[0]`에 장착된다.
 12. Tab·닫힌 RMB·비활성 전투 슬롯 좌클릭은 활성 세트를 바꾸고 HUD 갱신, 전투 재적용을 수행한다.
-13. `InventoryCombatBridge.apply_loadout_to_player()`가 장착된 활성 세트 weapon/offhand와 공유 방어구의 스탯, grant 패시브, offhand 비주얼만 플레이어에 적용한다. `grant_on_dash: haste`처럼 시간이 있는 효과는 `BuffTriggerRouter`를 통해 `Player`의 런타임 버프로 부여한다.
+13. `InventoryCombatBridge.apply_loadout_to_player()`가 장착된 활성 세트 weapon/offhand와 공유 방어구의 스탯을 `Player.refresh_stats_from_loadout()`에 전달하고, 플레이어는 합산 modifier를 `CharacterStats`의 loadout source로 저장한다. grant 패시브와 offhand 비주얼만 별도 적용하며, `grant_on_dash: haste`처럼 시간이 있는 효과는 `BuffTriggerRouter`를 통해 `Player`의 런타임 버프로 부여한다.
 14. 클리어, 패배, 로비 복귀, 새 런 시작 시 런 인벤토리 상태를 영구 저장하지 않고 폐기한다.
 
 ### Editor / Data
@@ -131,11 +133,11 @@ Game / TestArena
 |------|-----------|
 | 슬롯 추가·이름 변경 | `EquipSlots`, `PlayerLoadoutState`, UI 바인딩, `InventoryService` 검증 |
 | 새 장비 추가 | `gear_catalog_entries.gd`, `ItemRegistry.resolve_gear`, 툴팁, `GearStatMerge` 합산 |
-| 새 스탯 키 추가 | merge 규칙, 표시 문구, `LoadoutStatApply`, F6 수동 검증 |
+| 새 스탯 키 추가 | merge 규칙, 표시 문구, `LoadoutStatApply`, `CharacterStats`, F6 수동 검증 |
 | weapon/offhand 정책 변경 | 양손 처리, offhand 반환 실패, 활성 세트 전환, HUD, F5 회귀 |
 | 장비 획득 배치 변경 | 활성/비활성 weapon·offhand 빈 슬롯 우선순위, 공유 방어구 빈 슬롯, 가방 가득 참, `EquipmentDrop` 상호작용 획득 처리 |
 | 인벤 UI 변경 | 4칸 weapon/offhand 동시 표시, 공유 방어구, RMB 해제와 닫힌 RMB 스왑 충돌 여부, 왼쪽 Shift+좌클릭 버리기와 월드 드롭 복원 |
-| 전투 적용 변경 | 장착 장비만 합산하는지, 가방/비활성 장비 제외, `apply_inventory_loadout_to_player()`, `refresh_stats_from_loadout()`, `clear_loadout_stats()` 호출 순서, 런타임 버프와 중복 적용 여부 |
+| 전투 적용 변경 | 장착 장비만 합산하는지, 가방/비활성 장비 제외, `apply_inventory_loadout_to_player()`, `refresh_stats_from_loadout()`, `clear_loadout_stats()`, `CharacterStats` source 갱신 순서, 런타임 버프와 중복 적용 여부 |
 | 상자 보상 변경 | 골드 차감/환불, 부위 필터, 등급 확률, 중복 제외, 가방 가득 참 처리 |
 | 런 초기화 변경 | 새 런, 클리어, 패배, 로비 복귀에서 장비 상태와 골드가 저장되지 않는지 확인 |
 

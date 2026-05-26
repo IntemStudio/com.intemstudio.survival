@@ -85,11 +85,11 @@ static func _spec_to_event(spec: Dictionary) -> InputEvent:
 	match String(spec.get("type", "")):
 		TYPE_KEY:
 			var key_event := InputEventKey.new()
-			key_event.physical_keycode = int(spec.get("physical_keycode", KEY_NONE))
-			key_event.keycode = int(spec.get("keycode", KEY_NONE))
-			key_event.key_label = int(spec.get("key_label", KEY_NONE))
+			key_event.physical_keycode = int(spec.get("physical_keycode", KEY_NONE)) as Key
+			key_event.keycode = int(spec.get("keycode", KEY_NONE)) as Key
+			key_event.key_label = int(spec.get("key_label", KEY_NONE)) as Key
 			key_event.unicode = int(spec.get("unicode", 0))
-			key_event.location = int(spec.get("location", KEY_LOCATION_UNSPECIFIED))
+			key_event.location = int(spec.get("location", KEY_LOCATION_UNSPECIFIED)) as KeyLocation
 			key_event.alt_pressed = bool(spec.get("alt_pressed", false))
 			key_event.shift_pressed = bool(spec.get("shift_pressed", false))
 			key_event.ctrl_pressed = bool(spec.get("ctrl_pressed", false))
@@ -97,7 +97,7 @@ static func _spec_to_event(spec: Dictionary) -> InputEvent:
 			return key_event
 		TYPE_MOUSE_BUTTON:
 			var mouse_event := InputEventMouseButton.new()
-			mouse_event.button_index = int(spec.get("button_index", MOUSE_BUTTON_NONE))
+			mouse_event.button_index = int(spec.get("button_index", MOUSE_BUTTON_NONE)) as MouseButton
 			mouse_event.alt_pressed = bool(spec.get("alt_pressed", false))
 			mouse_event.shift_pressed = bool(spec.get("shift_pressed", false))
 			mouse_event.ctrl_pressed = bool(spec.get("ctrl_pressed", false))
