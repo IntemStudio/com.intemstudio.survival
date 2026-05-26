@@ -1,8 +1,8 @@
-[gd_scene load_steps=2 format=3 uid="uid://cfloatingdmg01"]
+[gd_scene load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://effects/floating_damage_text/floating_damage_text.gd" id="1_float"]
+[ext_resource type="Script" path="res://effects/floating_text/floating_text.gd" id="1_float"]
 
-[node name="FloatingDamageText" type="Node2D"]
+[node name="FloatingText" type="Node2D"]
 z_index = 200
 script = ExtResource("1_float")
 
