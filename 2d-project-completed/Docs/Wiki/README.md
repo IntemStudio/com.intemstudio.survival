@@ -11,7 +11,7 @@
 |------|------|
 | [`GameRules.md`](GameRules.md) | 한 판 진행, 승리/패배, 일시정지, 데모 스코프 |
 | [`Combat.md`](Combat.md) | 피해, 접촉 공격, 원거리 공격, 상태이상, 방어 |
-| [`Weapons.md`](Weapons.md) | 무기 타입, 공격 방식, 선택 UI, 자동 공격, 성장 갭 |
+| [`Weapons.md`](Weapons.md) | 무기 타입, 공격 방식, 획득 UI, 자동 공격, 성장 갭 |
 | [`Mobs.md`](Mobs.md) | 몹 종류, 스폰 타임라인, 엘리트·보스·특수몹 정책 |
 | [`Progression.md`](Progression.md) | 경험치, 레벨업, 골드, 픽업, 메타 진행 |
 | [`Items_Inventory.md`](Items_Inventory.md) | 인벤토리, 장비 세트, 보조손, 메인/테스트 노출 정책 |

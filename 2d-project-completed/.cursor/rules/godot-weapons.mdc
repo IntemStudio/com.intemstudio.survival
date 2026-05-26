@@ -56,7 +56,7 @@ Skipping step 2 makes the weapon invisible in level-up selection.
 
 - Use `Mob.take_damage` / `Mob.apply_weapon_damage` / `Mob.take_magic_damage` — do not write ad-hoc `health -=` on mobs from new weapon code.
 - Per-weapon damage stats: recorded in `Game.register_weapon_damage` via `mob.gd` (`apply_weapon_damage` and poison DoT ticks with `weapon` on the stack). Do not call `register_weapon_damage` from weapon/projectile scripts.
-- Use `FloatingDamageText` spawn helpers for new damage types; do not invent parallel floating text systems.
+- Use purpose APIs under `effects/floating_text/` (`FloatingDamageText` for damage, `FloatingStatusEffectText` for status effects, `FloatingInfoText` for info text) and keep shared rendering in `FloatingText`; do not invent parallel floating text systems.
 
 ## When editing `ui/weapon_select_menu.gd`
 
