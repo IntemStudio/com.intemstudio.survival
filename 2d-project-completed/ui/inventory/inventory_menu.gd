@@ -48,6 +48,8 @@ const EQUIP_LABELS: Dictionary = {
 	EquipSlots.ACCESSORY: "악세",
 }
 
+@export var use_persistent_loadout := false
+
 var service: InventoryService
 
 var _edit_set_index := 0
@@ -108,6 +110,10 @@ func get_service() -> InventoryService:
 	return service
 
 
+func should_persist_loadout() -> bool:
+	return use_persistent_loadout
+
+
 func on_menu_opened() -> void:
 	_ensure_service()
 	service.set_edit_set_index(_edit_set_index)
@@ -120,18 +126,25 @@ func _ensure_service() -> void:
 	if service != null:
 		service.registry.register_all_catalogs()
 		return
-	var state := InventorySave.load_state()
-	if _LoadoutSeed.is_loadout_empty(state):
-		var seed_registry := ItemRegistry.new()
-		seed_registry.register_all_catalogs()
-		_LoadoutSeed.apply_random_starter(state, seed_registry)
-		InventorySave.save_state(state)
+	var state := PlayerLoadoutState.create_empty()
+	if use_persistent_loadout:
+		state = InventorySave.load_state()
+		if _LoadoutSeed.is_loadout_empty(state):
+			var seed_registry := ItemRegistry.new()
+			seed_registry.register_all_catalogs()
+			_LoadoutSeed.apply_random_starter(state, seed_registry)
+			InventorySave.save_state(state)
 	service = InventoryService.new(null, state)
 	service.registry.register_all_catalogs()
 
 
 func on_menu_closed() -> void:
-	if service != null:
+	if service != null and use_persistent_loadout:
+		InventorySave.save_state(service.loadout)
+
+
+func persist_loadout_if_enabled() -> void:
+	if service != null and use_persistent_loadout:
 		InventorySave.save_state(service.loadout)
 
 
@@ -324,7 +337,7 @@ func _try_select_combat_set(desc: Dictionary) -> bool:
 	if set_index < 0 or set_index == service.loadout.active_set_index:
 		return false
 	service.set_active_combat_set(set_index)
-	InventorySave.save_state(service.loadout)
+	persist_loadout_if_enabled()
 	var set_num := service.loadout.active_set_index + 1
 	show_status_message(UiLocale.t(&"inventory.set_swapped") % set_num)
 	refresh_all_slots()

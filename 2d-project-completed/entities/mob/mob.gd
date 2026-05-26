@@ -533,7 +533,7 @@ func apply_weapon_damage(amount: int, weapon: WeaponData) -> void:
 	%Slime.play_hurt()
 	health -= amount
 	_reveal_health_bar()
-	FloatingDamageText.spawn_magic_damage(global_position, amount, weapon.get_element_color())
+	FloatingDamageText.spawn_weapon_damage(global_position, amount, weapon.get_element_color())
 
 	if weapon.applies_nettles:
 		apply_nettles(weapon.nettles_duration)

@@ -165,6 +165,21 @@ func show_inventory_swap_toast(message: String) -> void:
 		%StatusLabel.text = message
 
 
+func try_acquire_dropped_equipment_item(item_id: String) -> StringName:
+	if not use_inventory_loadout or _inventory_menu == null:
+		return InventoryService.ERROR_INVALID_SLOT
+	var menu_service: InventoryService = _inventory_menu.get_service()
+	if menu_service == null:
+		return InventoryService.ERROR_UNKNOWN_ITEM
+	var err := menu_service.acquire_item(item_id)
+	if not err.is_empty():
+		return err
+	if _inventory_menu.has_method("refresh_all_slots"):
+		_inventory_menu.refresh_all_slots()
+	apply_inventory_loadout_to_player()
+	return &""
+
+
 func apply_inventory_loadout_to_player() -> void:
 	if not use_inventory_loadout or _inventory_menu == null:
 		InventoryCombatBridge.clear_loadout_from_player(%Player)

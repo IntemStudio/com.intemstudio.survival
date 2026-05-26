@@ -131,10 +131,12 @@ func sum_stat_modifiers_for_loadout(loadout: PlayerLoadoutState) -> Dictionary:
 			loadout.get_set_item_id(EquipSlots.SHARED_ARMOR_SET_INDEX, slot_key)
 		)
 	var active_index := loadout.active_set_index
-	_merge_gear_stat_for_item(
-		totals,
-		loadout.get_set_item_id(active_index, EquipSlots.OFFHAND)
-	)
+	var active_weapon_id := loadout.get_set_item_id(active_index, EquipSlots.WEAPON)
+	if not is_offhand_blocked_by_weapon(active_weapon_id):
+		_merge_gear_stat_for_item(
+			totals,
+			loadout.get_set_item_id(active_index, EquipSlots.OFFHAND)
+		)
 	return totals
 
 

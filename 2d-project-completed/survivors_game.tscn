@@ -359,7 +359,7 @@ alignment = 1
 [node name="TitleLabel" type="Label" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 64
-text = "무기 선택"
+text = "무기 획득"
 horizontal_alignment = 1
 
 [node name="AutoSelectRow" type="HBoxContainer" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer"]
@@ -371,7 +371,7 @@ alignment = 1
 process_mode = 3
 layout_mode = 2
 theme_override_font_sizes/font_size = 22
-text = "자동 무기 선택"
+text = "자동 무기 획득"
 
 [node name="AutoSelectCountdownLabel" type="Label" parent="WeaponSelectMenu/MenuOverlay/CenterContainer/VBoxContainer/AutoSelectRow"]
 process_mode = 3

@@ -62,7 +62,7 @@ func _sync_physics_layers() -> void:
 	PhysicsLayers.apply_player_pickup_range(%PickupRange)
 
 
-# 접촉 DPS Area 감시 — 게임 시작 전·무기 선택 중에는 끕니다.
+# 접촉 DPS Area 감시 — 게임 시작 전·무기 획득 중에는 끕니다.
 func set_contact_damage_enabled(enabled: bool) -> void:
 	%HurtBox.monitoring = enabled
 

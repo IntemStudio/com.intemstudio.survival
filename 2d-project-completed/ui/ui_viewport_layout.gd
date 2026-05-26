@@ -11,7 +11,7 @@ enum AlignMode {
 @export var design_size: Vector2 = UiResolutionConfig.DESIGN_FHD
 @export var align_mode: AlignMode = AlignMode.TOP_LEFT
 @export var update_on_viewport_resize: bool = true
-## false면 클릭·호버를 받습니다(일시정지·무기 선택 등). HUD는 true로 두세요.
+## false면 클릭·호버를 받습니다(일시정지·무기 획득 등). HUD는 true로 두세요.
 @export var pass_mouse_to_game: bool = true
 
 

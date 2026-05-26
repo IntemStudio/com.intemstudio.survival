@@ -3,6 +3,7 @@ extends Node2D
 const RunConfigScript = preload("res://game/run_config.gd")
 const ArenaWaveDirectorScript = preload("res://game/arena/arena_wave_director.gd")
 const ARENA_TELEPORTER_SCENE := preload("res://game/arena/arena_teleporter.tscn")
+const EQUIPMENT_DROP_SCENE := preload("res://effects/equipment_drop/equipment_drop.tscn")
 const DEFAULT_BALANCE_TABLE := preload("res://game/balance/default_balance_table.tres")
 const DEFAULT_BALANCE_TIMELINE := preload("res://game/balance/default_balance_timeline.tres")
 const RUN_CLEAR_CURVE_MINUTES := 30.0
@@ -11,10 +12,8 @@ const RUN_CLEAR_CURVE_MINUTES := 30.0
 @export var balance_timeline: BalanceTimeline
 @export_range(0.05, 2.0, 0.01, "or_greater") var base_spawn_interval := 0.3
 @export_range(1, 500, 1) var max_alive_mobs := 100
-## true면 인벤 활성 세트 weapon만 Player에 반영(서바이버 레벨업 무기와 분리).
-## F5: use_inventory_loadout=false — 레벨업 3택·_owned_weapons 유지(인벤 weapon 미적용).
-## F5에서 true로 켤 경우 레벨업 무기와 인벤 weapon 병행 정책을 Architecture_Inventory §3-잔여에서 확정할 것.
-@export var use_inventory_loadout := false
+## true면 획득 보상이 인벤토리에 자동 배치되고 활성 세트 weapon만 Player에 반영됩니다.
+@export var use_inventory_loadout := true
 
 var _elapsed_seconds := 0.0
 var _last_spawn_density := -1.0
@@ -90,7 +89,7 @@ func show_weapon_select(title_key: StringName = &"weapon_select.level_up") -> bo
 	if _weapon_select_menu == null:
 		push_error("Game: WeaponSelectMenu node missing.")
 		return false
-	if not _weapon_select_menu.present_random_choices(title_key, %Player.get_owned_weapons()):
+	if not _weapon_select_menu.present_random_choices(title_key, _get_weapon_choice_owned_weapons()):
 		_consume_pending_weapon_select()
 		return false
 
@@ -103,15 +102,144 @@ func show_weapon_select(title_key: StringName = &"weapon_select.level_up") -> bo
 func on_weapon_chosen(weapon: WeaponData) -> void:
 	if _weapon_select_menu == null:
 		return
+	var acquire_err := _try_acquire_weapon_reward(weapon)
+	if not acquire_err.is_empty():
+		if acquire_err == InventoryService.ERROR_BAG_FULL:
+			_drop_equipment_item(weapon.get_unique_key())
+			_finish_weapon_reward_flow(weapon, false)
+			_show_weapon_reward_error(&"weapon_select.reward_dropped_bag_full")
+			return
+		_show_weapon_reward_error(acquire_err)
+		return
+	_finish_weapon_reward_flow(weapon, true)
+
+
+# 무기 획득 선택을 끝내고 게임 흐름을 재개합니다.
+func _finish_weapon_reward_flow(weapon: WeaponData, acquired: bool) -> void:
 	_weapon_select_menu.on_menu_closed()
 	_weapon_select_menu.hide()
 	get_tree().paused = false
-	%Player.add_weapon.call_deferred(weapon)
+	if acquired and use_inventory_loadout:
+		apply_inventory_loadout_to_player()
+	elif acquired:
+		%Player.add_weapon.call_deferred(weapon)
 
 	_ensure_game_started()
 	_consume_pending_weapon_select()
 	if _arena_enable_teleporter_after_weapon_select:
 		_enable_pending_arena_teleporter()
+
+
+# 무기 획득 UI 필터용 — 인벤토리 안의 무기까지 보유로 봅니다.
+func _get_weapon_choice_owned_weapons() -> Array[WeaponData]:
+	if not use_inventory_loadout:
+		return %Player.get_owned_weapons()
+	var service := _get_inventory_service()
+	if service == null:
+		return %Player.get_owned_weapons()
+	var owned: Array[WeaponData] = []
+	var seen: Dictionary = {}
+	for set_index in EquipSlots.SET_COUNT:
+		for slot_key in EquipSlots.ALL:
+			_append_owned_weapon_id(
+				owned,
+				seen,
+				service,
+				service.loadout.get_set_item_id(set_index, slot_key)
+			)
+	for item_id in service.loadout.bag_ids:
+		_append_owned_weapon_id(owned, seen, service, item_id)
+	return owned
+
+
+func _append_owned_weapon_id(
+	owned: Array[WeaponData],
+	seen: Dictionary,
+	service: InventoryService,
+	item_id: String
+) -> void:
+	if item_id.is_empty():
+		return
+	var weapon := service.registry.resolve_weapon(item_id)
+	if weapon == null:
+		return
+	var key := weapon.get_unique_key()
+	if seen.has(key):
+		return
+	seen[key] = true
+	owned.append(weapon)
+
+
+func _try_acquire_weapon_reward(weapon: WeaponData) -> StringName:
+	if weapon == null:
+		return InventoryService.ERROR_UNKNOWN_ITEM
+	if not use_inventory_loadout:
+		return &""
+	var service := _get_inventory_service()
+	if service == null:
+		push_error("Game: InventoryMenu service missing for weapon reward.")
+		return InventoryService.ERROR_UNKNOWN_ITEM
+	var err := service.acquire_item(weapon.get_unique_key())
+	if err.is_empty():
+		_refresh_inventory_after_reward()
+	return err
+
+
+func try_acquire_dropped_equipment_item(item_id: String) -> StringName:
+	if not use_inventory_loadout:
+		return InventoryService.ERROR_INVALID_SLOT
+	var service := _get_inventory_service()
+	if service == null:
+		return InventoryService.ERROR_UNKNOWN_ITEM
+	var err := service.acquire_item(item_id)
+	if not err.is_empty():
+		return err
+	_refresh_inventory_after_reward()
+	apply_inventory_loadout_to_player()
+	return &""
+
+
+func _drop_equipment_item(item_id: String) -> void:
+	if item_id.is_empty():
+		return
+	var drop := EQUIPMENT_DROP_SCENE.instantiate() as EquipmentDrop
+	if drop == null:
+		push_error("Game: EquipmentDrop scene must instantiate EquipmentDrop.")
+		return
+	add_child(drop)
+	drop.global_position = _get_equipment_drop_position()
+	drop.setup(item_id)
+
+
+func _get_equipment_drop_position() -> Vector2:
+	var direction := Vector2.RIGHT
+	if %Player.has_method("get_last_move_direction"):
+		direction = %Player.get_last_move_direction()
+	if direction.length_squared() < 0.01:
+		direction = Vector2.RIGHT
+	return %Player.global_position + direction.normalized() * 96.0
+
+
+func _get_inventory_service() -> InventoryService:
+	if _inventory_menu == null or not _inventory_menu.has_method("get_service"):
+		return null
+	return _inventory_menu.get_service()
+
+
+func _refresh_inventory_after_reward() -> void:
+	if _inventory_menu == null:
+		return
+	if _inventory_menu.has_method("refresh_all_slots"):
+		_inventory_menu.refresh_all_slots()
+	if _inventory_menu.has_method("persist_loadout_if_enabled"):
+		_inventory_menu.call("persist_loadout_if_enabled")
+
+
+func _show_weapon_reward_error(err: StringName) -> void:
+	if err.is_empty():
+		return
+	if has_node("%BalanceNoticeBanner"):
+		%BalanceNoticeBanner.show_timeline_alert(UiLocale.t(err), 2.5)
 
 
 # F5 씬 UI 노드 — 프리팹 인스턴스 실패 시 null 방지.
@@ -180,7 +308,7 @@ func _enable_arena_teleporter(message: String, duration: float) -> void:
 	%BalanceNoticeBanner.show_timeline_alert(message, duration)
 
 
-# 웨이브 보상 무기 선택이 끝난 뒤 다음 웨이브 시작 장치를 엽니다.
+# 웨이브 보상 무기 획득이 끝난 뒤 다음 웨이브 시작 장치를 엽니다.
 func _queue_arena_teleporter_after_weapon_select(message: String) -> void:
 	_arena_enable_teleporter_after_weapon_select = true
 	_arena_pending_teleporter_message = message

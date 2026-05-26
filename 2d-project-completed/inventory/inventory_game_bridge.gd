@@ -67,7 +67,8 @@ static func swap_equip_sets(game: Node, inventory_menu: CanvasLayer) -> void:
 	if menu_service == null:
 		return
 	menu_service.swap_equip_sets()
-	InventorySave.save_state(menu_service.loadout)
+	if inventory_menu.has_method("persist_loadout_if_enabled"):
+		inventory_menu.call("persist_loadout_if_enabled")
 	if game.has_method("apply_inventory_loadout_to_player"):
 		game.call("apply_inventory_loadout_to_player")
 	if inventory_menu.visible:

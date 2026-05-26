@@ -43,6 +43,26 @@ func set_active_combat_set(index: int) -> void:
 	loadout.set_active_set_index(index)
 
 
+# 획득 아이템을 규칙에 따라 장착 슬롯 또는 가방에 자동 배치합니다.
+func acquire_item(item_id: String) -> StringName:
+	var key := item_id.strip_edges()
+	if key.is_empty() or not registry.has_item(key):
+		return ERROR_UNKNOWN_ITEM
+	if loadout.contains_item_id(key):
+		return &""
+
+	var slot_key := _resolve_equip_slot_for_item(key)
+	if slot_key.is_empty():
+		return ERROR_INVALID_SLOT
+	if slot_key == EquipSlots.WEAPON:
+		return _acquire_weapon_item(key)
+	if slot_key == EquipSlots.OFFHAND:
+		return _acquire_offhand_item(key)
+	if _is_shared_armor_slot(slot_key):
+		return _acquire_shared_armor_item(key, slot_key)
+	return _place_item_in_bag(key)
+
+
 # 드롭 가능 여부(UI 하이라이트용) — 상태 변경 없음.
 func can_drop(source: Dictionary, target: Dictionary) -> bool:
 	return try_drop(source, target, true).is_empty()
@@ -284,6 +304,72 @@ func _combat_weapon_and_offhand_occupied(set_index: int) -> bool:
 		not loadout.get_set_item_id(set_index, EquipSlots.WEAPON).is_empty()
 		and not loadout.get_set_item_id(set_index, EquipSlots.OFFHAND).is_empty()
 	)
+
+
+func _acquire_weapon_item(item_id: String) -> StringName:
+	if not registry.can_item_occupy_slot(item_id, EquipSlots.WEAPON):
+		return ERROR_INVALID_SLOT
+	for set_index in _ordered_combat_set_indices():
+		if not loadout.get_set_item_id(set_index, EquipSlots.WEAPON).is_empty():
+			continue
+		var err := _equip_acquired_weapon_to_empty_set(item_id, set_index)
+		if err.is_empty():
+			return &""
+	return _place_item_in_bag(item_id)
+
+
+func _equip_acquired_weapon_to_empty_set(item_id: String, set_index: int) -> StringName:
+	if registry.is_two_handed_weapon(item_id):
+		var offhand_id := loadout.get_set_item_id(set_index, EquipSlots.OFFHAND)
+		if not offhand_id.is_empty():
+			var bag_index := loadout.find_first_empty_bag_index()
+			if bag_index < 0:
+				return ERROR_BAG_FULL
+			loadout.set_bag_item_id(bag_index, offhand_id)
+			loadout.set_set_item_id(set_index, EquipSlots.OFFHAND, "")
+	loadout.set_set_item_id(set_index, EquipSlots.WEAPON, item_id)
+	return &""
+
+
+func _acquire_offhand_item(item_id: String) -> StringName:
+	if not registry.can_item_occupy_slot(item_id, EquipSlots.OFFHAND):
+		return ERROR_INVALID_SLOT
+	for set_index in _ordered_combat_set_indices():
+		if not loadout.get_set_item_id(set_index, EquipSlots.OFFHAND).is_empty():
+			continue
+		var weapon_id := loadout.get_set_item_id(set_index, EquipSlots.WEAPON)
+		if registry.is_offhand_blocked_by_weapon(weapon_id):
+			continue
+		loadout.set_set_item_id(set_index, EquipSlots.OFFHAND, item_id)
+		return &""
+	return _place_item_in_bag(item_id)
+
+
+func _acquire_shared_armor_item(item_id: String, slot_key: StringName) -> StringName:
+	if not registry.can_item_occupy_slot(item_id, slot_key):
+		return ERROR_INVALID_SLOT
+	var set_index := EquipSlots.SHARED_ARMOR_SET_INDEX
+	if loadout.get_set_item_id(set_index, slot_key).is_empty():
+		loadout.set_set_item_id(set_index, slot_key, item_id)
+		return &""
+	return _place_item_in_bag(item_id)
+
+
+func _place_item_in_bag(item_id: String) -> StringName:
+	var bag_index := loadout.find_first_empty_bag_index()
+	if bag_index < 0:
+		return ERROR_BAG_FULL
+	loadout.set_bag_item_id(bag_index, item_id)
+	return &""
+
+
+func _ordered_combat_set_indices() -> Array[int]:
+	var active := clampi(loadout.active_set_index, 0, EquipSlots.SET_COUNT - 1)
+	var indices: Array[int] = [active]
+	for set_index in EquipSlots.SET_COUNT:
+		if set_index != active:
+			indices.append(set_index)
+	return indices
 
 
 func _weapon_id_after_swap(
