@@ -1,6 +1,6 @@
 # Architecture — Game Loop & Balance (런 루프·밸런스)
 
-**진입:** [`AGENTS.md`](../../AGENTS.md) · 플레이 규칙: [`Wiki/GameRules.md`](../Wiki/GameRules.md), [`Wiki/Mobs.md`](../Wiki/Mobs.md), [`Wiki/Progression.md`](../Wiki/Progression.md) · 계획 기록: [`Plan/Plan_Balance_VS_Curve_Alignment.md`](../Plan/Plan_Balance_VS_Curve_Alignment.md)
+**진입:** [`AGENTS.md`](../../AGENTS.md) · 플레이 규칙: [`Wiki/GameRules.md`](../Wiki/GameRules.md), [`Wiki/Mobs.md`](../Wiki/Mobs.md), [`Wiki/Progression.md`](../Wiki/Progression.md) · 버프 구조: [`Architecture_Buffs.md`](Architecture_Buffs.md) · 계획 기록: [`Plan/Plan_Balance_VS_Curve_Alignment.md`](../Plan/Plan_Balance_VS_Curve_Alignment.md)
 
 메인 런의 시작, 진행, 스폰, 밸런스 곡선, 아레나 웨이브, 보상, 종료 흐름을 정리한다. 출시 일정과 플레이테스트 TODO는 `Docs/Plan/`과 `BACKLOG.md`에서 관리한다.
 
@@ -24,6 +24,7 @@ F5 실행은 `game_lobby.tscn`에서 시작하고, 로비에서 서바이벌 또
 | 서바이벌 스폰 밀도 | 현재 `BalancePhase.spawn_density`와 일시 density event를 합쳐 Timer 간격 조정 |
 | 서바이벌 스폰 구성 | `MobSpawnSelector`가 현재 phase의 비율로 몹 프리팹 선택 |
 | 아레나 웨이브 | `ArenaWaveDirector`가 웨이브 번호, 예정 스폰, 보스 웨이브, 완료 조건 관리 |
+| 웨이브 버프 이벤트 | 아레나 wave start/complete를 플레이어 런타임 버프 트리거와 웨이브 만료로 전달 |
 | 몹 생성 | `%MapArena`에서 위치를 받고 `ScenePool`로 몹 acquire, `initialize_spawn_health()` 호출 |
 | 타임라인 이벤트 | 서바이벌에서만 표 축 분 기준 1회 발동, 배너, 밀도 배수, 강제 스폰 처리 |
 | 보상 계산 | `KillRewards`가 `mob_kind`와 `loot_multiplier`로 XP·골드 계산, 아레나는 처치 XP를 0으로 보정 |
@@ -60,6 +61,7 @@ F5 실행은 `game_lobby.tscn`에서 시작하고, 로비에서 서바이벌 또
 | `game/rewards/gold_chest.gd` | 웨이브 사이 월드 상자와 가격 표시, 구매 UI 요청 |
 | `ui/chest_purchase_menu.gd` | 상자 구매 확인과 실패 사유 표시 |
 | `game/weapon_damage_tracker.gd` | 런 종료 표시용 weapon 피해 누적 |
+| `buff/buff_trigger_router.gd` | 아레나 웨이브 시작 효과와 웨이브 지속 버프 만료 연결 |
 
 관계는 아래처럼 유지한다.
 
@@ -92,7 +94,7 @@ GameLobby
 7. 서바이벌은 매 프레임 `BalanceTable.get_phase_for_time()`로 현재 phase를 얻고, `spawn_density` 변화가 있으면 Timer wait time을 조정한다.
 8. 서바이벌은 `BalanceTimeline` 이벤트가 표 축 시각에 도달하면 한 번만 발동한다. 배너를 띄우고, density event를 적용하거나 강제 몹을 스폰한다.
 9. 아레나는 시작 무기 획득 후 맵 중앙 `ArenaTeleporter`를 활성화하고, 플레이어가 `E`로 상호작용할 때까지 웨이브 스폰을 대기한다.
-10. 텔레포터가 활성화되면 상호작용을 잠그고, `ArenaWaveDirector.begin_next_wave()`로 웨이브 큐를 만든 뒤 Timer timeout마다 큐의 다음 몹을 `spawn_mob(forced_scene, true, hp_multiplier)`로 스폰한다.
+10. 텔레포터가 활성화되면 상호작용을 잠그고, `ArenaWaveDirector.begin_next_wave()`로 웨이브 큐를 만든 뒤 wave start 버프 트리거를 처리하고 Timer timeout마다 큐의 다음 몹을 `spawn_mob(forced_scene, true, hp_multiplier)`로 스폰한다.
 11. 아레나는 예정 스폰이 비고 살아 있는 몹이 0이면 현재 웨이브를 완료하고 무기 획득 UI를 연다. 무기 획득이 끝나면 중앙 주변에 선택형 골드 상자를 배치하고 텔레포터를 다시 활성화한다.
 12. 다음 웨이브는 플레이어가 텔레포터에서 다시 `E`로 상호작용할 때만 시작된다. 이때 구매하지 않은 상자는 정리된다.
 13. `spawn_mob()`은 `%MapArena.get_random_spawn_position(%Player.global_position)`로 위치를 받은 뒤 `ScenePool`에서 몹을 가져오고 `initialize_spawn_health()`를 호출한다.
@@ -121,6 +123,7 @@ GameLobby
 | 웨이브 사이 상자는 다음 텔레포터 활성화 중에만 남아 있고, 다음 웨이브 시작 시 정리한다. | 선택형 구매 보상이 다음 전투에 섞이지 않게 한다. |
 | 아레나 다음 웨이브는 웨이브 완료 직후 자동 시작하지 않는다. | 정비·위치 이동 시간을 플레이어가 직접 조절할 수 있어야 한다. |
 | 아레나 보상 UI가 열려 있을 때는 완료 판정을 보류한다. | 웨이브 보상 중 다음 웨이브 시작 흐름이 pause 상태를 침범하지 않게 한다. |
+| 아레나 wave complete는 웨이브 지속 버프 만료 이벤트도 담당한다. | 웨이브 수명 효과가 시간 기반 버프와 섞이지 않게 한다. |
 | 스폰 Timer는 `spawn_density`의 역수로 wait time을 조정한다. | 밀도 상승이 즉시 스폰 빈도 증가로 이어진다. |
 | `BalanceTable`의 시간 축은 실시간 초가 아니라 `balance_pace_multiplier`가 적용된 표 축 분이다. | 압축 런에서도 이벤트와 30분 클리어가 같은 곡선 위치에 맞아야 한다. |
 | `BalanceTimelineEvent`는 event id 또는 위치 key로 한 번만 발동한다. | 11분/25분 이벤트가 프레임마다 반복되지 않게 한다. |
@@ -141,6 +144,7 @@ GameLobby
 | pause/menu 변경 | 무기 획득, 일시정지, 인벤토리, 게임오버가 서로 pause 상태를 덮어쓰지 않는지 |
 | 압축 런 변경 | `balance_pace_multiplier`, 30분 표 축 클리어, 이벤트 시각, QA 체크리스트 |
 | 아레나 웨이브 변경 | `ArenaWaveDirector` 큐, 보스 웨이브 안내, HP 배율, 웨이브 완료 조건, F5 아레나 기준선 |
+| 웨이브 버프 변경 | `BuffTriggerRouter`, `Player.on_wave_completed_for_buffs()`, 보상 UI pause 중 지속시간 정지 |
 | 로비 모드 선택 변경 | `RunConfig`, `game_lobby.tscn` 버튼, `game.gd` 모드 분기, 재시작 시 모드 유지 여부 |
 
 최소 검증은 F5에서 로비→서바이벌 시작→무기 획득→자동 장착→스폰→레벨업→패배 또는 30분 클리어를 확인하고, 9·11·25·28분 이벤트가 표 축 기준으로 한 번씩만 발동하는지 확인하는 것이다. 아레나는 F5에서 로비→아레나 시작→1웨이브 시작→5/10 보스 웨이브→10웨이브 클리어까지 확인한다.

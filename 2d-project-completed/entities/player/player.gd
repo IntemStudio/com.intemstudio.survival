@@ -36,11 +36,13 @@ var _loadout_stat_modifiers: Dictionary = {}
 var _loadout_registry: ItemRegistry
 var _loadout_state: PlayerLoadoutState
 var _grant_orbital_nodes: Array = []
-var _loadout_dash_haste_remaining := 0.0
+var _buff_controller := BuffController.new()
+var _buff_stat_modifiers: Dictionary = {}
 
 
 func _ready() -> void:
 	add_to_group(UiLocale.GROUP_REFRESH)
+	_buff_controller.buffs_changed.connect(_on_buffs_changed)
 	_hit_flash_target = %HappyBoo.get_node("Colorizer") as CanvasItem
 	_hit_flash_base_modulate = _hit_flash_target.modulate
 	_sync_physics_layers()
@@ -251,8 +253,6 @@ func clear_weapons() -> void:
 
 # loadout 장비 stat_modifiers를 캐시하고 이동·무기 배율을 갱신합니다.
 func refresh_stats_from_loadout(registry: ItemRegistry, loadout: PlayerLoadoutState) -> void:
-	if not _uses_inventory_loadout_for_movement():
-		return
 	_loadout_stats_active = true
 	if registry == null or loadout == null:
 		_loadout_stat_modifiers = {}
@@ -276,7 +276,6 @@ func clear_loadout_stats() -> void:
 	_loadout_stat_modifiers = {}
 	_loadout_registry = null
 	_loadout_state = null
-	_loadout_dash_haste_remaining = 0.0
 	_clear_loadout_grant_passives()
 	_sync_health_bar_max()
 	_refresh_weapon_combat_modifiers()
@@ -313,11 +312,10 @@ func _resolve_incoming_damage(raw_amount: int) -> int:
 
 
 func get_move_speed() -> float:
-	if not _loadout_stats_active:
-		return BASE_MOVE_SPEED
-	var speed := BASE_MOVE_SPEED * LoadoutStatApply.compute_move_speed_mult(_loadout_stat_modifiers)
-	if _loadout_dash_haste_remaining > 0.0:
-		speed *= LoadoutGrantPassive.DASH_HASTE_MULT
+	var speed := BASE_MOVE_SPEED
+	if _loadout_stats_active:
+		speed *= LoadoutStatApply.compute_move_speed_mult(_loadout_stat_modifiers)
+	speed *= LoadoutStatApply.compute_move_speed_mult(_buff_stat_modifiers)
 	return speed
 
 
@@ -325,9 +323,22 @@ func get_last_move_direction() -> Vector2:
 	return _last_move_direction
 
 
-# grant_on_dash: haste — 대시 후 잠시 이동 속도 상승.
+# grant_on_dash: haste — 대시 후 버프 시스템으로 잠시 이동 속도 상승.
 func apply_loadout_dash_haste() -> void:
-	_loadout_dash_haste_remaining = LoadoutGrantPassive.DASH_HASTE_DURATION
+	BuffTriggerRouter.apply_loadout_dash_haste(self)
+
+
+# 외부 트리거가 플레이어에게 런타임 버프를 부여합니다.
+func apply_buff(buff_data: BuffData, source_id: String = "", stacks: int = 1) -> void:
+	_buff_controller.add_buff(buff_data, source_id, stacks)
+
+
+func on_wave_completed_for_buffs() -> void:
+	_buff_controller.on_wave_completed()
+
+
+func get_active_buff_summaries() -> Array[Dictionary]:
+	return _buff_controller.get_active_buff_summaries()
 
 
 func _refresh_loadout_grant_passives() -> void:
@@ -358,9 +369,10 @@ func roll_weapon_damage(weapon: WeaponData) -> int:
 	if weapon == null:
 		return 1
 	var rolled := weapon.roll_damage()
-	if not _loadout_stats_active:
-		return rolled
-	var mult := LoadoutStatApply.compute_damage_mult(_loadout_stat_modifiers, weapon, level)
+	var mult := 1.0
+	if _loadout_stats_active:
+		mult *= LoadoutStatApply.compute_damage_mult(_loadout_stat_modifiers, weapon, level)
+	mult *= LoadoutStatApply.compute_damage_mult(_buff_stat_modifiers, weapon, level)
 	return maxi(1, roundi(float(rolled) * mult))
 
 
@@ -369,9 +381,10 @@ func get_effective_attacks_per_second(weapon: WeaponData) -> float:
 	if weapon == null:
 		return 1.0
 	var base_aps := weapon.attacks_per_second
-	if not _loadout_stats_active:
-		return base_aps
-	return base_aps * LoadoutStatApply.compute_attack_speed_mult(_loadout_stat_modifiers, weapon)
+	var mult := LoadoutStatApply.compute_attack_speed_mult(_buff_stat_modifiers, weapon)
+	if _loadout_stats_active:
+		mult *= LoadoutStatApply.compute_attack_speed_mult(_loadout_stat_modifiers, weapon)
+	return base_aps * mult
 
 
 func _refresh_weapon_combat_modifiers() -> void:
@@ -379,6 +392,11 @@ func _refresh_weapon_combat_modifiers() -> void:
 		if gun.has_method(&"refresh_loadout_combat_modifiers"):
 			gun.call("refresh_loadout_combat_modifiers")
 	refresh_primary_weapon_range_ring()
+
+
+func _on_buffs_changed() -> void:
+	_buff_stat_modifiers = _buff_controller.get_stat_modifiers()
+	_refresh_weapon_combat_modifiers()
 
 
 func add_weapon(weapon_data: WeaponData) -> void:
@@ -592,13 +610,13 @@ func _on_pickup_range_area_entered(area: Area2D) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	_tick_active_buffs(delta)
 	var speed := get_move_speed()
 	var direction := _get_move_direction()
 	if direction.length_squared() > 0.01:
 		_last_move_direction = direction.normalized()
 
 	_dash_cooldown_remaining = maxf(_dash_cooldown_remaining - delta, 0.0)
-	_loadout_dash_haste_remaining = maxf(_loadout_dash_haste_remaining - delta, 0.0)
 	_update_dash_cooldown_gauge()
 
 	if _dash_time_remaining > 0.0:
@@ -637,6 +655,12 @@ func _physics_process(delta: float) -> void:
 		)
 		_damage_float_accumulator = 0.0
 		_damage_float_timer = DAMAGE_FLOAT_INTERVAL
+
+
+func _tick_active_buffs(delta: float) -> void:
+	if get_tree().paused:
+		return
+	_buff_controller.tick_seconds(delta)
 
 
 func _try_emit_health_depleted() -> void:

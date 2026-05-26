@@ -46,6 +46,9 @@ func refresh_locale() -> void:
 func refresh_interaction_overlap() -> void:
 	_player_in_range = false
 	_interaction_player = null
+	if not monitoring:
+		_sync_interaction_prompt()
+		return
 	for body in get_overlapping_bodies():
 		if _is_interaction_player(body):
 			_player_in_range = true

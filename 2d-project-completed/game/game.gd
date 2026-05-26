@@ -671,12 +671,15 @@ func _on_arena_teleporter_activated() -> void:
 
 
 func _on_arena_wave_started(_wave_number: int, title: String, _is_boss_wave: bool) -> void:
+	BuffTriggerRouter.apply_arena_wave_start(%Player, _wave_number)
 	_update_time_hud()
 	%BalanceNoticeBanner.show_timeline_alert(title, 3.0)
 
 
 func _on_arena_wave_completed(wave_number: int) -> void:
 	$Timer.stop()
+	if %Player.has_method(&"on_wave_completed_for_buffs"):
+		%Player.call("on_wave_completed_for_buffs")
 	_pending_arena_chest_reward_wave = wave_number
 	var next_wave_message := "Wave %d 클리어 · 텔레포터로 다음 웨이브 시작" % wave_number
 	_queue_arena_teleporter_after_weapon_select(next_wave_message)
@@ -686,6 +689,8 @@ func _on_arena_wave_completed(wave_number: int) -> void:
 
 
 func _on_arena_completed(_wave_number: int) -> void:
+	if %Player.has_method(&"on_wave_completed_for_buffs"):
+		%Player.call("on_wave_completed_for_buffs")
 	_hide_chest_purchase_menu()
 	_clear_arena_gold_chests()
 	_trigger_stage_clear()

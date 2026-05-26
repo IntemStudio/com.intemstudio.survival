@@ -295,8 +295,8 @@ func _get_attack_range() -> float:
 func _effect_ko() -> String:
 	if effect.is_empty():
 		return ""
-	if effect == "On combat start, grants En Garde.":
-		return "효과: 전투 시작 시 En Garde 부여"
+	if effect == "On wave start, grants En Garde: +20% attack speed for 8 seconds.":
+		return "효과: 웨이브 시작 시 En Garde 부여 (8초 동안 공격 속도 +20%)"
 	var text := effect
 	text = text.replace("Primary attack deals ", "")
 	text = text.replace("Primary attacks deal ", "")

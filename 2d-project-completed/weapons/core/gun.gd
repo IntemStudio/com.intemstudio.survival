@@ -7,13 +7,14 @@ const MELEE_PROJECTILE_SCENE := preload("res://weapons/melee/melee_projectile.ts
 const MAGIC_BOLT_SCENE := preload("res://weapons/magic/magic_bolt.tscn")
 const KING_BIBLE_ORB_SCENE := preload("res://weapons/magic/king_bible_orb.tscn")
 const THROWING_PROJECTILE_SCENE := preload("res://weapons/throwing/throwing_projectile.tscn")
+const KING_BIBLE_ORB_COUNT := 2
 
 @onready var _shoot_timer: Timer = $Timer
 @onready var _weapon_sprite: Sprite2D = $WeaponPivot/WeaponSprite
 @onready var _shooting_point: Marker2D = $WeaponPivot/WeaponSprite/ShootingPoint
 var _current_target: Node2D = null
 var _burst_shots_remaining := 0
-var _magic_companion: Node = null
+var _magic_companions: Array[Node] = []
 
 
 func _ready() -> void:
@@ -328,9 +329,10 @@ func _spawn_from_pool(game: Node, scene: PackedScene) -> Node:
 
 
 func _clear_magic_companion() -> void:
-	if is_instance_valid(_magic_companion):
-		PoolUtil.release_node(_magic_companion)
-	_magic_companion = null
+	for companion in _magic_companions:
+		if is_instance_valid(companion):
+			PoolUtil.release_node(companion)
+	_magic_companions.clear()
 
 
 func _spawn_orbit_companion() -> void:
@@ -339,9 +341,19 @@ func _spawn_orbit_companion() -> void:
 	if not player or not game or not weapon:
 		return
 
-	var orb: Area2D = _spawn_from_pool(game, KING_BIBLE_ORB_SCENE) as Area2D
-	orb.setup(weapon, player)
-	_magic_companion = orb
+	var count := _get_orbit_companion_count()
+	var base_angle := randf() * TAU
+	for index in count:
+		var orb: Area2D = _spawn_from_pool(game, KING_BIBLE_ORB_SCENE) as Area2D
+		var angle := base_angle + TAU * float(index) / float(count)
+		orb.setup(weapon, player, angle)
+		_magic_companions.append(orb)
+
+
+func _get_orbit_companion_count() -> int:
+	if weapon and weapon.get_unique_key() == "king_bible":
+		return KING_BIBLE_ORB_COUNT
+	return 1
 
 
 func _shoot_magic() -> void:

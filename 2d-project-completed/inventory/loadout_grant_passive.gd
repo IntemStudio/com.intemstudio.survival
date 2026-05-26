@@ -6,8 +6,6 @@ extends RefCounted
 const KING_BIBLE_ORB_SCENE := preload("res://weapons/magic/king_bible_orb.tscn")
 const THROWING_PROJECTILE_SCENE := preload("res://weapons/throwing/throwing_projectile.tscn")
 
-const DASH_HASTE_MULT := 1.25
-const DASH_HASTE_DURATION := 2.0
 const DASH_DART_COUNT := 3
 const DASH_DART_SPREAD_DEG := 22.0
 

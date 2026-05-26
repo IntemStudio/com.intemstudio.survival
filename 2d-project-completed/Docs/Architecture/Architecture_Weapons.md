@@ -1,6 +1,6 @@
 # Architecture — Weapons (무기)
 
-**진입:** [`AGENTS.md`](../../AGENTS.md) · 플레이 규칙: [`Wiki/Weapons.md`](../Wiki/Weapons.md), [`Wiki/Projectiles.md`](../Wiki/Projectiles.md), [`Wiki/Combat.md`](../Wiki/Combat.md) · 발사체 구조: [`Architecture_Projectiles.md`](Architecture_Projectiles.md) · 인벤 연동: [`Architecture_Inventory.md`](Architecture_Inventory.md)
+**진입:** [`AGENTS.md`](../../AGENTS.md) · 플레이 규칙: [`Wiki/Weapons.md`](../Wiki/Weapons.md), [`Wiki/Projectiles.md`](../Wiki/Projectiles.md), [`Wiki/Combat.md`](../Wiki/Combat.md) · 발사체 구조: [`Architecture_Projectiles.md`](Architecture_Projectiles.md) · 버프 구조: [`Architecture_Buffs.md`](Architecture_Buffs.md) · 인벤 연동: [`Architecture_Inventory.md`](Architecture_Inventory.md)
 
 무기 시스템의 데이터, 장착, 발사 트리거, 피해 기록 흐름을 정리한다. `Gun.shoot()` 이후의 발사체 이동·충돌·풀링 세부 구조는 `Architecture_Projectiles.md`에서 관리한다. 무기별 데모 선정, 성장 기획, 아이콘 정책은 `Docs/Wiki/Weapons.md`와 `BACKLOG.md`에서 관리한다.
 
@@ -23,6 +23,7 @@
 | 피해 전달 | 발사체·장판·궤도 스크립트가 weapon 귀속 피해를 적용하도록 연결 |
 | 피해 통계 | `WeaponDamageTracker`가 `WeaponData.get_unique_key()` 기준으로 누적 피해 표시 |
 | 장비 스탯 연동 | 장착된 loadout 장비의 피해·APS 배율만 `Player` 계산 경로에서 반영 |
+| 무기 조건부 버프 | wave start 같은 런 이벤트에서 `BuffTriggerRouter`가 weapon id를 보고 런타임 버프 부여 |
 
 ### Out of Scope
 
@@ -55,6 +56,7 @@
 | `weapons/area/area_damage_zone.gd` | 원형/사각 영역 피해, poison 적용, 짧은 lifetime |
 | `entities/mob/mob.gd` | weapon 귀속 피해 수신, 상태이상 적용, 피해 통계 등록 |
 | `game/weapon_damage_tracker.gd` | weapon key별 누적 피해와 표시 행 생성 |
+| `buff/buff_trigger_router.gd` | `rapier`의 wave start `en_garde` 같은 무기 조건부 버프 연결 |
 
 관계는 아래처럼 유지한다.
 
@@ -122,6 +124,7 @@ WeaponSelectMenu
 | 새 projectile movement 추가 | 이동 스크립트, 사거리 종료, 관통/왕복/유도 규칙, 환경 충돌 처리, 테스트 아레나 옵션/스냅샷 |
 | 피해 공식 변경 | `Player.roll_weapon_damage()`, `LoadoutStatApply`, 독/장판/궤도 피해가 장착 장비만 같은 규칙으로 쓰는지 |
 | 자동 공격 변경 | `Gun.refresh_auto_attack()`, 궤도 무기, HUD 라벨, 수동 `attack` 액션과 timer 충돌 여부 |
+| 무기 조건부 버프 변경 | `WeaponData.effect` 표시 문구, `BuffTriggerRouter`, `BuffCatalog`, APS 타이머 갱신 |
 | 무기 획득 변경 | 인벤 자동 배치, 활성/비활성 weapon 슬롯, 가방 가득 참, `Player.add_weapon()` 직접 호출 제거 |
 | 피해 통계 변경 | `WeaponDamageTracker`, `Mob._register_weapon_damage()`, 게임오버·일시정지 UI |
 | 풀링 대상 변경 | `ScenePool`, `PoolUtil.release_node()`, `pool_reset()`, `pool_on_acquire()` |

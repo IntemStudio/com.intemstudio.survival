@@ -1,6 +1,6 @@
 # Architecture — Inventory (인벤토리·장비)
 
-**진입:** [`AGENTS.md`](../../AGENTS.md) · 플레이 규칙: [`Wiki/Items_Inventory.md`](../Wiki/Items_Inventory.md) · UI 스케일: [`AGENTS_Display_UI.md`](../Agents/AGENTS_Display_UI.md)
+**진입:** [`AGENTS.md`](../../AGENTS.md) · 플레이 규칙: [`Wiki/Items_Inventory.md`](../Wiki/Items_Inventory.md) · 버프 구조: [`Architecture_Buffs.md`](Architecture_Buffs.md) · UI 스케일: [`AGENTS_Display_UI.md`](../Agents/AGENTS_Display_UI.md)
 
 인벤토리·장비 시스템의 코드 구조와 변경 시 지켜야 할 경계를 정리한다. Phase 이력, PR 순서, 미구현 선택지는 이 문서가 아니라 [`BACKLOG.md`](../../BACKLOG.md)와 `Docs/Plan/`에서 관리한다.
 
@@ -23,6 +23,7 @@
 | 런 수명 | 새 런 시작 시 상태 생성, 런 종료 시 가방·장비 세트·상자 보상 초기화 |
 | UI 연동 | `InventoryService`를 통해 드래그, 우클릭, 더블클릭, 세트 전환, 왼쪽 Shift+좌클릭 버리기를 상태 변경으로 반영 |
 | 전투 연동 | 장착된 활성 세트 weapon/offhand와 공유 방어구만 현재 런의 플레이어에 적용 |
+| 조건부 장비 효과 | `grant_on_dash` 같은 태그를 런타임 버프 또는 발사체 부여로 연결 |
 
 ### Out of Scope
 
@@ -51,7 +52,7 @@
 | `inventory/inventory_combat_bridge.gd` | 장착된 활성 weapon과 장비 스탯을 `Player`에 적용 |
 | `inventory/inventory_game_bridge.gd` | I/Tab/RMB 입력, 메뉴 열기/닫기, HUD 전투 세트 표시 연결 |
 | `inventory/loadout_stat_apply.gd` | 이동·피해·공격속도·방어·체력 스탯을 플레이어 수치로 변환 |
-| `inventory/loadout_grant_passive.gd` | 장착 장비 grant 태그로 궤도, dash haste, dash darts, offhand 비주얼 적용 |
+| `inventory/loadout_grant_passive.gd` | 장착 장비 grant 태그로 궤도, dash haste 버프, dash darts, offhand 비주얼 적용 |
 | `ui/inventory/inventory_menu.gd` | 4칸 전투 슬롯, 공유 방어구, 가방 UI, `InventoryService` 호출, 버린 장비 월드 드롭 위임 |
 | `ui/inventory/inventory_slot.gd` | 슬롯 1칸 표시·드래그·입력 위젯, 왼쪽 Shift 상태 추적 |
 | `game/rewards/gold_chest.gd` | 웨이브 사이 월드 상자, 가격 라벨, 구매 UI 요청 |
@@ -90,7 +91,7 @@ Game / TestArena
 10. 인벤토리에서 왼쪽 Shift+좌클릭으로 가방 또는 장착 슬롯 장비를 버리면 `Game.can_drop_equipment_item()`을 먼저 확인한 뒤 슬롯을 비우고 `EquipmentDrop`을 플레이어 앞에 생성한다. 생성 실패 시 같은 슬롯에 원래 `item_id`를 복원한다.
 11. weapon/offhand는 `active_set_index` 세트에 장착되고, 방어구·악세는 `sets[0]`에 장착된다.
 12. Tab·닫힌 RMB·비활성 전투 슬롯 좌클릭은 활성 세트를 바꾸고 HUD 갱신, 전투 재적용을 수행한다.
-13. `InventoryCombatBridge.apply_loadout_to_player()`가 장착된 활성 세트 weapon/offhand와 공유 방어구의 스탯, grant 패시브, offhand 비주얼만 플레이어에 적용한다.
+13. `InventoryCombatBridge.apply_loadout_to_player()`가 장착된 활성 세트 weapon/offhand와 공유 방어구의 스탯, grant 패시브, offhand 비주얼만 플레이어에 적용한다. `grant_on_dash: haste`처럼 시간이 있는 효과는 `BuffTriggerRouter`를 통해 `Player`의 런타임 버프로 부여한다.
 14. 클리어, 패배, 로비 복귀, 새 런 시작 시 런 인벤토리 상태를 영구 저장하지 않고 폐기한다.
 
 ### Editor / Data
@@ -134,7 +135,7 @@ Game / TestArena
 | weapon/offhand 정책 변경 | 양손 처리, offhand 반환 실패, 활성 세트 전환, HUD, F5 회귀 |
 | 장비 획득 배치 변경 | 활성/비활성 weapon·offhand 빈 슬롯 우선순위, 공유 방어구 빈 슬롯, 가방 가득 참, `EquipmentDrop` 상호작용 획득 처리 |
 | 인벤 UI 변경 | 4칸 weapon/offhand 동시 표시, 공유 방어구, RMB 해제와 닫힌 RMB 스왑 충돌 여부, 왼쪽 Shift+좌클릭 버리기와 월드 드롭 복원 |
-| 전투 적용 변경 | 장착 장비만 합산하는지, 가방/비활성 장비 제외, `apply_inventory_loadout_to_player()`, `refresh_stats_from_loadout()`, `clear_loadout_stats()` 호출 순서 |
+| 전투 적용 변경 | 장착 장비만 합산하는지, 가방/비활성 장비 제외, `apply_inventory_loadout_to_player()`, `refresh_stats_from_loadout()`, `clear_loadout_stats()` 호출 순서, 런타임 버프와 중복 적용 여부 |
 | 상자 보상 변경 | 골드 차감/환불, 부위 필터, 등급 확률, 중복 제외, 가방 가득 참 처리 |
 | 런 초기화 변경 | 새 런, 클리어, 패배, 로비 복귀에서 장비 상태와 골드가 저장되지 않는지 확인 |
 

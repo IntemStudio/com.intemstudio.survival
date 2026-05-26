@@ -39,6 +39,7 @@
 - [`Architecture/Architecture_Input.md`](Architecture/Architecture_Input.md)
 - [`Architecture/Architecture_Weapons.md`](Architecture/Architecture_Weapons.md)
 - [`Architecture/Architecture_Projectiles.md`](Architecture/Architecture_Projectiles.md)
+- [`Architecture/Architecture_Buffs.md`](Architecture/Architecture_Buffs.md)
 - [`Architecture/Architecture_GameLoop_Balance.md`](Architecture/Architecture_GameLoop_Balance.md)
 - [`Architecture/Architecture_Mobs.md`](Architecture/Architecture_Mobs.md)
 - [`Agents/README.md`](Agents/README.md)
