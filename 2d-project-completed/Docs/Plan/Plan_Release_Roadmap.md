@@ -187,3 +187,4 @@
 | 날짜 | 결정 | 이유 | 영향 |
 |------|------|------|------|
 | 2026-05-25 | 루트 `AGENTS.md`, `BACKLOG.md` 유지 | 프로젝트 진입점과 살아 있는 백로그 접근성을 유지 | 출시 로드맵은 `Docs/Plan/Plan_Release_Roadmap.md`로 추가 |
+| 2026-05-28 | D01: 신규 무기+풀 축소 / modifier 웨이브 6·9 | 2주차 일정·GDD 정합 | `Weapons.md`, `GameRules.md`, Week02~03 |

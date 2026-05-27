@@ -1,72 +1,126 @@
 # Current Week
 
 **역할:** 이번 주에 실제로 작업 중인 내용을 짧게 추적합니다.  
-**상위 계획:** [`README.md`](README.md) · 주차 계획: [`Week02_Demo_Core.md`](Week02_Demo_Core.md)
+**상위 계획:** [`README.md`](README.md) · 주차: [`Week02_Demo_Core.md`](Week02_Demo_Core.md) · GDD: [`../../Design/GDD.md`](../../Design/GDD.md)
 
-이 문서는 자주 바뀌는 작업판입니다. 주차 계획서(`WeekNN_*.md`)는 목표와 완료 기준을 고정하고, 이 문서는 오늘/이번 주 진행 상태, 막힌 점, 다음 액션을 기록합니다. 주가 끝나면 핵심 결과만 해당 주차 문서의 `Result`로 옮기고 이 파일은 다음 주 기준으로 초기화합니다.
+주가 끝나면 핵심 결과만 해당 주차 `Result`로 옮기고 이 파일을 초기화합니다.
+
+**마지막 갱신:** 2026-05-28
 
 ---
 
 ## Week
 
-- 주차: 2주차
+- 주차: **2주차**
 - 기준 문서: [`Week02_Demo_Core.md`](Week02_Demo_Core.md)
-- 이번 주 초점: 1주차에서 고정한 아레나 MVP 안에서 무기 성장 체감, 보스/특수몹 고유성, 통계, 상자 튜닝을 플레이 가능한 핵심으로 만든다
+- 이번 주 초점: **F6 QA 완료** → 무기 풀 검증 → F5 아레나 기준선 → 상자 튜닝
 
 ---
 
 ## In Progress
 
-- [ ] 무기 성장 방식 결정: 보유 무기 강화, 기본 스탯 보정, 신규 무기 중심 유지 중 2주차 적용안을 고른다
-- [ ] 데모 무기 풀 10~15종 후보 축소와 F6 대표 movement·피해 통계 검증
-- [ ] W02-03 후속: F6에서 `Special B` 돌진·자폭·사망 burst 수동 확인 후 `Week02` 완료 기준 판정
-- [ ] 게임오버 또는 클리어 화면에 생존 시간, 도달 레벨, 처치 수 중 최소 2개 표시
-- [ ] 골드 상자 가격, 골드 수급, 등급 확률, 골드 부족/가방 가득 참 UX 1차 튜닝
-- [ ] F5 기준 10분 이상 또는 아레나 1~10웨이브 수동 기준선 플레이 기록
+- [ ] **F6 특수몹 QA** — 아래 체크리스트 (W02-03 완료 판정)
+- [ ] 데모 무기 풀 10~15종 + F6 검증 (W02-02)
+- [ ] 골드 상자 가격·수급·등급·실패 UX 1차 (W02-06)
+- [ ] F5 아레나 1~10웨이브 또는 10분+ 기준선 기록 (W02-07)
+- [ ] 아레나 인벤·상자·텔레포터 체감 (W02-10)
 
 ---
 
 ## Done This Week
 
-- [x] 1주차 결과를 `Week01_Demo_ScopeLock.md`의 `Result`로 정리
-- [x] `Current.md`를 2주차 `Demo Core` 실행판으로 초기화
-- [x] 공격 시스템 1차 인프라: `AttackContext`, `AttackFactory`, `AttackServices`, `DamageResolver` (`game/attack/`)
-- [x] `Gun` 스폰 경로를 `AttackFactory`로 위임, `bullet_2d` 등 플레이어 발사체 `DamageResolver` 경유
-- [x] 특수몹 행동 6·4·5 1차 구현: `special_a` 사망 burst, `special_b` 트리거 거리 기반 돌진 + 저체력 자폭 (`mob.gd` export)
-- [x] 돌진 트리거: `charge_trigger_distance`가 근접 정지와 무관하게 동작하도록 수정
-- [x] 문서: [`Architecture_AttackSystem.md`](../../Architecture/Architecture_AttackSystem.md), [`Mobs.md`](../../Wiki/Mobs.md), [`Week02_Demo_Core.md`](Week02_Demo_Core.md) W02-03 문구 갱신
+- [x] **D01** 신규 무기 중심 + 데모 풀 10~15종 — [`Weapons.md`](../../Wiki/Weapons.md)
+- [x] **W02-11** modifier 기획: 웨이브 6 위험 지대, 9 회복 감소 — [`GameRules.md`](../../Wiki/GameRules.md)
+- [x] **W02-08** 3주차 Content Lock Must **5개** 확정 — 아래 «3주차 Handoff»
+- [x] **W02-04** 게임오버/클리어 `RunStatsLabel` (생존·웨이브·Lv·처치)
+- [x] 공격 인프라, `special_a`/`special_b` 1차, `charge_trigger_distance` 수정
+- [x] 1주차·GDD·문서 정렬
+- [x] F6 테스트 아레나 GUI — 몹/무기 탭·튜닝 스냅샷·인벤 착용·탭 바·[`Architecture_TestArena.md`](../../Architecture/Architecture_TestArena.md)
+- [x] F6 무기 GUI — 피해·APS·사거리·발사체 생성 수 SpinBox (`TestArenaWeaponSnapshot` core)
+- [x] F6 특수 A — 사망 burst 지연 링 예고 (`death_burst_warning`, `AttackFactory`)
+- [x] F6 특수 B — 돌진 거리 GUI·`mob_charge_lane` 레인 예고 후 돌진 (`TestArenaMobSnapshot`)
+- [x] fast 몹 시인성 — `mob_speed_trail` (이동 꼬리·먼지, `mob_fast.tscn`) — [`Mobs.md`](../../Wiki/Mobs.md)
+- [x] 상호작용 공통화 — `InteractableArea` (골드 상자·장비 드롭·아레나 텔레포터)
 
 ---
 
-## Decisions / Blockers
+## Decisions (확정)
 
-- 결정: 기본 데모는 아레나 MVP로 진행한다. 기존 서바이벌은 비교 가능한 모드로 유지한다.
-- 결정: 인벤토리와 골드는 런 한정으로 유지하고, 웨이브 사이 상자 구매에 사용한다.
-- 결정: 아레나는 시간 강화가 아니라 웨이브 번호를 난이도 축으로 사용하며, 웨이브 시작은 중앙 텔레포터 상호작용으로 처리한다.
-- 결정: 아레나 MVP 1~10웨이브 상자는 `Common`/`Uncommon`만 지급한다.
-- 결정: W02-03 데모 체감은 **특수몹**으로 진행 — `special_a`(사망 burst), `special_b`(돌진+자폭). 보스 전용 패턴은 후속.
-- 결정 필요: 2주차 무기 성장 방식은 보유 무기 강화, 기본 스탯 보정, 신규 무기 중심 유지 중 하나로 좁힌다.
-- 남은 확인: F6 `Special A`/`Special B` 행동 검증, F5 아레나 웨이브 전환, 5/10 보스 웨이브, 10웨이브 클리어, F6 무기 후보 검증.
+| ID | 결정 |
+|----|------|
+| D01 | 신규 무기 중심 + 데모 풀 축소. 보유 무기 강화 → EA |
+| D02 | 특수몹 우선 (`special_a`/`special_b`) |
+| D03 | modifier 웨이브 6·9, 구현 3주차 |
+
+---
+
+## 3주차 Handoff (W02-08 → Week03)
+
+2주차 말 넘길 Must **5개** (이외는 Polish/Cut 또는 4주차):
+
+| # | ID | 작업 |
+|---|-----|------|
+| 1 | W03-10 | modifier 구현 — 웨이브 6 위험 지대, 9 회복 감소 |
+| 2 | W03-11 | modifier UI·위험/안전 구역 시인성 |
+| 3 | W03-01 | 데모 무기 풀 최종 lock (10~15종) |
+| 4 | W03-04 | 기본 BGM/SFX 최소 세트 |
+| 5 | W03-13 | F5 아레나 1~10웨이브 + modifier 포함 기준선 1회+ |
+
+상세: [`Week03_Content_Lock.md`](Week03_Content_Lock.md)
+
+---
+
+## F6 QA 체크리스트 (W02-03)
+
+`test_arena.tscn` 현재 씬 → F6 실행.
+
+| # | 확인 | Pass |
+|---|------|------|
+| 1 | **Special A** 처치 → 지연 링 예고(기본 3s) → burst·플레이어 피해·범위(튜닝 반영) | [ ] |
+| 2 | **Special B** `charge_trigger_distance` 밖에서는 돌진 안 함 | [ ] |
+| 3 | **Special B** 트리거 거리 진입 → **레인 예고** → 대기 후 돌진·종료 범위 피해 | [ ] |
+| 4 | **Special B** 저체력 자폭 | [ ] |
+| 5 | burst/자폭 후 몹 정리·풀 반환 이상 없음 | [ ] |
+| 6 | 접촉·원거리·돌진 **공격 예고**(`!`)·돌진 **레인 미리보기**(이동 전) | [ ] |
+| 6b | **Special B** F6 몹 탭 — **돌진 거리** 스핀 표시(사망 폭발 스핀 없음) | [ ] |
+| 7 | 무기 Equip → **인벤 활성 weapon**·튜닝 즉시 반영 | [ ] |
+| 8 | 무기 **피해·APS·사거리·발사체 수** 스핀 → 전투·설명 omit 반영 | [ ] |
+| 9 | 몹·무기 튜닝 **적용/저장**(SpinBox 직접 입력 포함)·스폰 즉시 반영·상태 색상 | [ ] |
+| 10 | **fast** 스폰 후 이동 시 하늘색 꼬리·먼지, 정지·풀 반환 시 즉시 소거 | [ ] |
+
+통과 시 Week02 W02-03 → **Done**.
+
+---
+
+## F5 QA 체크리스트 (W02-07, W02-10)
+
+F5 → 로비 → **아레나**.
+
+| # | 확인 | Pass |
+|---|------|------|
+| 1 | 시작 무기 3택1 → 자동 장착 → 텔레포터 1웨이브 | [ ] |
+| 2 | 웨이브 클리어 → 무기 3택1 → 상자 구매 → 텔레포터 | [ ] |
+| 3 | 가방 가득 참 / 골드 부족 메시지 | [ ] |
+| 4 | 5·10 보스 웨이브 체감 | [ ] |
+| 5 | 10웨이브 클리어 또는 패배 시 **RunStatsLabel** 3항목 | [ ] |
+| 6 | (선택) 서바이벌 30분 또는 10분 비교 | [ ] |
+
+기록 형식: `날짜 / 빌드 / 이슈 한 줄`
 
 ---
 
 ## Verification
 
-- [ ] F5 10분 진행: 로비 → 시작 무기 획득 → 자동 장착 → 스폰/웨이브 → 레벨업/보상 → 통계 표시
-- [ ] F5 아레나: 텔레포터 시작 → 5/10 보스 웨이브 → 10웨이브 클리어
-- [ ] F5 서바이벌 비교: 로비 → 시작 무기 → 스폰/레벨업 → 패배 또는 클리어 경로
-- [ ] 웨이브 클리어 보상: 무기 획득 후 상자 가격 표시 → 구매 UI → 장비 배치 → 다음 텔레포터 활성화
-- [ ] F6 무기 검증: 데모 후보별 발사, 피해, 자동 공격 on/off, movement, 장애물 충돌
-- [ ] F6 특수몹: `Special A` 사망 burst(근접 처치 시 피해), `Special B` 돌진·자폭·사망 burst
-- [ ] 게임오버/클리어 통계: 생존 시간, 도달 레벨, 처치 수 중 최소 2개 표시
-- [x] 문서/링크: `Architecture_AttackSystem.md`, `AGENTS.md` 진입 링크
-- [ ] CLI smoke (`scripts/verify/run_smoke.ps1`) 또는 에디터 파싱 — 저장소에 스크립트 없으면 F6/F5 수동 대체
+- [ ] F6 특수몹·fast 시인성 (위 표)
+- [ ] F6 무기 풀
+- [ ] F5 아레나·인벤·상자 (위 표)
+- [x] 게임오버/클리어 통계 UI
+- [x] D01, W02-11, W02-08 문서·후보 확정
 
 ---
 
 ## Next Handoff
 
-- 다음에 이어서 할 일: W02-03 F6 검증 완료 후 무기 성장 방식(D01) 확정 → W02-01 또는 대체안 착수
-- 공격 시스템 2차(보류): `AttackEntity` 베이스, `chain_on_end`, `TargetAttack` — [`Architecture_AttackSystem.md`](../../Architecture/Architecture_AttackSystem.md)
-- 3주차 후보: 데모 무기 풀 최종 고정, 남은 콘텐츠 작업 5개 이하로 축소, 사운드·UI 추가 중단 기준 정리
-- `Result`에 옮길 요약: 공격 인프라·특수몹 2종 행동, 무기 성장·통계·상자·F5 기준선(미완 시 주차 말에 기록)
+- **즉시:** F6 QA 체크리스트 1~10 Pass → W02-03 Done 판정
+- **이번 주 잔여:** W02-02 무기 풀 F6 → W02-06 상자 튜닝 → W02-07·10 F5 기준선·인벤 체감
+- **3주차 착수:** 위 «3주차 Handoff» 5개 — modifier 구현·시인성이 최우선

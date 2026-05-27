@@ -93,14 +93,14 @@ func _rebuild_vsync_options() -> void:
 		_vsync_option.select(selected)
 
 
-func _select_resolution(size: Vector2i) -> void:
+func _select_resolution(resolution: Vector2i) -> void:
 	if _resolution_presets.is_empty():
 		return
 	var best_index := 0
 	var best_dist := INF
 	for i in _resolution_presets.size():
 		var preset := _resolution_presets[i]
-		var dist := absf(float(preset.x - size.x)) + absf(float(preset.y - size.y))
+		var dist := absf(float(preset.x - resolution.x)) + absf(float(preset.y - resolution.y))
 		if dist < best_dist:
 			best_dist = dist
 			best_index = i

@@ -7,9 +7,11 @@
 [ext_resource type="Script" uid="uid://8eenh1tol2s4" path="res://world/floor/checker_background.gd" id="4_checker_bg"]
 [ext_resource type="PackedScene" path="res://world/map_arena/map_arena.tscn" id="5_map_arena"]
 [ext_resource type="Script" path="res://ui/ui_viewport_layout.gd" id="6_ui_viewport_layout"]
-[ext_resource type="PackedScene" uid="uid://pausemenuov01" path="res://ui/pause_menu_overlay.tscn" id="7_pause_menu"]
+[ext_resource type="PackedScene" path="res://ui/pause_menu_overlay.tscn" id="7_pause_menu"]
 [ext_resource type="PackedScene" path="res://ui/inventory/inventory_overlay.tscn" id="9_inventory"]
 [ext_resource type="Script" path="res://game/speed_cheat.gd" id="8_speed_cheat"]
+[ext_resource type="Script" path="res://ui/test_arena_tab_bar.gd" id="11_test_arena_tab_bar"]
+[ext_resource type="Script" path="res://game/test_arena_mob_spawn_marker.gd" id="12_mob_spawn_marker"]
 
 [node name="Game" type="Node2D" unique_id=1822041146]
 y_sort_enabled = true
@@ -29,9 +31,13 @@ script = ExtResource("8_speed_cheat")
 [node name="PlayerSpawnPoint" type="Marker2D" parent="." unique_id=1701849454]
 unique_name_in_owner = true
 
-[node name="MobSpawnPoint" type="Marker2D" parent="." unique_id=971684374]
+[node name="MobSpawnPoint" type="Marker2D" parent="PlayerSpawnPoint" unique_id=971684374]
 unique_name_in_owner = true
 position = Vector2(280, 0)
+
+[node name="SpawnMarkerVisual" type="Node2D" parent="PlayerSpawnPoint/MobSpawnPoint"]
+z_index = 8
+script = ExtResource("12_mob_spawn_marker")
 
 [node name="MapArena" parent="." unique_id=1130088285 instance=ExtResource("5_map_arena")]
 spawn_trees = false
@@ -78,7 +84,7 @@ offset_top = 16.0
 offset_right = 760.0
 offset_bottom = 56.0
 theme_override_font_sizes/font_size = 17
-text = "Test Arena (F6) — ESC: pause · Shift+0~5: game speed · Mob / Weapon panels below."
+text = "Test Arena (F6) — ESC: pause · Shift+0~5: game speed · 몹/무기 탭으로 전환."
 
 [node name="StatusLabel" type="Label" parent="TestUI/TestUILayout" unique_id=1555637677]
 unique_name_in_owner = true
@@ -106,106 +112,420 @@ theme_override_font_sizes/font_size = 20
 text = "전투 세트 1"
 vertical_alignment = 1
 
-[node name="MobSectionLabel" type="Label" parent="TestUI/TestUILayout" unique_id=1076228592]
+[node name="TestPanelsWrap" type="VBoxContainer" parent="TestUI/TestUILayout"]
 offset_left = 16.0
 offset_top = 96.0
-offset_right = 200.0
-offset_bottom = 120.0
-theme_override_font_sizes/font_size = 15
-text = "몹"
-
-[node name="SpawnPanel" type="PanelContainer" parent="TestUI/TestUILayout" unique_id=525767670]
-offset_left = 16.0
-offset_top = 124.0
 offset_right = 560.0
-offset_bottom = 176.0
+offset_bottom = 824.0
+theme_override_constants/separation = 4
 
-[node name="SpawnRow" type="HBoxContainer" parent="TestUI/TestUILayout/SpawnPanel" unique_id=2145142564]
+[node name="TabBarHost" type="VBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap"]
+unique_name_in_owner = true
+layout_mode = 2
+script = ExtResource("11_test_arena_tab_bar")
+
+[node name="TestPanelsTab" type="TabContainer" parent="TestUI/TestUILayout/TestPanelsWrap"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 15
+tabs_visible = false
+
+[node name="MobTab" type="ScrollContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="MobTabVBox" type="VBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="SpawnPanel" type="PanelContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox" unique_id=525767670]
+layout_mode = 2
+
+[node name="SpawnRow" type="HBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/SpawnPanel" unique_id=2145142564]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="MobTypeOption" type="OptionButton" parent="TestUI/TestUILayout/SpawnPanel/SpawnRow" unique_id=479008454]
+[node name="MobTypeOption" type="OptionButton" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/SpawnPanel/SpawnRow" unique_id=479008454]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(220, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="SpawnMobButton" type="Button" parent="TestUI/TestUILayout/SpawnPanel/SpawnRow" unique_id=1871181501]
+[node name="SpawnMobButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/SpawnPanel/SpawnRow" unique_id=1871181501]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(120, 36)
 layout_mode = 2
 text = "Spawn"
 
-[node name="OptionsPanel" type="PanelContainer" parent="TestUI/TestUILayout" unique_id=133124483]
-offset_left = 16.0
-offset_top = 184.0
-offset_right = 560.0
-offset_bottom = 228.0
+[node name="OptionsPanel" type="PanelContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox" unique_id=133124483]
+layout_mode = 2
 
-[node name="OptionsRow" type="HBoxContainer" parent="TestUI/TestUILayout/OptionsPanel" unique_id=1937913868]
+[node name="OptionsRow" type="HBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/OptionsPanel" unique_id=1937913868]
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="MobRespawnCheck" type="CheckButton" parent="TestUI/TestUILayout/OptionsPanel/OptionsRow" unique_id=1728179177]
+[node name="MobRespawnCheck" type="CheckButton" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/OptionsPanel/OptionsRow" unique_id=1728179177]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Mob respawn (2s delay)"
 
-[node name="WeaponSectionLabel" type="Label" parent="TestUI/TestUILayout" unique_id=685294775]
-offset_left = 16.0
-offset_top = 236.0
-offset_right = 200.0
-offset_bottom = 260.0
-theme_override_font_sizes/font_size = 15
-text = "무기"
+[node name="MobCombatTuningPanel" type="PanelContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox"]
+layout_mode = 2
 
-[node name="WeaponPanel" type="PanelContainer" parent="TestUI/TestUILayout" unique_id=1441476860]
-offset_left = 16.0
-offset_top = 264.0
-offset_right = 560.0
-offset_bottom = 720.0
+[node name="MobCombatTuningVBox" type="VBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel"]
+layout_mode = 2
+theme_override_constants/separation = 6
 
-[node name="WeaponVBox" type="VBoxContainer" parent="TestUI/TestUILayout/WeaponPanel" unique_id=1539226539]
+[node name="MobCombatTuningTitle" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "피해량 · 사거리 · 공격 간격"
+
+[node name="MobCombatTuningStatusLabel" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.75, 0.95, 1)
+theme_override_font_sizes/font_size = 13
+text = "몹을 선택하세요."
+
+[node name="MobDamageRow" type="HBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox"]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="WeaponFilterRow" type="HBoxContainer" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox" unique_id=2033069903]
+[node name="MobDamageLabel" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobDamageRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(88, 0)
+theme_override_font_sizes/font_size = 13
+text = "피해량"
+
+[node name="MobDamageDecButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobDamageRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "−"
+
+[node name="MobDamageSpin" type="SpinBox" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobDamageRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 48)
+max_value = 999.0
+rounded = true
+
+[node name="MobDamageIncButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobDamageRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "+"
+
+[node name="MobRangeRow" type="HBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MobRangeLabel" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobRangeRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(88, 0)
+theme_override_font_sizes/font_size = 13
+text = "사거리"
+
+[node name="MobRangeDecButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobRangeRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "−"
+
+[node name="MobRangeSpin" type="SpinBox" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobRangeRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 48)
+max_value = 2000.0
+step = 5.0
+
+[node name="MobRangeIncButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobRangeRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "+"
+
+[node name="MobIntervalRow" type="HBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MobIntervalLabel" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobIntervalRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(88, 0)
+theme_override_font_sizes/font_size = 13
+text = "공격 간격"
+
+[node name="MobIntervalDecButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobIntervalRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "−"
+
+[node name="MobIntervalSpin" type="SpinBox" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobIntervalRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 48)
+max_value = 10.0
+step = 0.05
+
+[node name="MobIntervalIncButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobIntervalRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "+"
+
+[node name="MobDeathBurstSection" type="VBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="MobDeathBurstTitle" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobDeathBurstSection"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "사망 폭발 (특수 A 등)"
+
+[node name="MobBurstRadiusRow" type="HBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobDeathBurstSection"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MobBurstRadiusLabel" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobDeathBurstSection/MobBurstRadiusRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(88, 0)
+theme_override_font_sizes/font_size = 13
+text = "폭발 범위"
+
+[node name="MobBurstRadiusDecButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobDeathBurstSection/MobBurstRadiusRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "−"
+
+[node name="MobBurstRadiusSpin" type="SpinBox" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobDeathBurstSection/MobBurstRadiusRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 48)
+max_value = 600.0
+step = 5.0
+
+[node name="MobBurstRadiusIncButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobDeathBurstSection/MobBurstRadiusRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "+"
+
+[node name="MobBurstDamageRow" type="HBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobDeathBurstSection"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MobBurstDamageLabel" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobDeathBurstSection/MobBurstDamageRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(88, 0)
+theme_override_font_sizes/font_size = 13
+text = "폭발 피해량"
+
+[node name="MobBurstDamageDecButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobDeathBurstSection/MobBurstDamageRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "−"
+
+[node name="MobBurstDamageSpin" type="SpinBox" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobDeathBurstSection/MobBurstDamageRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 48)
+max_value = 999.0
+rounded = true
+
+[node name="MobBurstDamageIncButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobDeathBurstSection/MobBurstDamageRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "+"
+
+[node name="MobBurstDelayRow" type="HBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobDeathBurstSection"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MobBurstDelayLabel" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobDeathBurstSection/MobBurstDelayRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(88, 0)
+theme_override_font_sizes/font_size = 13
+text = "폭발 지연"
+
+[node name="MobBurstDelayDecButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobDeathBurstSection/MobBurstDelayRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "−"
+
+[node name="MobBurstDelaySpin" type="SpinBox" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobDeathBurstSection/MobBurstDelayRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 48)
+max_value = 15.0
+step = 0.1
+
+[node name="MobBurstDelayIncButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobDeathBurstSection/MobBurstDelayRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "+"
+
+[node name="MobChargeSection" type="VBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="MobChargeTitle" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChargeSection"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "돌진 (특수 B)"
+
+[node name="MobChargeDistanceRow" type="HBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChargeSection"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MobChargeDistanceLabel" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChargeSection/MobChargeDistanceRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(88, 0)
+theme_override_font_sizes/font_size = 13
+text = "돌진 거리"
+
+[node name="MobChargeDistanceDecButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChargeSection/MobChargeDistanceRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "−"
+
+[node name="MobChargeDistanceSpin" type="SpinBox" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChargeSection/MobChargeDistanceRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 48)
+max_value = 900.0
+step = 10.0
+
+[node name="MobChargeDistanceIncButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChargeSection/MobChargeDistanceRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "+"
+
+[node name="MobCombatTuningButtons" type="HBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ApplyMobCombatTuningButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobCombatTuningButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 32)
+layout_mode = 2
+text = "적용"
+
+[node name="SaveMobCombatTuningButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobCombatTuningButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 32)
+layout_mode = 2
+text = "저장"
+
+[node name="ResetMobCombatTuningButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobCombatTuningButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 32)
+layout_mode = 2
+text = "초기화"
+
+[node name="MobDescLabel" type="RichTextLabel" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 72)
+theme_override_colors/default_color = Color(0.88, 0.88, 0.92, 1)
+theme_override_font_sizes/normal_font_size = 14
+bbcode_enabled = true
+fit_content = true
+scroll_active = true
+autowrap_mode = 3
+
+[node name="WeaponTab" type="ScrollContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="WeaponVBox" type="VBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab" unique_id=1539226539]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="WeaponFilterRow" type="HBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox" unique_id=2033069903]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="WeaponTypeFilter" type="OptionButton" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox/WeaponFilterRow" unique_id=1020247422]
+[node name="WeaponTypeFilter" type="OptionButton" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox/WeaponFilterRow" unique_id=1020247422]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 
-[node name="WeaponRarityFilter" type="OptionButton" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox/WeaponFilterRow" unique_id=1662787838]
+[node name="WeaponRarityFilter" type="OptionButton" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox/WeaponFilterRow" unique_id=1662787838]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 
-[node name="WeaponFilterHint" type="Label" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox/WeaponFilterRow" unique_id=938538622]
+[node name="WeaponFilterHint" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox/WeaponFilterRow" unique_id=938538622]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 14
 text = "타입 · 등급 필터 → 무기 목록"
 
-[node name="WeaponRow" type="HBoxContainer" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox" unique_id=1673834133]
+[node name="WeaponRow" type="HBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox" unique_id=1673834133]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="WeaponOption" type="OptionButton" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox/WeaponRow" unique_id=812297849]
+[node name="WeaponOption" type="OptionButton" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox/WeaponRow" unique_id=812297849]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(280, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="EquipWeaponButton" type="Button" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox/WeaponRow" unique_id=1959828577]
+[node name="EquipWeaponButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox/WeaponRow" unique_id=1959828577]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(120, 36)
 layout_mode = 2
 text = "Equip"
 
-[node name="WeaponDescLabel" type="RichTextLabel" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox" unique_id=2847193056]
+[node name="WeaponDescLabel" type="RichTextLabel" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox" unique_id=2847193056]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
@@ -216,50 +536,56 @@ fit_content = true
 scroll_active = true
 autowrap_mode = 3
 
-[node name="ProjectileTuningLabel" type="Label" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox"]
+[node name="ProjectileTuningLabel" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 14
-text = "발사체 튜닝"
+text = "무기 튜닝"
 
-[node name="ProjectileTuningStatusLabel" type="Label" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox"]
+[node name="ProjectileTuningStatusLabel" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.55, 0.75, 0.95, 1)
 theme_override_font_sizes/font_size = 13
 text = "무기를 선택하세요."
 
-[node name="ProjectileMovementRow" type="HBoxContainer" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox"]
+[node name="ProjectileMovementRow" type="HBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="ProjectileMovementLabel" type="Label" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox/ProjectileMovementRow"]
+[node name="ProjectileMovementLabel" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox/ProjectileMovementRow"]
 layout_mode = 2
 custom_minimum_size = Vector2(120, 0)
 theme_override_font_sizes/font_size = 13
 text = "움직임"
 
-[node name="ProjectileMovementOption" type="OptionButton" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox/ProjectileMovementRow"]
+[node name="ProjectileMovementOption" type="OptionButton" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox/ProjectileMovementRow"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="ProjectileTuningFields" type="VBoxContainer" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox"]
+[node name="ProjectileTuningFields" type="VBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="ProjectileTuningButtons" type="HBoxContainer" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox"]
+[node name="ProjectileTuningButtons" type="HBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox"]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="SaveProjectileTuningButton" type="Button" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox/ProjectileTuningButtons"]
+[node name="ApplyProjectileTuningButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox/ProjectileTuningButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 32)
+layout_mode = 2
+text = "적용"
+
+[node name="SaveProjectileTuningButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox/ProjectileTuningButtons"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(100, 32)
 layout_mode = 2
 text = "저장"
 
-[node name="ResetProjectileTuningButton" type="Button" parent="TestUI/TestUILayout/WeaponPanel/WeaponVBox/ProjectileTuningButtons"]
+[node name="ResetProjectileTuningButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox/ProjectileTuningButtons"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(100, 32)
 layout_mode = 2

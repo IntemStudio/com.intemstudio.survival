@@ -12,6 +12,7 @@ const EXP_ORB_SCENE := preload("res://effects/exp_orb/exp_orb.tscn")
 const GOLD_COIN_SCENE := preload("res://effects/gold_coin/gold_coin.tscn")
 const MOB_PROJECTILE_SCENE := preload("res://entities/mob/mob_projectile.tscn")
 const MOB_ATTACK_MARK_SCENE := preload("res://entities/mob/mob_attack_mark.tscn")
+const MOB_CHARGE_LANE_SCENE := preload("res://entities/mob/mob_charge_lane.tscn")
 
 @export_range(1, 1000, 1) var default_max_per_scene: int = 200
 @export_range(0, 200, 1) var prewarm_bullets: int = 40
@@ -26,6 +27,7 @@ const MOB_ATTACK_MARK_SCENE := preload("res://entities/mob/mob_attack_mark.tscn"
 @export_range(0, 100, 1) var prewarm_mobs_per_type: int = 14
 @export_range(0, 200, 1) var prewarm_mob_projectiles: int = 32
 @export_range(0, 100, 1) var prewarm_mob_attack_marks: int = 20
+@export_range(0, 100, 1) var prewarm_mob_charge_lanes: int = 12
 
 var _inactive: Dictionary = {}
 var _source_scenes: Dictionary = {}
@@ -43,6 +45,7 @@ func _ready() -> void:
 	_prewarm_scene(GOLD_COIN_SCENE, prewarm_gold_coins)
 	_prewarm_scene(MOB_PROJECTILE_SCENE, prewarm_mob_projectiles)
 	_prewarm_scene(MOB_ATTACK_MARK_SCENE, prewarm_mob_attack_marks)
+	_prewarm_scene(MOB_CHARGE_LANE_SCENE, prewarm_mob_charge_lanes)
 	# MobSpawnSelector 상수는 몹 씬→mob.gd를 끌어오므로, ScenePool 등록 후 _ready에서만 prewarm합니다.
 	for mob_scene in [
 		MobSpawnSelector.MOB_BASIC_SCENE,

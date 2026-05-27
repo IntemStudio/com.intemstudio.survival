@@ -21,7 +21,7 @@
 | 충돌 처리 | 몹, 환경 장애물, 영역 overlap 판정 |
 | 피해 전달 | `Mob.apply_weapon_damage()`와 `LoadoutStatApply`/`Player.roll_weapon_damage()` 사용 |
 | 수명 종료 | 사거리, 귀환 도착, 충돌, lifetime 종료 시 풀 반환 |
-| F6 튜닝 | `TestArenaWeaponSnapshot`의 movement/발사체 수치 튜닝 지원 |
+| F6 튜닝 | `TestArenaWeaponSnapshot` — 피해·APS·사거리·발사체 수·movement·타입별 수치 (`Architecture_TestArena.md`) |
 
 ### Out of Scope
 
@@ -47,7 +47,7 @@
 | `weapons/concoction/concoction.gd` | 포물선 투척 후 착지 지점에 영역 존 생성 |
 | `weapons/area/area_damage_zone.gd` | 원형/사각 영역 피해, poison 적용, 짧은 lifetime |
 | `game/pool/scene_pool.gd` | 발사체, 영역 존, 궤도 companion prewarm과 재사용 |
-| `game/test_arena_weapon_snapshot.gd` | F6 발사체 수치와 movement 튜닝 |
+| `game/test_arena_weapon_snapshot.gd` | F6 무기·발사체 수치 스냅샷(`CORE_FIELD_DEFS` + 타입별 def) |
 
 관계는 아래처럼 유지한다.
 
@@ -78,7 +78,7 @@ WeaponData
 
 1. 새 movement는 `WeaponData` 상수, 라벨, `get_projectile_movement_options()`, side effect helper에 추가한다.
 2. 실제 이동 구현은 해당 발사체 스크립트에 추가한다.
-3. F6에서 튜닝해야 하면 `TestArenaWeaponSnapshot`의 movement 옵션과 필드 정의를 확인한다.
+3. F6에서 튜닝해야 하면 `TestArenaWeaponSnapshot`의 `get_core_field_defs`, movement 옵션, 타입별 `FIELD_DEFS_*`를 확인한다. 사거리 override는 `WeaponData.get_melee_range()` / `get_projectile_range()`에 반영된다.
 4. 플레이어에게 보이는 규칙은 `Docs/Wiki/Projectiles.md`, 구현 계약은 이 문서와 `Architecture_Weapons.md`에 반영한다.
 
 ## Invariants & Gotchas
@@ -101,10 +101,11 @@ WeaponData
 | 변경 | 확인할 것 |
 |------|-----------|
 | 새 발사체 씬 추가 | `ScenePool` prewarm, `pool_reset()`, `pool_on_acquire()`, `PoolUtil.release_node()` |
-| 새 movement 추가 | `WeaponData`, 발사체 이동 코드, F6 movement 튜닝, Wiki/Architecture 문서 |
+| 새 movement 추가 | `WeaponData`, 발사체 이동 코드, F6 `TestArenaWeaponSnapshot`·omit, Wiki/Architecture 문서 |
+| 사거리·발사 수 튜닝 | `melee_range_override` / `projectile_range_override`, `get_range_field_def`, 발사체 종료 거리 |
 | 근접 movement 변경 | `MeleeProjectile`, 카탈로그 movement 값, 관통 수, 왕복 재타격 체감, 병렬 오프셋 |
 | 환경 충돌 변경 | 플레이어 발사체 마스크, 장애물 충돌 반환/폭발/장판 생성 |
 | 피해 공식 변경 | `Player.roll_weapon_damage()`, `LoadoutStatApply`, 독/장판/궤도 피해 경로 |
-| 자동 공격 변경 | `Gun.refresh_auto_attack()`, `king_bible_orb.gd`, HUD 토글 상태 |
+| 자동 공격 변경 | `Gun.refresh_auto_attack()`, `_has_enemy_in_attack_range()`, `king_bible_orb.gd`, HUD 토글·사거리 밖 무발사 |
 
-최소 검증은 F6 테스트 아레나에서 `StraightPierce`, `Return`, `CurvedReturn`, `Decelerate`, 일반 탄환, 유도 마법, 연금 영역 존, 궤도 무기를 각각 Equip하고, 더미/기본 몹 피해, 벽·나무 충돌, 자동 공격 on/off, 게임오버 피해 목록을 확인하는 것이다.
+최소 검증은 F6 테스트 아레나에서 대표 무기를 Equip한 뒤 **피해·APS·사거리·발사체 수** 스핀 변경이 전투에 반영되는지, `StraightPierce`/`Return`/`CurvedReturn`/`Decelerate`/탄환/유도/연금 영역/궤도 movement, 더미 피해, 벽·나무 충돌, 자동 공격 on/off, 게임오버 피해 목록을 확인하는 것이다.

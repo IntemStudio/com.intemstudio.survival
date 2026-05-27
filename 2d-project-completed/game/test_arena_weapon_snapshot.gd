@@ -13,9 +13,14 @@ const PIERCE_FIELD_DEF := {
 	"step": 1.0,
 }
 
+const CORE_FIELD_DEFS := [
+	{"property": "min_damage", "label": "최소 피해", "min": 1.0, "max": 9999.0, "step": 1.0},
+	{"property": "max_damage", "label": "최대 피해", "min": 1.0, "max": 9999.0, "step": 1.0},
+	{"property": "attacks_per_second", "label": "공격 속도(APS)", "min": 0.1, "max": 20.0, "step": 0.1},
+]
+
 const FIELD_DEFS_BY_TYPE := {
 	"Melee": [
-		{"property": "melee_spread_count", "label": "탄막 수", "min": 1.0, "max": 32.0, "step": 1.0},
 		{"property": "melee_spread_angle_deg", "label": "부채꼴(°)", "min": 0.0, "max": 360.0, "step": 1.0},
 		{"property": "melee_parallel_offset", "label": "병렬 오프셋", "min": 0.0, "max": 160.0, "step": 2.0},
 		{"property": "melee_projectile_speed", "label": "탄속", "min": 50.0, "max": 4000.0, "step": 25.0},
@@ -24,7 +29,6 @@ const FIELD_DEFS_BY_TYPE := {
 	],
 	"Ranged": [
 		{"property": "projectile_speed", "label": "탄속", "min": 50.0, "max": 4000.0, "step": 25.0},
-		{"property": "burst_count", "label": "연사 발수", "min": 1.0, "max": 12.0, "step": 1.0},
 		{"property": "burst_interval", "label": "연사 간격(초)", "min": 0.01, "max": 1.0, "step": 0.01},
 		PIERCE_FIELD_DEF,
 	],
@@ -38,19 +42,16 @@ const FIELD_DEFS_BY_TYPE := {
 const FIELD_DEFS_ORBIT := [
 	{"property": "orbit_speed", "label": "궤도 회전 속도", "min": 0.5, "max": 15.0, "step": 0.1},
 	{"property": "orbit_radius_extra", "label": "궤도 반경 보정", "min": 0.0, "max": 200.0, "step": 5.0},
-	{"property": "attacks_per_second", "label": "타격 빈도(APS)", "min": 0.2, "max": 10.0, "step": 0.1},
 ]
 
 const FIELD_DEFS_AREA_ZONE := [
 	{"property": "throw_speed", "label": "투척 속도", "min": 100.0, "max": 2000.0, "step": 25.0},
-	{"property": "throw_range", "label": "투척 사거리", "min": 100.0, "max": 2000.0, "step": 25.0},
 	{"property": "aoe_radius", "label": "폭발 반경", "min": 20.0, "max": 400.0, "step": 5.0},
 	{"property": "poison_damage_min", "label": "독 최소 피해", "min": 1.0, "max": 500.0, "step": 1.0},
 	{"property": "poison_damage_max", "label": "독 최대 피해", "min": 1.0, "max": 500.0, "step": 1.0},
 	{"property": "poison_duration", "label": "독 지속(초)", "min": 0.5, "max": 30.0, "step": 0.5},
 	{"property": "poison_ticks_per_second", "label": "독 틱/초", "min": 0.5, "max": 10.0, "step": 0.5},
 	{"property": "hit_count", "label": "존 타격 횟수", "min": 1.0, "max": 20.0, "step": 1.0},
-	{"property": "attacks_per_second", "label": "투척 빈도(APS)", "min": 0.2, "max": 10.0, "step": 0.1},
 ]
 
 var _baselines: Dictionary = {}
@@ -93,7 +94,68 @@ func save_to_disk() -> void:
 	SettingsSaveUtil.save_config(cfg, SAVE_PATH)
 
 
-func get_field_defs(weapon: WeaponData) -> Array:
+func get_core_field_defs(weapon: WeaponData) -> Array:
+	if weapon == null:
+		return []
+	var result: Array = CORE_FIELD_DEFS.duplicate(true)
+	var range_def := get_range_field_def(weapon)
+	if not range_def.is_empty():
+		result.append(range_def)
+	var spawn_def := get_projectile_spawn_field_def(weapon)
+	if not spawn_def.is_empty():
+		result.append(spawn_def)
+	return result
+
+
+func get_range_field_def(weapon: WeaponData) -> Dictionary:
+	if weapon.is_throwing() or weapon.is_area_zone_attack():
+		return {
+			"property": "throw_range",
+			"label": "사거리",
+			"min": 50.0,
+			"max": 3000.0,
+			"step": 25.0,
+		}
+	if weapon.is_melee() or weapon.is_orbit_attack():
+		return {
+			"property": "melee_range_override",
+			"label": "사거리",
+			"min": 20.0,
+			"max": 800.0,
+			"step": 5.0,
+		}
+	if weapon.is_ranged() or weapon.is_magic():
+		return {
+			"property": "projectile_range_override",
+			"label": "사거리",
+			"min": 50.0,
+			"max": 3000.0,
+			"step": 25.0,
+		}
+	return {}
+
+
+func get_projectile_spawn_field_def(weapon: WeaponData) -> Dictionary:
+	if weapon.is_melee() and not weapon.is_orbit_attack():
+		return {
+			"property": "melee_spread_count",
+			"label": "발사체 생성 수",
+			"min": 1.0,
+			"max": 32.0,
+			"step": 1.0,
+		}
+	if weapon.is_ranged():
+		return {
+			"property": "burst_count",
+			"label": "발사체 생성 수",
+			"min": 1.0,
+			"max": 12.0,
+			"step": 1.0,
+		}
+	return {}
+
+
+func get_type_field_defs(weapon: WeaponData) -> Array:
 	if weapon == null:
 		return []
 	if weapon.is_orbit_attack():
@@ -103,8 +165,20 @@ func get_field_defs(weapon: WeaponData) -> Array:
 	return FIELD_DEFS_BY_TYPE.get(weapon.weapon_type, [])
 
 
+func get_field_defs(weapon: WeaponData) -> Array:
+	return _dedupe_field_defs_by_property(get_core_field_defs(weapon) + get_type_field_defs(weapon))
+
+
+func get_tuning_spin_display_value(tuned: WeaponData, property: String) -> float:
+	if property == "melee_range_override":
+		return tuned.get_melee_range()
+	if property == "projectile_range_override":
+		return tuned.get_projectile_range()
+	return float(tuned.get(property))
+
+
 func supports_projectile_tuning(weapon: WeaponData) -> bool:
-	return not get_field_defs(weapon).is_empty()
+	return weapon != null and not get_field_defs(weapon).is_empty()
 
 
 func supports_projectile_movement_tuning(weapon: WeaponData) -> bool:
@@ -163,6 +237,18 @@ func reset_weapon(weapon_id: String) -> void:
 func _apply_overrides(weapon: WeaponData, overrides: Dictionary) -> void:
 	for key in overrides:
 		weapon.set(key, overrides[key])
+
+
+static func _dedupe_field_defs_by_property(field_defs: Array) -> Array:
+	var seen: Dictionary = {}
+	var result: Array = []
+	for field_def in field_defs:
+		var property: String = field_def["property"]
+		if seen.has(property):
+			continue
+		seen[property] = true
+		result.append(field_def)
+	return result
 
 
 func _clamp_projectile_movement(weapon: WeaponData) -> void:

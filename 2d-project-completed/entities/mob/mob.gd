@@ -21,11 +21,14 @@ signal died
 @export var ranged_max_distance := 900.0
 ## (레거시) 발사체 스폰은 get_footprint_global_center() — 씬 호환용으로만 유지
 @export var ranged_spawn_offset := Vector2.ZERO
+## 근접·원거리·돌진 공격 전 느낌표 예고 대기 시간(초).
 @export var ranged_telegraph_delay := 0.5
 @export var ranged_attack_mark_offset := Vector2(0, -72)
 @export var death_burst_enabled := false
 @export var death_burst_radius := 96.0
 @export var death_burst_damage := 12
+## 사망 후 폭발까지 대기 시간(초). 0이면 즉시 폭발합니다.
+@export var death_burst_delay := 0.0
 @export var charge_attack_enabled := false
 @export var charge_trigger_distance := 230.0
 @export var charge_speed_mult := 2.6
@@ -33,6 +36,8 @@ signal died
 @export var charge_cooldown := 2.2
 @export var charge_end_burst_radius := 76.0
 @export var charge_end_burst_damage := 10
+## 돌진 시작 시 직선 구간·화살표 예고 표시 시간(초).
+@export var charge_lane_display_duration := 1.0
 @export var self_destruct_enabled := false
 @export var self_destruct_health_ratio := 0.2
 
@@ -49,9 +54,12 @@ var _stage_clear_death := false
 var _ranged_cooldown_remaining := 0.0
 var _contact_attack_cooldown_remaining := 0.0
 var _ranged_windup_active := false
+var _contact_windup_active := false
+var _charge_attack_mark_active := false
 var _pending_ranged_direction := Vector2.RIGHT
 var _active_attack_mark: Node2D = null
 var _charge_active := false
+var _charge_windup_remaining := 0.0
 var _charge_direction := Vector2.RIGHT
 var _charge_time_remaining := 0.0
 var _charge_cooldown_remaining := 0.0
@@ -63,6 +71,7 @@ const GOLD_COIN_SCENE := preload("res://effects/gold_coin/gold_coin.tscn")
 const GOLD_DROP_OFFSET := Vector2(12.0, -8.0)
 const MOB_PROJECTILE_SCENE := preload("res://entities/mob/mob_projectile.tscn")
 const MOB_ATTACK_MARK_SCENE := preload("res://entities/mob/mob_attack_mark.tscn")
+const MOB_CHARGE_LANE_SCENE := preload("res://entities/mob/mob_charge_lane.tscn")
 const POOL_STORAGE_POSITION := Vector2(-50000.0, -50000.0)
 const CONTACT_STANDOFF_PADDING := 6.0
 const ATTACK_RANGE_RING_TEXTURE := preload("res://art/shared/fx/circle.png")
@@ -93,8 +102,9 @@ func pool_reset() -> void:
 	_target_pulse = 0.0
 	_ranged_cooldown_remaining = 0.0
 	_contact_attack_cooldown_remaining = 0.0
-	_cancel_ranged_telegraph()
+	_cancel_all_attack_telegraphs()
 	_charge_active = false
+	_charge_windup_remaining = 0.0
 	_charge_direction = Vector2.RIGHT
 	_charge_time_remaining = 0.0
 	_charge_cooldown_remaining = 0.0
@@ -259,6 +269,13 @@ func _physics_process(delta: float) -> void:
 	if _is_dying:
 		return
 
+	if _charge_windup_remaining > 0.0:
+		_process_charge_windup(delta)
+		_status_effects.tick(delta, self)
+		_process_nettles(delta)
+		move_and_slide()
+		return
+
 	if _charge_active:
 		_process_charge_attack(delta)
 		_status_effects.tick(delta, self)
@@ -277,6 +294,8 @@ func _physics_process(delta: float) -> void:
 			charge_attack_enabled
 			and combat_enabled
 			and _charge_cooldown_remaining <= 0.0
+			and _charge_windup_remaining <= 0.0
+			and not _charge_active
 			and offset.length_squared() <= charge_trigger_distance * charge_trigger_distance
 		)
 
@@ -310,14 +329,75 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 
-## 돌진 시작 — 트리거 거리 안에서 짧게 가속 이동 후 도착 범위 피해.
+## 돌진 시작 — 경로 예고 후 짧게 가속 이동, 도착 시 범위 피해.
 func _begin_charge_attack(offset: Vector2) -> void:
-	if _charge_active or offset.length_squared() <= 0.01:
+	if _charge_active or _charge_windup_remaining > 0.0 or offset.length_squared() <= 0.01:
 		return
+	_cancel_contact_telegraph()
 	_cancel_ranged_telegraph()
-	_charge_active = true
+	_charge_attack_mark_active = true
+	_spawn_attack_mark()
 	_charge_direction = offset.normalized()
+	_spawn_charge_lane_preview(_charge_direction)
+	velocity = Vector2.ZERO
+	_charge_windup_remaining = maxf(charge_lane_display_duration, 0.05)
+
+
+## 돌진 경로 예고 대기 — 표시 시간이 끝나면 실제 돌진을 시작합니다.
+func _process_charge_windup(delta: float) -> void:
+	velocity = Vector2.ZERO
+	_charge_windup_remaining -= delta
+	if _charge_windup_remaining > 0.0:
+		return
+	_charge_windup_remaining = 0.0
+	_start_charge_movement()
+
+
+func _start_charge_movement() -> void:
+	_charge_active = true
 	_charge_time_remaining = maxf(charge_duration, 0.01)
+
+
+func _get_charge_travel_distance() -> float:
+	return _get_effective_speed() * maxf(charge_speed_mult, 1.0) * maxf(charge_duration, 0.01)
+
+
+# 돌진 직선 구간을 1초간 월드에 고정 표시합니다(몹 이동과 무관).
+func _spawn_charge_lane_preview(direction: Vector2) -> void:
+	if not charge_attack_enabled:
+		return
+	var travel_dir := direction.normalized()
+	if travel_dir.length_squared() <= 0.01:
+		return
+
+	var half_extents := GroundShadowFootprint.footprint_half_extents_from_visual(%Slime)
+	var half_width := maxf(maxf(half_extents.x, half_extents.y), 20.0)
+	var length := _get_charge_travel_distance()
+	var start := get_footprint_global_center()
+
+	var spawn_parent: Node = get_parent()
+	if spawn_parent == null:
+		return
+
+	var lane: Node2D
+	var game := get_node_or_null("/root/Game")
+	var pool: Node = game.get_node_or_null("ObjectPools") if game else null
+	if pool and pool.has_method(&"acquire"):
+		lane = pool.acquire(MOB_CHARGE_LANE_SCENE, spawn_parent) as Node2D
+	else:
+		lane = MOB_CHARGE_LANE_SCENE.instantiate() as Node2D
+		spawn_parent.add_child(lane)
+
+	if lane == null or not lane.has_method(&"setup_world"):
+		return
+	lane.setup_world(
+		start,
+		travel_dir,
+		length,
+		half_width,
+		slime_tint,
+		maxf(charge_lane_display_duration, 0.05)
+	)
 
 
 ## 돌진 진행 — 종료 시 플레이어 반경 피해를 1회 적용합니다.
@@ -334,6 +414,8 @@ func _end_charge_attack() -> void:
 	_charge_active = false
 	_charge_time_remaining = 0.0
 	_charge_cooldown_remaining = maxf(charge_cooldown, 0.01)
+	_charge_attack_mark_active = false
+	_try_release_attack_mark()
 	velocity = Vector2.ZERO
 	if charge_end_burst_damage > 0 and charge_end_burst_radius > 0.0:
 		DamageResolver.apply_burst_damage_to_player_in_radius(
@@ -402,16 +484,17 @@ func is_player_in_contact_attack_range(player_global_position: Vector2) -> bool:
 	)
 
 
-# 공격 범위 안에서 contact_attack_interval마다 contact_attack_damage를 반환합니다.
+# 공격 범위 안에서 예고 후 contact_attack_interval마다 피해를 적용합니다.
 func tick_contact_attack(delta: float) -> int:
-	if not is_contact_damage_active() or contact_attack_damage <= 0:
+	if not is_contact_damage_active() or contact_attack_damage <= 0 or not combat_enabled:
 		return 0
-	var interval := maxf(contact_attack_interval, 0.01)
+	if _contact_windup_active:
+		return 0
 	_contact_attack_cooldown_remaining -= delta
 	if _contact_attack_cooldown_remaining > 0.0:
 		return 0
-	_contact_attack_cooldown_remaining = interval
-	return contact_attack_damage
+	_begin_contact_telegraph()
+	return 0
 
 
 # 발밑 그림자 충돌 박스·플레이어 HurtBox가 겹치지 않는 중심 간 최소 거리
@@ -458,6 +541,7 @@ func _clamp_velocity_away_from_player() -> void:
 func _begin_ranged_telegraph(offset: Vector2) -> void:
 	if _ranged_windup_active:
 		return
+	_cancel_contact_telegraph()
 
 	_ranged_windup_active = true
 	_pending_ranged_direction = offset.normalized()
@@ -480,8 +564,8 @@ func _on_ranged_telegraph_timeout() -> void:
 
 
 func _complete_ranged_telegraph() -> void:
-	_release_attack_mark()
 	_ranged_windup_active = false
+	_try_release_attack_mark()
 	var from_center := get_footprint_global_center()
 	var to_center := GroundShadowFootprint.get_combat_target_center(player as Node2D)
 	var aim := to_center - from_center
@@ -493,11 +577,72 @@ func _complete_ranged_telegraph() -> void:
 
 func _cancel_ranged_telegraph() -> void:
 	_ranged_windup_active = false
+	_try_release_attack_mark()
+
+
+func _begin_contact_telegraph() -> void:
+	if _contact_windup_active or _charge_active or _charge_windup_remaining > 0.0:
+		return
+	_cancel_ranged_telegraph()
+	_contact_windup_active = true
+	_spawn_attack_mark()
+
+	var tree := get_tree()
+	if not tree:
+		_complete_contact_telegraph()
+		return
+
+	var timer := tree.create_timer(maxf(ranged_telegraph_delay, 0.01))
+	timer.timeout.connect(_on_contact_telegraph_timeout, CONNECT_ONE_SHOT)
+
+
+func _on_contact_telegraph_timeout() -> void:
+	if not _contact_windup_active or _is_dying or not is_inside_tree():
+		_cancel_contact_telegraph()
+		return
+	_complete_contact_telegraph()
+
+
+func _complete_contact_telegraph() -> void:
+	_contact_windup_active = false
+	_try_release_attack_mark()
+	var interval := maxf(contact_attack_interval, 0.01)
+	_contact_attack_cooldown_remaining = interval
+	if not is_contact_damage_active() or _is_dying:
+		return
+	var player_center := GroundShadowFootprint.get_combat_target_center(player as Node2D)
+	if not is_player_in_contact_attack_range(player_center):
+		return
+	if player.has_method(&"apply_mob_projectile_damage"):
+		player.call(&"apply_mob_projectile_damage", contact_attack_damage)
+
+
+func _cancel_contact_telegraph() -> void:
+	_contact_windup_active = false
+	_try_release_attack_mark()
+
+
+func _cancel_all_attack_telegraphs() -> void:
+	_ranged_windup_active = false
+	_contact_windup_active = false
+	_charge_active = false
+	_charge_windup_remaining = 0.0
+	_charge_time_remaining = 0.0
+	_charge_attack_mark_active = false
+	_release_attack_mark()
+
+
+func _try_release_attack_mark() -> void:
+	if _ranged_windup_active or _contact_windup_active or _charge_attack_mark_active:
+		return
 	_release_attack_mark()
 
 
 func _spawn_attack_mark() -> void:
-	_release_attack_mark()
+	if is_instance_valid(_active_attack_mark):
+		if _active_attack_mark.has_method(&"setup"):
+			_active_attack_mark.setup(ranged_attack_mark_offset, slime_tint)
+		return
 
 	var game := get_node_or_null("/root/Game")
 	var pool: Node = game.get_node_or_null("ObjectPools") if game else null
@@ -678,7 +823,7 @@ func die_from_stage_clear() -> void:
 func _request_die() -> void:
 	if _is_dying:
 		return
-	_cancel_ranged_telegraph()
+	_cancel_all_attack_telegraphs()
 	_is_dying = true
 	set_targeted(false)
 	_hide_health_bar()
@@ -693,13 +838,30 @@ func _trigger_death_burst() -> void:
 	var burst_position := get_footprint_global_center()
 	var factory := AttackServices.find_factory(null, false)
 	if factory:
-		factory.spawn_mob_death_burst(burst_position, death_burst_radius, death_burst_damage)
-	else:
+		factory.schedule_mob_death_burst(
+			burst_position,
+			death_burst_radius,
+			death_burst_damage,
+			death_burst_delay
+		)
+	elif death_burst_delay <= 0.0:
 		DamageResolver.apply_burst_damage_to_player_in_radius(
 			burst_position,
 			death_burst_radius,
 			death_burst_damage
 		)
+	else:
+		var tree := get_tree()
+		if tree:
+			tree.create_timer(death_burst_delay).timeout.connect(
+				func() -> void:
+					DamageResolver.apply_burst_damage_to_player_in_radius(
+						burst_position,
+						death_burst_radius,
+						death_burst_damage
+					),
+				CONNECT_ONE_SHOT
+			)
 
 
 func _die() -> void:

@@ -83,6 +83,8 @@ const TABLE: Dictionary = {
 		"gameover.weapon_damage": "무기별 피해량",
 		"gameover.no_damage": "기록된 피해 없음",
 		"gameover.restart": "다시시작",
+		"gameover.stats_survival": "생존 %s · Lv. %d · 처치: %d",
+		"gameover.stats_arena": "웨이브 %d/%d · %s · Lv. %d · 처치: %d",
 		"hud.kills": "처치: %d",
 		"hud.time": "%02d분 %02d초",
 		"hud.balance_phase": "밸런스 구간",
@@ -243,6 +245,8 @@ const TABLE: Dictionary = {
 		"gameover.weapon_damage": "Damage by Weapon",
 		"gameover.no_damage": "No damage recorded",
 		"gameover.restart": "Restart",
+		"gameover.stats_survival": "Survived %s · Lv. %d · Kills: %d",
+		"gameover.stats_arena": "Wave %d/%d · %s · Lv. %d · Kills: %d",
 		"hud.kills": "Kills: %d",
 		"hud.time": "%02d:%02d",
 		"hud.balance_phase": "Balance phase",
@@ -375,6 +379,7 @@ static func weapon_type_label(weapon_type: String) -> String:
 
 static func format_hud_time(seconds: float) -> String:
 	var total := int(seconds)
+	@warning_ignore("integer_division")
 	var minutes := total / 60
 	var secs := total % 60
 	return t(&"hud.time") % [minutes, secs]

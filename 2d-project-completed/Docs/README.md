@@ -11,6 +11,7 @@
 | `../AGENTS.md` | 프로젝트 작업 입구 | 짧은 개요, 문서 링크, Quick verify, 상세는 Docs로 위임 |
 | `Agents/` | 도메인별 작업 가이드 | 작업 진입점, QA, 제약, must / must not, 확인 시나리오 |
 | `Architecture/` | 기능별 코드 구조 | 책임 경계, 주요 타입, 런타임 흐름, 불변조건, 변경 가이드 |
+| `Design/` | 게임 디자인 의도 (GDD) | 1페이지 치트시트: 필러, 목표, 루프·승패 의도. 구현·수치는 Wiki/Architecture로 위임 |
 | `Wiki/` | 게임 규칙과 기획 | 플레이어 경험 기준의 규칙, 현재 구현 상태, 미정/후속 기획 |
 | `Plan/` | 실행 계획과 결정 기록 | Epic, 마일스톤, 주차 계획, 품질 게이트, 의사결정 기록 |
 | `../BACKLOG.md` | 남은 일 목록 | 미구현 기능, 기술 부채, 후속 개선, 우선순위 미정 아이디어 |
@@ -19,6 +20,7 @@
 
 - **코드를 안전하게 바꾸려면 알아야 한다** → `Architecture/`
 - **작업 시작 전에 어디를 봐야 하는지 알아야 한다** → `Agents/` 또는 `../AGENTS.md`
+- **왜 이 게임인지, 어떤 경험을 주려는지 정한다** → `Design/GDD.md`
 - **게임이 어떻게 플레이되어야 하는지 설명한다** → `Wiki/`
 - **언제, 어떤 순서로 할지 정한다** → `Plan/`
 - **아직 하지 않았거나 나중에 결정할 일이다** → `../BACKLOG.md`
@@ -39,7 +41,10 @@
 |------|------|
 | `game_lobby.tscn` | F5 시작 화면 |
 | `survivors_game.tscn` | 메인 플레이 씬 |
-| `test_arena.tscn` | F6 무기·몹 테스트 씬 |
+| `test_arena.tscn` | F6 무기·몹 테스트 씬 (`Architecture_TestArena.md`) |
+| `game/test_arena.gd` | F6 오케스트레이션·튜닝 GUI |
+| `game/test_arena_*_snapshot.gd` | F6 무기/몹 수치 스냅샷 |
+| `ui/test_arena_tab_bar.gd` | F6 패널 탭 바(4등분·줄바꿈) |
 | `game/game.gd` | 메인 런 오케스트레이션, 서바이벌/아레나 모드 분기 |
 | `game/run_config.gd` | 로비 선택 모드 전달 |
 | `game/arena/` | 아레나 웨이브 디렉터 |
@@ -69,6 +74,7 @@
 - [`Architecture/Architecture_Buffs.md`](Architecture/Architecture_Buffs.md)
 - [`Architecture/Architecture_GameLoop_Balance.md`](Architecture/Architecture_GameLoop_Balance.md)
 - [`Architecture/Architecture_Mobs.md`](Architecture/Architecture_Mobs.md)
+- [`Architecture/Architecture_TestArena.md`](Architecture/Architecture_TestArena.md)
 - [`Agents/README.md`](Agents/README.md)
 - [`Agents/CoreConstraints.md`](Agents/CoreConstraints.md)
 - [`Architecture/README.md`](Architecture/README.md)

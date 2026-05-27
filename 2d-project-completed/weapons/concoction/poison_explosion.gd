@@ -3,9 +3,10 @@ extends Node2D
 @onready var _sprite: Sprite2D = %Sprite
 
 
-func setup(radius: float) -> void:
+func setup(radius: float, visual_radius_mult: float = 1.0) -> void:
 	var texture_size := _sprite.texture.get_size().x
-	var target_scale := (radius * 2.0) / texture_size
+	var display_radius := radius * maxf(visual_radius_mult, 0.01)
+	var target_scale := (display_radius * 2.0) / texture_size
 
 	_sprite.scale = Vector2.ZERO
 	_sprite.modulate.a = 0.55

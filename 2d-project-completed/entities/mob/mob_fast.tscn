@@ -1,8 +1,9 @@
-[gd_scene load_steps=5 format=3 uid="uid://c8mobfast01"]
+[gd_scene load_steps=6 format=3 uid="uid://c8mobfast01"]
 
 [ext_resource type="Script" uid="uid://ojg88pe48jk5" path="res://entities/mob/mob.gd" id="1_mob"]
 [ext_resource type="PackedScene" uid="uid://ogik4s70pgwl" path="res://characters/slime/slime.tscn" id="2_slime"]
 [ext_resource type="Script" path="res://entities/mob/target_indicator_ring.gd" id="3_ring"]
+[ext_resource type="PackedScene" uid="uid://pj0grus4eoge" path="res://entities/mob/mob_speed_trail.tscn" id="4_speed_trail"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_fast"]
 size = Vector2(67.2, 41.6)
@@ -21,6 +22,9 @@ slime_tint = Color(0.75, 0.95, 1, 1)
 
 [node name="Slime" parent="." instance=ExtResource("2_slime")]
 unique_name_in_owner = true
+
+[node name="SpeedTrail" parent="." instance=ExtResource("4_speed_trail")]
+trail_color = Color(0.75, 0.95, 1, 0.88)
 
 [node name="TargetIndicator" type="Node2D" parent="."]
 unique_name_in_owner = true

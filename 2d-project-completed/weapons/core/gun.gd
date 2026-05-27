@@ -3,10 +3,13 @@ extends Area2D
 @export var weapon: WeaponData = preload("res://weapons/data/revolver.tres")
 
 const KING_BIBLE_ORB_COUNT := 2
+const AIM_LINE_COLOR := Color(1.0, 0.85, 0.35, 0.55)
+const AIM_LINE_WIDTH := 4.0
 
 @onready var _shoot_timer: Timer = $Timer
 @onready var _weapon_sprite: Sprite2D = $WeaponPivot/WeaponSprite
 @onready var _shooting_point: Marker2D = $WeaponPivot/WeaponSprite/ShootingPoint
+@onready var _aim_direction_line: Line2D = %AimDirectionLine
 var _current_target: Node2D = null
 var _burst_shots_remaining := 0
 var _magic_companions: Array[Node] = []
@@ -17,6 +20,7 @@ func _ready() -> void:
 		_shoot_timer.timeout.connect(_on_timer_timeout)
 	_shoot_timer.stop()
 	_apply_weapon_data()
+	_setup_aim_direction_line()
 
 
 func equip_weapon(new_weapon: WeaponData) -> void:
@@ -58,6 +62,33 @@ func _reset_fire_state() -> void:
 
 func refresh_targeting_mode() -> void:
 	_update_target_display()
+	_update_aim_direction_line()
+
+
+# 자동 타겟 OFF일 때 발사 지점에서 마우스 조준 방향(사거리)을 표시합니다.
+func _setup_aim_direction_line() -> void:
+	if not _aim_direction_line:
+		return
+	_aim_direction_line.width = AIM_LINE_WIDTH
+	_aim_direction_line.default_color = AIM_LINE_COLOR
+	_aim_direction_line.joint_mode = Line2D.LINE_JOINT_ROUND
+	_aim_direction_line.begin_cap_mode = Line2D.LINE_CAP_ROUND
+	_aim_direction_line.end_cap_mode = Line2D.LINE_CAP_ROUND
+	_aim_direction_line.visible = false
+
+
+func _update_aim_direction_line() -> void:
+	if not _aim_direction_line:
+		return
+	if not weapon or weapon.is_orbit_attack() or _is_auto_target_enabled():
+		_aim_direction_line.visible = false
+		return
+	var range_length := _get_attack_range()
+	if range_length <= 0.0 or not is_finite(range_length):
+		_aim_direction_line.visible = false
+		return
+	_aim_direction_line.points = PackedVector2Array([Vector2.ZERO, Vector2(range_length, 0.0)])
+	_aim_direction_line.visible = true
 
 
 # 플레이어 자동 공격 토글(G)에 맞춰 타이머를 켜거나 끕니다.
@@ -66,6 +97,8 @@ func refresh_auto_attack() -> void:
 		return
 	if _is_auto_attack_enabled():
 		if _shoot_timer.time_left <= 0.0 and not _is_manual_fire_pressed():
+			if not _has_enemy_in_attack_range():
+				return
 			if weapon.has_burst():
 				_begin_burst()
 			else:
@@ -152,6 +185,11 @@ func _get_current_target() -> Node2D:
 	)
 
 
+# 자동 공격은 사거리 안에 적이 있을 때만 발사합니다.
+func _has_enemy_in_attack_range() -> bool:
+	return is_instance_valid(_get_current_target())
+
+
 func _set_targeted(enemy, active: bool) -> void:
 	if not is_instance_valid(enemy):
 		return
@@ -185,6 +223,7 @@ func _process(_delta: float) -> void:
 		look_at(_get_target_aim_position(_current_target))
 	else:
 		look_at(get_global_mouse_position())
+	_update_aim_direction_line()
 	_handle_auto_attack()
 	_handle_manual_fire_input()
 
@@ -194,6 +233,8 @@ func _handle_auto_attack() -> void:
 	if not weapon or weapon.is_orbit_attack():
 		return
 	if not _is_auto_attack_enabled() or _is_manual_fire_pressed():
+		return
+	if not _has_enemy_in_attack_range():
 		return
 	if _shoot_timer.time_left > 0.0:
 		return
@@ -453,6 +494,11 @@ func _on_timer_timeout() -> void:
 	var auto_attack := _is_auto_attack_enabled()
 	var manual := _is_manual_fire_pressed()
 	if not auto_attack and not manual:
+		_shoot_timer.stop()
+		_burst_shots_remaining = 0
+		return
+
+	if auto_attack and not manual and not _has_enemy_in_attack_range():
 		_shoot_timer.stop()
 		_burst_shots_remaining = 0
 		return

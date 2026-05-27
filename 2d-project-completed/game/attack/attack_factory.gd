@@ -8,6 +8,8 @@ const KING_BIBLE_ORB_SCENE := preload("res://weapons/magic/king_bible_orb.tscn")
 const THROWING_PROJECTILE_SCENE := preload("res://weapons/throwing/throwing_projectile.tscn")
 const AREA_DAMAGE_ZONE_SCENE := preload("res://weapons/area/area_damage_zone.tscn")
 const POISON_EXPLOSION_SCENE := preload("res://weapons/concoction/poison_explosion.tscn")
+const DEATH_BURST_WARNING_SCENE := preload("res://effects/death_burst/death_burst_warning.tscn")
+const DEATH_BURST_VISUAL_RADIUS_MULT := 1.35
 
 var _services_node: Node
 
@@ -149,5 +151,45 @@ func spawn_mob_death_burst(burst_position: Vector2, radius: float, damage: int) 
 		game.add_child(visual)
 		visual.global_position = burst_position
 		if visual.has_method(&"setup"):
-			visual.setup(radius)
+			visual.setup(radius, DEATH_BURST_VISUAL_RADIUS_MULT)
 	DamageResolver.apply_burst_damage_to_player_in_radius(burst_position, radius, damage)
+
+
+# 사망 폭발 — delay 초 후 피해·연출(0 이하면 즉시)
+func schedule_mob_death_burst(
+	burst_position: Vector2,
+	radius: float,
+	damage: int,
+	delay: float
+) -> void:
+	if damage <= 0 or radius <= 0.0:
+		return
+	if delay <= 0.0:
+		spawn_mob_death_burst(burst_position, radius, damage)
+		return
+	var game := _get_game()
+	if game == null:
+		var tree := Engine.get_main_loop() as SceneTree
+		if tree:
+			tree.create_timer(delay).timeout.connect(
+				func() -> void:
+					spawn_mob_death_burst(burst_position, radius, damage),
+				CONNECT_ONE_SHOT
+			)
+		return
+	var warning: Node2D = DEATH_BURST_WARNING_SCENE.instantiate() as Node2D
+	game.add_child(warning)
+	warning.global_position = burst_position
+	if warning.has_method(&"setup"):
+		warning.setup(
+			radius,
+			delay,
+			func() -> void:
+				spawn_mob_death_burst(burst_position, radius, damage)
+		)
+	else:
+		game.get_tree().create_timer(delay).timeout.connect(
+			func() -> void:
+				spawn_mob_death_burst(burst_position, radius, damage),
+			CONNECT_ONE_SHOT
+		)

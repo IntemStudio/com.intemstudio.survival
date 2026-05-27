@@ -701,6 +701,14 @@ text = "Game Over"
 horizontal_alignment = 1
 vertical_alignment = 1
 
+[node name="RunStatsLabel" type="Label" parent="GameOver/MenuOverlay/CenterContainer/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+
 [node name="WeaponDamagePanel" type="VBoxContainer" parent="GameOver/MenuOverlay/CenterContainer/VBoxContainer"]
 layout_mode = 2
 theme_override_constants/separation = 8

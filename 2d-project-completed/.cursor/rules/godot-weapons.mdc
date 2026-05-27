@@ -34,8 +34,10 @@ Skipping step 2 makes the weapon invisible in level-up selection.
 ## Auto attack toggle
 
 - Default: `Player.auto_target_enabled` / `auto_attack_enabled` from `GameplaySettings` on spawn; `toggle_auto_target` (F) and `toggle_auto_attack` (G) toggle at runtime.
-- `gun.gd` must respect `Player.is_auto_attack_enabled()` for `refresh_auto_attack()`, `_on_timer_timeout`, and timer start; orbit damage in `king_bible_orb.gd` must use the same check.
+- `gun.gd` must respect `Player.is_auto_attack_enabled()` for `refresh_auto_attack()`, `_handle_auto_attack()`, `_on_timer_timeout`, and timer start; orbit damage in `king_bible_orb.gd` must use the same check.
+- Auto attack paths must also require `_has_enemy_in_attack_range()` (Gun targeting `Area2D` overlap + weapon range via `_get_current_target()`). Manual `ACTION_ATTACK` may still call `shoot()` without a target.
 - `gun.gd` must respect `Player.is_auto_target_enabled()` for `_update_target_display()` / targeting rings.
+- When auto target is off, `%AimDirectionLine` on each `Gun` shows shoot direction from `%ShootingPoint` along weapon range; hide for orbit weapons and when auto target is on.
 - Do not bypass the toggle by calling `shoot()` from new code without an explicit design (e.g. manual attack key).
 - HUD: keep `%AutoTargetLabel` and `%AutoAttackLabel` in sync via `Player._update_auto_target_hud()` / `_update_auto_attack_hud()`.
 

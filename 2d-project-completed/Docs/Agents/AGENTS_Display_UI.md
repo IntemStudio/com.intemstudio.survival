@@ -38,7 +38,7 @@ HUD·메뉴·테스트 UI는 **1920×1080(FHD) 좌표**로 배치하고, 실제 
 | 스크립트 | `ui/ui_viewport_layout.gd` (`class_name UiViewportLayout`) |
 | 메인 HUD | `survivors_game.tscn` → `HUD/HUDRoot` (`align_mode` 좌상, `pass_mouse_to_game` true) |
 | 메뉴 | `WeaponSelectMenu`·`PauseMenu`·`GameOver` → 각 `MenuOverlay` (중앙, `pass_mouse_to_game` false) |
-| 테스트 | `test_arena.tscn` → `TestUI/TestUILayout` (`pass_mouse_to_game` false) |
+| 테스트 | `test_arena.tscn` → `TestUI/TestUILayout` (`pass_mouse_to_game` false). 패널 탭: `TestPanelsWrap` / `TabBarHost`(`ui/test_arena_tab_bar.gd`, 행당 4등분·5개부터 줄바꿈) / `TestPanelsTab` |
 
 **Must not (UI):** FHD offset·폰트를 HD 픽셀에 맞춰 이중으로 줄이지 말 것 — 스케일은 `UiViewportLayout`만 담당.
 

@@ -15,17 +15,17 @@ var runtime_flags: Dictionary = {}
 
 static func from_gun(
 	weapon_data: WeaponData,
-	spawn_transform: Transform2D,
-	direction: Vector2,
+	gun_spawn_transform: Transform2D,
+	gun_direction: Vector2,
 	owner_node: Node = null,
 	target: Node = null,
 	pre_rolled_damage: int = -1
 ) -> AttackContext:
 	var context := AttackContext.new()
 	context.weapon = weapon_data
-	context.spawn_transform = spawn_transform
-	context.origin = spawn_transform.origin
-	context.direction = direction.normalized() if direction.length_squared() > 0.0 else Vector2.RIGHT
+	context.spawn_transform = gun_spawn_transform
+	context.origin = gun_spawn_transform.origin
+	context.direction = gun_direction.normalized() if gun_direction.length_squared() > 0.0 else Vector2.RIGHT
 	context.owner = owner_node
 	context.locked_target = target
 	if pre_rolled_damage >= 0:

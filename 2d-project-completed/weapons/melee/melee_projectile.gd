@@ -44,7 +44,7 @@ func pool_on_acquire() -> void:
 	PhysicsLayers.apply_player_projectile(self)
 
 
-func setup(weapon_data: WeaponData, spawn_transform: Transform2D, owner: Node2D = null) -> void:
+func setup(weapon_data: WeaponData, spawn_transform: Transform2D, projectile_owner: Node2D = null) -> void:
 	if not WeaponData.is_valid_projectile_pierce_count(weapon_data.projectile_pierce_count):
 		push_error(
 			"MeleeProjectile: projectile_pierce_count가 0입니다 (무기=%s)." % weapon_data.get_unique_key()
@@ -54,7 +54,7 @@ func setup(weapon_data: WeaponData, spawn_transform: Transform2D, owner: Node2D 
 
 	_setup_generation += 1
 	_weapon = weapon_data
-	_owner = owner
+	_owner = projectile_owner
 	global_transform = spawn_transform
 	_direction = Vector2.RIGHT.rotated(rotation)
 	_origin_position = global_position

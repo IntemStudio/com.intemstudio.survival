@@ -18,14 +18,14 @@ If you skip step 2 or 3, the mob will never spawn in play.
 
 ## Must not
 
-- Do not duplicate AI, damage, poison, or death logic in new `.gd` files under `entities/mob/`.
+- Do not duplicate AI, damage, poison, or death logic in new `.gd` files under `entities/mob/`. Visual-only children (e.g. `mob_speed_trail.gd` on `mob_fast.tscn`) are allowed; they must not call combat, spawn, or pool APIs on the parent.
 - Do not spawn mobs without going through `Game.spawn_mob()` → `MobSpawnSelector.pick_scene` → `initialize_spawn_health(hp_multiplier)`.
 - Do not `queue_free()` mobs at death; use `PoolUtil.release_node(self)` in `_die()` after kill/exp-orb logic.
 - Do not remove `add_to_group("mobs")` from `mob.gd` `pool_on_acquire` (not `_ready`).
 
 ## Must (variant scenes)
 
-- Differentiate variants only via `.tscn` exports (`base_max_health`, `speed_min`/`speed_max`, `mob_kind`, `slime_tint`, optional `%TargetIndicator` offset/scale).
+- Differentiate variants only via `.tscn` exports (`base_max_health`, `speed_min`/`speed_max`, `mob_kind`, `slime_tint`, optional `%TargetIndicator` offset/scale) and optional visual-only child scenes (e.g. `mob_speed_trail.tscn` on fast).
 - Boss/special/elite/ranged/fast scenes must remain instantiable as `Mob`.
 - Every play mob scene must include `%TargetIndicator` (`Node2D` + `target_indicator_ring.gd`, default hidden) for `gun.gd` `set_targeted`. Do not revert to `circle.png` `Sprite2D` for targeting FX.
 - Mob `%HealthBar` must start hidden per spawn (`initialize_spawn_health` / `pool_reset`); reveal on damage via `_reveal_health_bar`; hide on `_request_die` (pool reuse — do not `queue_free` the bar).

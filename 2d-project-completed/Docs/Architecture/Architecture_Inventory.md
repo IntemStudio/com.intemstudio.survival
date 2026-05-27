@@ -48,7 +48,7 @@
 | `inventory/item_reward_picker.gd` | 상자 보상 후보를 슬롯 필터, 등급, 중복 제외 조건으로 추린다 |
 | `inventory/gear_stat_merge.gd` | `*_mult` 곱연산, min/max 합산, 태그 누적 같은 스탯 병합 규칙 |
 | `inventory/gear_stat_display.gd` | 장비 툴팁용 표시 문자열 생성 |
-| `inventory/inventory_service.gd` | UI가 호출하는 장착·해제·드래그·세트 전환·버리기 API |
+| `inventory/inventory_service.gd` | UI가 호출하는 장착·해제·드래그·세트 전환·버리기 API. F6 GUI: `try_force_equip_weapon_on_active_set()` |
 | `inventory/inventory_combat_bridge.gd` | 장착된 활성 weapon과 장비 스탯을 `Player`에 적용 |
 | `inventory/inventory_game_bridge.gd` | I/Tab/RMB 입력, 메뉴 열기/닫기, HUD 전투 세트 표시 연결 |
 | `inventory/loadout_stat_apply.gd` | 이동·피해·공격속도·방어·체력 스탯 공식 제공 |
@@ -117,6 +117,7 @@ Game / TestArena
 | offhand 획득은 같은 세트 weapon이 양손이 아닌 활성 offhand 빈 슬롯, 비활성 offhand 빈 슬롯, 가방 순서로 배치한다. | `offhand 1`은 `weapon 1`, `offhand 2`는 `weapon 2`의 양손 여부에 종속된다. |
 | 공유 방어구 획득은 대상 공유 슬롯이 비어 있으면 바로 장착하고, 차 있으면 가방에 넣는다. | 헬멧·갑옷·장갑·부츠·악세도 빈 슬롯일 때는 획득 즉시 빌드에 반영한다. |
 | 전투 적용은 활성 세트 weapon만 대상으로 한다. | 비활성 weapon이 자동 공격, 궤도, 장판을 만들지 않게 한다. |
+| F6 무기 GUI 착용은 `try_force_equip_weapon_on_active_set`로 활성 weapon만 바꾼다. 기존 무기는 가방이 아닌 삭제. | `acquire_item`의 빈 슬롯·가방 우선 규칙과 분리 |
 | 비활성 세트 offhand는 스탯, 패시브, 비주얼 효과를 적용하지 않는다. | 세트 전환 전까지 대기 장비로만 취급한다. |
 | 양손 weapon 장착 시 같은 세트의 offhand는 비워야 한다. | 한손/offhand 빌드와 양손 빌드의 경계를 유지한다. |
 | 다른 세트의 장비 슬롯끼리 직접 스왑하지 않는다. | UI는 4칸을 동시에 보여도 데이터는 세트별로 분리된다. |

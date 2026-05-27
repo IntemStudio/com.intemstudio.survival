@@ -16,7 +16,7 @@
 
 | 책임 | 설명 |
 |------|------|
-| 무기 데이터 | `WeaponData`의 id, 타입, 손잡이, 피해, APS, 사거리, delivery, 원소, 특수 필드 |
+| 무기 데이터 | `WeaponData`의 id, 타입, 손잡이, 피해, APS, 사거리(`range_type`·투척·F6 override), delivery, 원소, 특수 필드 |
 | 카탈로그 | Ranged/Melee/Magic 카탈로그의 `WeaponData` 생성과 획득 UI 후보 공급 |
 | 전투 장착 | 활성 전투 세트 weapon이 바뀔 때 `Player.add_weapon()`이 `Gun`을 생성하고 `%Weapons` 아래 배치 |
 | 조준·발사 | `Gun`이 최근접 몹 조준, 자동 공격/수동 공격, burst, delivery 분기 처리 |
@@ -58,6 +58,7 @@
 | `entities/mob/mob.gd` | weapon 귀속 피해 수신, 상태이상 적용, 피해 통계 등록 |
 | `status/status_effect_catalog.gd` | 무기가 부여하는 상태이상 id의 런타임 정의 |
 | `game/weapon_damage_tracker.gd` | weapon key별 누적 피해와 표시 행 생성 |
+| `game/test_arena_weapon_snapshot.gd` | F6 무기 튜닝 세션·`user://` 저장 (`Architecture_TestArena.md`) |
 | `buff/buff_trigger_router.gd` | `rapier`의 wave start `en_garde` 같은 무기 조건부 버프 연결 |
 
 관계는 아래처럼 유지한다.
@@ -84,7 +85,7 @@ WeaponSelectMenu
 4. 활성 전투 세트 weapon이 바뀌면 `InventoryCombatBridge`가 플레이어의 기존 weapon 적용을 정리하고 활성 `WeaponData`를 `Player.add_weapon()`으로 적용한다.
 5. `Player.add_weapon()`은 `gun.tscn`을 인스턴스화해 `%Weapons` 아래에 추가한다.
 6. `Gun.equip_weapon()`은 스프라이트, 공격 속도, 양손 스케일, 궤도 companion을 초기화한다.
-7. 활성 일반 무기는 자동 공격 on 또는 `attack` 액션(기본 좌클릭) 유지 상태에서 timer에 맞춰 `shoot()`를 호출한다. 활성 궤도 무기는 별도 companion이 physics tick에서 overlap 피해를 처리한다.
+7. 활성 일반 무기는 `attack` 액션(기본 좌클릭) 유지 시 timer에 맞춰 `shoot()`를 호출한다. 자동 공격 on일 때는 Gun 타겟팅 `Area2D` 사거리 안에 몹이 있을 때만 같은 경로로 `shoot()`한다. 활성 궤도 무기는 별도 companion이 physics tick에서 overlap 피해를 처리한다.
 8. 비활성 세트나 가방의 weapon은 `Gun`을 만들지 않으며 자동 공격 on이어도 발사하지 않는다.
 9. `Gun.shoot()`는 `weapon_type`과 delivery helper에 따라 탄환, 근접 발사체, 마법 탄, 투척체, 장판을 스폰한다. 카탈로그 Melee는 대부분 판정상 발사체지만 `melee_projectile.tscn`의 검기형 폴리곤 비주얼로 총알과 구분한다. 근접 movement는 직선 관통(`StraightPierce`), 직선 왕복(`Return`), 타원형 곡선 왕복(`CurvedReturn`), 감속 직선(`Decelerate`), 궤도(`Orbit`)로 나뉜다.
 10. 각 피해 오브젝트는 `LoadoutStatApply.roll_combat_damage()` 또는 플레이어의 `roll_weapon_damage()`를 통해 장착 장비 배율을 반영한 피해를 굴린다.
@@ -97,7 +98,7 @@ WeaponSelectMenu
 
 1. 새 무기는 `weapon_id`를 반드시 고유하게 지정한다.
 2. 카탈로그 생성 필드는 `WeaponData` helper가 이해하는 타입과 delivery 값만 사용한다.
-3. 새 delivery나 projectile movement를 만들면 `WeaponData` helper, `Gun.shoot()` 분기, 실제 피해 오브젝트, 테스트 아레나 필터/스냅샷을 함께 확인한다. F6 스냅샷은 현재 지원하지 않는 movement 값을 기본 지원값으로 보정한다.
+3. 새 delivery나 projectile movement를 만들면 `WeaponData` helper, `Gun.shoot()` 분기, 실제 피해 오브젝트, F6 `TestArenaWeaponSnapshot` 필드·movement·omit을 함께 확인한다. F6 스냅샷은 지원하지 않는 movement를 기본 지원값으로 보정한다.
 4. 새 발사체나 이펙트는 `ScenePool` 대상이면 `pool_reset()`과 `pool_on_acquire()` 계약을 구현한다.
 5. 툴팁에 표시되는 새 수치와 상태이상은 `WeaponData.build_select_tooltip_bbcode()` 양 언어 경로를 함께 갱신한다.
 
@@ -115,19 +116,22 @@ WeaponSelectMenu
 | 플레이어 발사체는 환경 레이어 장애물에 막혀야 한다. | 발사체 마스크가 환경을 포함하므로, 충돌 시 반환 또는 충돌 지점 효과로 끝나야 한다. |
 | `projectile_pierce_count == 0`은 유효하지 않다. | 0은 설정 실수로 보고 발사체가 에러 후 반환한다. |
 | 궤도 무기는 자동 공격 off일 때 피해 판정을 멈추지만 회전 위치 갱신은 유지한다. | 자동 공격 토글의 의미와 비주얼 연속성을 함께 지킨다. |
+| 자동 공격은 `_has_enemy_in_attack_range()`(Gun overlap + 무기 사거리)가 true일 때만 timer·`shoot()`·버스트를 진행한다. 수동 `attack`은 예외. | 적이 없을 때 허공 사격·쿨다운 소모를 막는다. |
 | `Gun`은 `/root/Game`과 `ObjectPools`를 전제로 스폰한다. | 씬 분리나 테스트 씬 변경 시 루트 계약을 맞춰야 한다. |
 | loadout damage/APS 배율은 발사체가 직접 계산하기보다 `Player`/`LoadoutStatApply` 경로를 사용하고, 가방 장비는 제외한다. | 인벤 장착 장비 스탯 반영 위치를 한 곳으로 모은다. |
+| `melee_range_override` / `projectile_range_override` > 0일 때만 `get_melee_range()` / `get_projectile_range()`를 덮어쓴다. F5는 override 0. | F6 QA와 메인 `range_type` 표 분리 |
 
 ## Change Guidelines
 
 | 변경 | 확인할 것 |
 |------|-----------|
-| 새 무기 추가 | 카탈로그, `weapon_id`, `weapon_type`, hand, damage element, 툴팁, F6 Equip |
+| 새 무기 추가 | 카탈로그, `weapon_id`, `weapon_type`, hand, damage element, 툴팁, F6 Equip·공통 튜닝 스핀 |
 | 새 공격 방식 추가 | `WeaponData` helper, `Gun.shoot()` 분기, 풀링, 몹 피해 경로, 피해 통계 |
-| 새 projectile movement 추가 | 이동 스크립트, 사거리 종료, 관통/왕복/유도 규칙, 환경 충돌 처리, 테스트 아레나 옵션/스냅샷 |
+| 새 projectile movement 추가 | 이동 스크립트, 사거리 종료, 관통/왕복/유도 규칙, 환경 충돌, F6 movement·`get_field_defs` |
+| F6 무기 튜닝 필드 | `TestArenaWeaponSnapshot` core/타입 def, `build_test_arena_info_bbcode` omit |
 | 피해 공식 변경 | `Player.roll_weapon_damage()`, `LoadoutStatApply`, 독/장판/궤도 피해가 장착 장비만 같은 규칙으로 쓰는지 |
 | 상태이상 변경 | `WeaponData.status_effects`, `StatusEffectCatalog`, `Mob.apply_weapon_damage()`, DoT 피해 통계 |
-| 자동 공격 변경 | `Gun.refresh_auto_attack()`, 궤도 무기, HUD 라벨, 수동 `attack` 액션과 timer 충돌 여부 |
+| 자동 공격 변경 | `Gun.refresh_auto_attack()`, `_has_enemy_in_attack_range()`, 궤도 무기, HUD 라벨, 수동 `attack`과 timer·버스트 충돌, 사거리 밖 무발사 |
 | 무기 조건부 버프 변경 | `WeaponData.effect` 표시 문구, `BuffTriggerRouter`, `BuffCatalog`, APS 타이머 갱신 |
 | 무기 획득 변경 | 인벤 자동 배치, 활성/비활성 weapon 슬롯, 가방 가득 참, `Player.add_weapon()` 직접 호출 제거 |
 | 피해 통계 변경 | `WeaponDamageTracker`, `Mob._register_weapon_damage()`, 게임오버·일시정지 UI |

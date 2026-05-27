@@ -116,6 +116,32 @@ func try_restore_item_at(target: Dictionary, item_id: String) -> StringName:
 	return ERROR_INVALID_SLOT
 
 
+# 테스트 아레나 등 — 활성 세트 무기를 교체합니다. 기존 무기는 삭제하고 새 무기를 슬롯에 둡니다.
+func try_force_equip_weapon_on_active_set(item_id: String) -> StringName:
+	var key := item_id.strip_edges()
+	if key.is_empty() or not registry.has_item(key):
+		return ERROR_UNKNOWN_ITEM
+	if not registry.can_item_occupy_slot(key, EquipSlots.WEAPON):
+		return ERROR_INVALID_SLOT
+
+	var set_index := loadout.active_set_index
+	var current_weapon_id := loadout.get_set_item_id(set_index, EquipSlots.WEAPON)
+	if current_weapon_id == key:
+		return &""
+
+	if not current_weapon_id.is_empty():
+		loadout.set_set_item_id(set_index, EquipSlots.WEAPON, "")
+
+	if registry.is_two_handed_weapon(key):
+		var offhand_id := loadout.get_set_item_id(set_index, EquipSlots.OFFHAND)
+		if not offhand_id.is_empty():
+			loadout.set_set_item_id(set_index, EquipSlots.OFFHAND, "")
+
+	_remove_item_id_from_loadout(key)
+	loadout.set_set_item_id(set_index, EquipSlots.WEAPON, key)
+	return &""
+
+
 # 획득 아이템을 규칙에 따라 장착 슬롯 또는 가방에 자동 배치합니다.
 func acquire_item(item_id: String) -> StringName:
 	var key := item_id.strip_edges()
@@ -394,6 +420,22 @@ func _acquire_weapon_item(item_id: String) -> StringName:
 		if err.is_empty():
 			return &""
 	return _place_item_in_bag(item_id)
+
+
+func _remove_item_id_from_loadout(item_id: String) -> void:
+	var location: Variant = loadout.find_item_location(item_id)
+	if location == null:
+		return
+	var source: Dictionary = location
+	var source_kind: StringName = source.get("kind", &"")
+	if source_kind == &"bag":
+		var bag_index: int = source.get("bag_index", -1)
+		if bag_index >= 0:
+			loadout.set_bag_item_id(bag_index, "")
+	elif source_kind == &"set":
+		var set_index: int = source.get("set_index", -1)
+		var slot_key: StringName = source.get("slot_key", &"")
+		loadout.set_set_item_id(set_index, slot_key, "")
 
 
 func _equip_acquired_weapon_to_empty_set(item_id: String, set_index: int) -> StringName:

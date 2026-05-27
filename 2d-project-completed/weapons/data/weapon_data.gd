@@ -67,6 +67,10 @@ const PROJECTILE_MOVEMENT_OPTIONS_BY_TYPE := {
 @export var min_damage := 1
 @export var max_damage := 1
 @export var attacks_per_second := 1.0
+## F6 튜닝: 0이면 range_type 표 기본값
+@export var melee_range_override := 0.0
+## F6 튜닝: 0이면 range_type 표 기본값
+@export var projectile_range_override := 0.0
 @export var burst_count := 1
 @export var burst_interval := 0.08
 @export var hit_count := 1
@@ -120,6 +124,200 @@ func build_select_tooltip_bbcode() -> String:
 	if UiLocale.get_locale() == UiLocale.LOCALE_EN:
 		return _build_select_tooltip_bbcode_en()
 	return _build_select_tooltip_bbcode_ko()
+
+
+# F6 테스트 아레나 — 튜닝 GUI에서 수정 가능한 항목은 설명에서 제외합니다.
+func build_test_arena_info_bbcode(omit_properties: Array = []) -> String:
+	if UiLocale.get_locale() == UiLocale.LOCALE_EN:
+		return _build_test_arena_info_bbcode_en(omit_properties)
+	return _build_test_arena_info_bbcode_ko(omit_properties)
+
+
+static func _test_arena_omit_set(omit_properties: Array) -> Dictionary:
+	var omit: Dictionary = {}
+	for prop in omit_properties:
+		omit[str(prop)] = true
+	return omit
+
+
+static func _test_arena_is_omitted(omit: Dictionary, property: String) -> bool:
+	return omit.has(property)
+
+
+static func _test_arena_range_omitted(omit: Dictionary) -> bool:
+	return (
+		_test_arena_is_omitted(omit, "throw_range")
+		or _test_arena_is_omitted(omit, "melee_range_override")
+		or _test_arena_is_omitted(omit, "projectile_range_override")
+	)
+
+
+func _build_test_arena_info_bbcode_ko(omit_properties: Array) -> String:
+	var omit := _test_arena_omit_set(omit_properties)
+	var lines: PackedStringArray = []
+	var hand_tag := ""
+	if hand == "One-Handed":
+		hand_tag = " [한손 무기]"
+	elif hand == "Two-Handed":
+		hand_tag = " [양손 무기]"
+	lines.append("[color=#ffdd55]%s%s[/color]" % [get_display_name_localized(), hand_tag])
+	lines.append("%s / %s" % [_weapon_type_ko(), weapon_subtype])
+	if not damage_element.is_empty():
+		lines.append("[color=#c9a87a]피해 속성: %s[/color]" % _damage_element_ko())
+	if not status_effects.is_empty():
+		lines.append("[color=#a9d6ff]상태이상: %s[/color]" % _status_effects_label())
+	if _test_arena_damage_omitted(omit):
+		pass
+	else:
+		lines.append("데미지: %d-%d" % [min_damage, max_damage])
+	if not _test_arena_is_omitted(omit, "attacks_per_second"):
+		lines.append("공격 속도: %.2f APS" % attacks_per_second)
+	if has_burst() and not (
+		_test_arena_is_omitted(omit, "burst_count")
+		or _test_arena_is_omitted(omit, "burst_interval")
+	):
+		lines.append("연사: %d발" % burst_count)
+	if hit_count > 1 and not _test_arena_is_omitted(omit, "hit_count"):
+		lines.append("타격 횟수: %d회" % hit_count)
+	if not _test_arena_is_omitted(omit, "projectile_pierce_count"):
+		var pierce_label := get_projectile_pierce_label_ko()
+		if not pierce_label.is_empty():
+			lines.append(pierce_label)
+	if not _test_arena_range_omitted(omit):
+		lines.append("사거리: %s (%d)" % [_range_type_ko(), int(_get_attack_range())])
+	if (
+		is_area_zone_attack()
+		and aoe_radius > 0.0
+		and not _test_arena_is_omitted(omit, "aoe_radius")
+	):
+		lines.append("영역 반경: %d" % int(aoe_radius))
+	if is_explosion_ranged() and explosion_radius > 0.0:
+		lines.append("폭발 반경: %d" % int(explosion_radius))
+	if (
+		damage_element == "poison"
+		and not _test_arena_poison_stats_omitted(omit)
+	):
+		lines.append("독 피해: %d-%d (%.1f초)" % [poison_damage_min, poison_damage_max, poison_duration])
+	if applies_nettles:
+		lines.append("쐐기: %.1f초" % nettles_duration)
+	if (
+		not get_projectile_movement_label_ko().is_empty()
+		and not _test_arena_is_omitted(omit, "projectile_movement")
+	):
+		lines.append("움직임: %s" % get_projectile_movement_label_ko())
+	if is_melee() and not is_orbit_attack():
+		lines.append("공격 방식: 관통 탄")
+	if (
+		has_melee_parallel_spawn()
+		and not _test_arena_melee_spread_omitted(omit)
+	):
+		lines.append("병렬 탄막: %d발 (좌우 %d)" % [get_melee_spread_count(), int(melee_parallel_offset)])
+	elif has_melee_spread() and not _test_arena_melee_spread_omitted(omit):
+		lines.append("탄막: %d발 (부채꼴 %.0f°)" % [get_melee_spread_count(), melee_spread_angle_deg])
+	if is_area_zone_attack():
+		lines.append("공격 방식: 영역")
+	if is_orbit_attack():
+		lines.append("공격 방식: 궤도")
+	if homing_strength > 0.0 and not _test_arena_is_omitted(omit, "homing_strength"):
+		lines.append("유도 탄")
+	var effect_ko := _effect_ko()
+	if not effect_ko.is_empty():
+		lines.append("")
+		lines.append(effect_ko)
+	return "\n".join(lines)
+
+
+func _build_test_arena_info_bbcode_en(omit_properties: Array) -> String:
+	var omit := _test_arena_omit_set(omit_properties)
+	var lines: PackedStringArray = []
+	var hand_tag := ""
+	if hand == "One-Handed":
+		hand_tag = " [One-Handed]"
+	elif hand == "Two-Handed":
+		hand_tag = " [Two-Handed]"
+	lines.append("[color=#ffdd55]%s%s[/color]" % [get_display_name_localized(), hand_tag])
+	lines.append("%s / %s" % [UiLocale.weapon_type_label(weapon_type), weapon_subtype])
+	if not damage_element.is_empty():
+		lines.append("[color=#c9a87a]Damage type: %s[/color]" % _damage_element_en())
+	if not status_effects.is_empty():
+		lines.append("[color=#a9d6ff]Status: %s[/color]" % _status_effects_label())
+	if _test_arena_damage_omitted(omit):
+		pass
+	else:
+		lines.append("Damage: %d-%d" % [min_damage, max_damage])
+	if not _test_arena_is_omitted(omit, "attacks_per_second"):
+		lines.append("Attack speed: %.2f APS" % attacks_per_second)
+	if has_burst() and not (
+		_test_arena_is_omitted(omit, "burst_count")
+		or _test_arena_is_omitted(omit, "burst_interval")
+	):
+		lines.append("Burst: %d shots" % burst_count)
+	if hit_count > 1 and not _test_arena_is_omitted(omit, "hit_count"):
+		lines.append("Hits: %d" % hit_count)
+	if not _test_arena_is_omitted(omit, "projectile_pierce_count"):
+		var pierce_label_en := get_projectile_pierce_label_en()
+		if not pierce_label_en.is_empty():
+			lines.append(pierce_label_en)
+	if not _test_arena_range_omitted(omit):
+		lines.append("Range: %s (%d)" % [_range_type_en(), int(_get_attack_range())])
+	if (
+		is_area_zone_attack()
+		and aoe_radius > 0.0
+		and not _test_arena_is_omitted(omit, "aoe_radius")
+	):
+		lines.append("Area radius: %d" % int(aoe_radius))
+	if is_explosion_ranged() and explosion_radius > 0.0:
+		lines.append("Explosion radius: %d" % int(explosion_radius))
+	if damage_element == "poison" and not _test_arena_poison_stats_omitted(omit):
+		lines.append("Poison: %d-%d (%.1fs)" % [poison_damage_min, poison_damage_max, poison_duration])
+	if applies_nettles:
+		lines.append("Nettles: %.1fs" % nettles_duration)
+	if (
+		not get_projectile_movement_label_ko().is_empty()
+		and not _test_arena_is_omitted(omit, "projectile_movement")
+	):
+		var movement_label_en := PROJECTILE_MOVEMENT_ORBIT if is_orbit_attack() else projectile_movement
+		lines.append("Movement: %s" % movement_label_en)
+	if is_melee() and not is_orbit_attack():
+		lines.append("Delivery: piercing projectile")
+	if has_melee_parallel_spawn() and not _test_arena_melee_spread_omitted(omit):
+		lines.append(
+			"Parallel volley: %d projectiles (%d each side)"
+			% [get_melee_spread_count(), int(melee_parallel_offset)]
+		)
+	elif has_melee_spread() and not _test_arena_melee_spread_omitted(omit):
+		lines.append("Volley: %d projectiles (%.0f° fan)" % [get_melee_spread_count(), melee_spread_angle_deg])
+	if is_area_zone_attack():
+		lines.append("Delivery: area zone")
+	if is_orbit_attack():
+		lines.append("Delivery: orbit")
+	if homing_strength > 0.0 and not _test_arena_is_omitted(omit, "homing_strength"):
+		lines.append("Homing")
+	if not effect.is_empty():
+		lines.append("")
+		lines.append("Effect: %s" % effect)
+	return "\n".join(lines)
+
+
+static func _test_arena_damage_omitted(omit: Dictionary) -> bool:
+	return _test_arena_is_omitted(omit, "min_damage") or _test_arena_is_omitted(omit, "max_damage")
+
+
+static func _test_arena_poison_stats_omitted(omit: Dictionary) -> bool:
+	return (
+		_test_arena_is_omitted(omit, "poison_damage_min")
+		or _test_arena_is_omitted(omit, "poison_damage_max")
+		or _test_arena_is_omitted(omit, "poison_duration")
+		or _test_arena_is_omitted(omit, "poison_ticks_per_second")
+	)
+
+
+static func _test_arena_melee_spread_omitted(omit: Dictionary) -> bool:
+	return (
+		_test_arena_is_omitted(omit, "melee_spread_count")
+		or _test_arena_is_omitted(omit, "melee_spread_angle_deg")
+		or _test_arena_is_omitted(omit, "melee_parallel_offset")
+	)
 
 
 func _build_select_tooltip_bbcode_ko() -> String:
@@ -383,6 +581,8 @@ func get_burst_cooldown() -> float:
 
 
 func get_melee_range() -> float:
+	if melee_range_override > 0.0:
+		return melee_range_override
 	return MELEE_RANGE_BY_TYPE.get(range_type, MELEE_RANGE_BY_TYPE["Medium"])
 
 
@@ -538,6 +738,8 @@ func normalize_projectile_movement_from_legacy() -> void:
 
 
 func get_projectile_range() -> float:
+	if projectile_range_override > 0.0:
+		return projectile_range_override
 	return PROJECTILE_RANGE_BY_TYPE.get(range_type, PROJECTILE_RANGE_BY_TYPE["Medium"])
 
 

@@ -12,7 +12,7 @@
 |------|------|
 | [ ] | revolver, 연금, king bible, club(근접), ranged mob |
 | [ ] | 자동공격 G / 조준 F |
-| [ ] | Special A 처치 — 근접 시 플레이어 피해·연출 |
+| [ ] | Special A 처치 — 지연 링 예고 → 플레이어 피해·폭발 연출(반경 튜닝 반영) |
 | [ ] | CLI smoke 스크립트(저장소에 있으면) 또는 에디터 파싱 확인 |
 
 *참고: 현재 저장소에는 `scripts/verify/run_smoke.ps1`가 없을 수 있으므로, 없으면 에디터/F6 수동 검증을 기준으로 기록한다.*
@@ -23,7 +23,7 @@
 |------|------|
 | [`game/attack/attack_services.gd`](../../game/attack/attack_services.gd) | `Game`/`test_arena` 직계 `AttackServices` 노드, Factory 진입 |
 | [`game/attack/attack_context.gd`](../../game/attack/attack_context.gd) | 발동 시점 스냅샷 (`WeaponData` 유지) |
-| [`game/attack/attack_factory.gd`](../../game/attack/attack_factory.gd) | 풀 acquire + spawn + `spawn_mob_death_burst` |
+| [`game/attack/attack_factory.gd`](../../game/attack/attack_factory.gd) | 풀 acquire + spawn + `schedule_mob_death_burst` / `spawn_mob_death_burst` |
 | [`game/attack/damage_resolver.gd`](../../game/attack/damage_resolver.gd) | `apply_weapon_to_mob` → `Mob.apply_weapon_damage` 위임 |
 | [`game/attack/attack_delivery.gd`](../../game/attack/attack_delivery.gd) | delivery 상수·`WeaponData` 매핑 helper |
 | [`weapons/core/gun.gd`](../../weapons/core/gun.gd) | 트리거 — `AttackFactory`만으로 스폰 |
@@ -266,9 +266,9 @@ func pool_on_acquire() -> void
 | 1 | **근접 대상 공격** (Melee Single Target) | 단일 대상 근접 피해 스펙 | `TargetAttack` 또는 짧은 lifetime `AreaAttack`(소형 원/사각) | 근접 무기, 몹 접촉 공격, 보스 근접 패턴 | 단일 대상 피해·상태이상 | 플레이어 근접 무기: `MeleeProjectile`(발사체형). 몹: `tick_contact_attack` + HurtBox 1회 |
 | 2 | **근접 범위 공격** (Melee Area / AoE) | 주변·전방 부채꼴/원형 범위 스펙 | 원형·부채꼴 `AreaAttack` (`setup_circle` / `setup_rectangle`) | 플레이어 스킬, 보스 광역 베기, 몹 충격파 | 범위 내 다수 대상, 대상별 `hit_interval` | 연금 착지 `AreaDamageZone`. 부채꼴 `setup_rectangle`은 API만 존재, 카탈로그 미사용 |
 | 3 | **원거리 직선 발사체** (Linear Projectile) | 직선 궤도·속도·관통·사거리 | `ProjectileAttack` + Straight / StraightPierce | 총기류, 마법 탄환, 몹 원거리(`mob_projectile`) | 명중 피해, 관통·멀티 히트 | `bullet_2d`, `magic_bolt`, `mob_projectile` |
-| 4 | **돌진 근접 범위** (Charge + Area) | `charge_*` export(트리거 거리·배율·지속·쿨다운·종료 피해) | 이동은 `Mob` 트리거, 종료 시 반경 피해 1회 | 특수몹 돌진 패턴 | `DamageResolver.apply_burst_damage_to_player_in_radius` | **`mob_special_b`**: `charge_trigger_distance` 안에서 돌진 시작 → 도착 범위 피해 |
+| 4 | **돌진 근접 범위** (Charge + Area) | `charge_*` export(트리거 거리·배율·지속·쿨다운·종료 피해·`charge_lane_display_duration`) | `Mob` windup(레인·`!`) → 직선 이동, 종료 시 반경 피해 1회 | 특수몹 돌진 패턴 | `DamageResolver.apply_burst_damage_to_player_in_radius` | **`mob_special_b`**: 트리거 거리 내 **경로 예고 후** 돌진 → 도착 범위 피해 |
 | 5 | **자폭 공격** (Self-Destruct) | `self_destruct_*` export(HP 임계) | 임계 도달 시 `_request_die()` + 기존 사망 burst | 특수 몹 체력 임계 | 사망 처리 + `death_burst_*` 반경 피해 | **`mob_special_b`**: HP 임계 자폭(클리어 사망 제외) |
-| 6 | **사망 시 범위** (Death AoE / On-Death) | `death_burst_*` export | `AttackFactory.spawn_mob_death_burst` + 연출 | `Mob._die()` (일반 사망만) | `DamageResolver.apply_burst_damage_to_player_in_radius` | **`mob_special_a`**: 사망 시 반경 내 플레이어 피해. `_stage_clear_death`에서는 미발동 |
+| 6 | **사망 시 범위** (Death AoE / On-Death) | `death_burst_*` + `death_burst_delay` export | `schedule_mob_death_burst` → (지연) `death_burst_warning` + `spawn_mob_death_burst` | `Mob._die()` (일반 사망만) | `DamageResolver.apply_burst_damage_to_player_in_radius` | **`mob_special_a`**: 사망 위치에서 지연(기본 3s) 후 반경 피해. 몹은 즉시 풀 반환, 예고 링은 사망 좌표에 유지. `_stage_clear_death`에서는 미발동 |
 | 7 | **연쇄/복합** (Chained / Composite) | 선행 공격 + 후속 `AttackDefinition` 목록 | OnEnd/OnHit: `Projectile`→`Area`, `Target`→`Target` 체인 | 특정 무기·스킬, 보스 페이즈 | 전 과정 `DamageResolver`·통계 귀속 유지 | 연금: `concoction`→`AreaDamageZone`. 체인 번개·OnDeath 체인은 **미구현** |
 
 ### 행동별 구현 메모
@@ -279,11 +279,11 @@ func pool_on_acquire() -> void
 
 **3. 원거리 직선** — `ProjectileAttack` + `movement_type = Straight`. 몹 탄은 동일 전달 타입이나 **해결 API가 플레이어 전용**(`apply_mob_projectile_damage`)이므로 `AttackContext.instigator_team`으로 분기한다.
 
-**4. 돌진 + 범위** — 전달 Entity만으로는 부족하다. **트리거 계층**에 돌진 이동 상태 머신(또는 몹 AI dash)을 두고, `charge_trigger_distance` 안에서 돌진을 시작한 뒤 `OnArrive`에서 범위 피해를 적용한다. 플레이어 `Player` 대시와 공유할지 여부는 후속.
+**4. 돌진 + 범위** — `Mob._begin_charge_attack`: `mob_charge_lane` + `mob_attack_mark`로 `charge_lane_display_duration` 동안 제자리 예고 → `_start_charge_movement`로 가속 이동 → `_end_charge_attack`에서 `charge_end_burst_*` 반경 피해. F6 튜닝은 `TestArenaMobSnapshot` **돌진 거리**(`charge_travel_distance`→`charge_duration`); `charge_attack_enabled`면 사망 폭발 튜닝 UI는 숨김.
 
 **5. 자폭** — `AreaAttack` spawn 직후 또는 동시에 해결 계층에서 공격자 사망 처리. **일반 사망 보상·풀 반환**과 순서를 명시한다(`register_kill` 전/후). 클리어 사망 경로와 분리한다.
 
-**6. 사망 AoE** — `Mob._die()` 또는 `DamageResolver`의 on_death 훅에서 `AttackFactory.spawn_attack` 호출. **클리어 사망**(`_stage_clear_death`)에서는 OnDeath 체인을 실행하지 않는다. 엘리트 전용은 `mob_kind` 또는 `AttackDefinition` 플래그로 제어.
+**6. 사망 AoE** — `Mob._trigger_death_burst()` → `AttackFactory.schedule_mob_death_burst`. `death_burst_delay > 0`이면 `death_burst_warning`이 반경 링을 키운 뒤 피해·`poison_explosion` 연출(피해 반경 ×1.35 시각만 확대). delay 0이면 즉시 burst. **클리어 사망**에서는 미발동. F6에서 특수 A 등 `death_burst_*`·지연 튜닝(`TestArenaMobSnapshot`; 돌진 몹 제외).
 
 **7. 연쇄/복합** — `chain_on_end: Array[Resource]`(목표) 또는 현행처럼 전달 스크립트 내 spawn. 연쇄마다 **새 `AttackContext`**(피해·origin 상속 규칙 문서화). DoT·장판도 source weapon 유지.
 
@@ -314,13 +314,14 @@ Trigger: Gun.shoot()
 
 - 입력(`ActionManager.ACTION_ATTACK`), 자동 사격(`Player.is_auto_attack_enabled()`), 몹 AI(windup·쿨다운) 통합 인터페이스.
 - 사거리·타겟 유효성·일시정지·게임 시작 전 스폰 금지(`_ensure_game_started`) 준수.
+- **현재:** 플레이어 자동 사격은 `Gun._has_enemy_in_attack_range()`가 true일 때만 `shoot()`·timer·버스트 진행. 수동 `ACTION_ATTACK`은 타겟 없이 발사 가능.
 - 공격 가능 시 `AttackFactory.spawn_attack(context)` 호출.
 
 | 목표 컴포넌트 | 현재 |
 |---------------|------|
 | `PlayerAttackController` | `Gun` + `Player` APS·자동공격·조준 |
 | `MobAttackController` | `mob.gd` 접촉·원거리 windup |
-| `TargetingService` | `Gun._refresh_current_target`, `mobs` 그룹 |
+| `TargetingService` | `Gun._get_current_target`, `_has_enemy_in_attack_range`, `mobs` 그룹 |
 | `AttackSelector` | `WeaponData` + `Gun.shoot()` 분기 |
 
 ---
@@ -450,7 +451,7 @@ func spawn_attack(context: AttackContext) -> AttackEntity
 - [ ] `OrbitAttack` 자동공격 on/off — 에디터 수동 확인
 - [ ] `AttackEntity` 베이스 — **2차**
 - [ ] `TargetAttack` — **2차**
-- [x] 1차 행동 6(OnDeath) — `mob_special_a` 사망 burst (F6 수동 확인)
+- [x] 1차 행동 6(OnDeath) — `mob_special_a` 지연 burst + 예고 링 + F6 튜닝 (F6 수동 확인)
 - [ ] 1차 행동 4~5(돌진·자폭) — **2차**
 - [x] Attack Entity 내부 직접 HP 수정 없음(기존 계약 유지)
 - [x] `%AttackServices` on `survivors_game` + `test_arena`

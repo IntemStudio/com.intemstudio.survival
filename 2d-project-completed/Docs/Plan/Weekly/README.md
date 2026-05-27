@@ -23,9 +23,9 @@
 | 주차 | 문서 | 목표 | 상태 |
 |------|------|------|------|
 | 현재 작업판 | [`Current.md`](Current.md) | 이번 주 진행 상태 추적 | 수시 갱신 |
-| 1주차 | [`Week01_Demo_ScopeLock.md`](Week01_Demo_ScopeLock.md) | 데모 범위와 기준선 고정 | 작성됨 |
-| 2주차 | [`Week02_Demo_Core.md`](Week02_Demo_Core.md) | 핵심 체감 구현 | 작성됨 |
-| 3주차 | [`Week03_Content_Lock.md`](Week03_Content_Lock.md) | 데모 콘텐츠 고정 | 작성됨 |
+| 1주차 | [`Week01_Demo_ScopeLock.md`](Week01_Demo_ScopeLock.md) | 데모 범위·GDD·문서 정렬 | **완료** |
+| 2주차 | [`Week02_Demo_Core.md`](Week02_Demo_Core.md) | 핵심 체감·인벤·F5 기준선 | **진행 중** ← [`Current.md`](Current.md) |
+| 3주차 | [`Week03_Content_Lock.md`](Week03_Content_Lock.md) | 콘텐츠 락·modifier MVP-lite | 작성됨 (GDD 반영) |
 | 4주차 | [`Week04_QA_Build.md`](Week04_QA_Build.md) | QA 빌드와 Export 검증 | 작성됨 |
 
 ---

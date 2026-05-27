@@ -1,0 +1,13 @@
+[gd_scene load_steps=3 format=3 uid="uid://deathburstwarn01"]
+
+[ext_resource type="Script" path="res://effects/death_burst/death_burst_warning.gd" id="1_warn"]
+[ext_resource type="Texture2D" path="res://art/shared/fx/circle.png" id="2_circle"]
+
+[node name="DeathBurstWarning" type="Node2D"]
+z_index = 45
+script = ExtResource("1_warn")
+
+[node name="Ring" type="Sprite2D" parent="."]
+unique_name_in_owner = true
+modulate = Color(1, 0.32, 0.18, 0.22)
+texture = ExtResource("2_circle")

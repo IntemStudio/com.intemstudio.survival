@@ -1014,6 +1014,29 @@ func _refresh_game_over_title() -> void:
 		%GameOverTitle.text = UiLocale.t(&"gameover.clear")
 	elif _run_failed:
 		%GameOverTitle.text = UiLocale.t(&"gameover.fail")
+	_refresh_game_over_run_stats()
+
+
+# 게임오버·클리어 화면에 생존 시간·레벨·처치 수 요약을 갱신합니다.
+func _refresh_game_over_run_stats() -> void:
+	if not %GameOver.visible:
+		return
+	var player_level: int = %Player.level
+	if _is_arena_mode() and _arena_director != null:
+		var time_text := UiLocale.format_hud_time(_elapsed_seconds)
+		%RunStatsLabel.text = UiLocale.t(&"gameover.stats_arena") % [
+			_arena_director.current_wave,
+			ArenaWaveDirectorScript.MAX_WAVE,
+			time_text,
+			player_level,
+			kill_count,
+		]
+	else:
+		%RunStatsLabel.text = UiLocale.t(&"gameover.stats_survival") % [
+			UiLocale.format_hud_time(_elapsed_seconds),
+			player_level,
+			kill_count,
+		]
 
 
 func _populate_game_over_weapon_damage() -> void:
