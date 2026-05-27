@@ -1,7 +1,7 @@
 # Current Week
 
 **역할:** 이번 주에 실제로 작업 중인 내용을 짧게 추적합니다.  
-**상위 계획:** [`README.md`](README.md)
+**상위 계획:** [`README.md`](README.md) · 주차 계획: [`Week02_Demo_Core.md`](Week02_Demo_Core.md)
 
 이 문서는 자주 바뀌는 작업판입니다. 주차 계획서(`WeekNN_*.md`)는 목표와 완료 기준을 고정하고, 이 문서는 오늘/이번 주 진행 상태, 막힌 점, 다음 액션을 기록합니다. 주가 끝나면 핵심 결과만 해당 주차 문서의 `Result`로 옮기고 이 파일은 다음 주 기준으로 초기화합니다.
 
@@ -13,19 +13,30 @@
 - 기준 문서: [`Week02_Demo_Core.md`](Week02_Demo_Core.md)
 - 이번 주 초점: 1주차에서 고정한 아레나 MVP 안에서 무기 성장 체감, 보스/특수몹 고유성, 통계, 상자 튜닝을 플레이 가능한 핵심으로 만든다
 
+---
+
 ## In Progress
 
 - [ ] 무기 성장 방식 결정: 보유 무기 강화, 기본 스탯 보정, 신규 무기 중심 유지 중 2주차 적용안을 고른다
 - [ ] 데모 무기 풀 10~15종 후보 축소와 F6 대표 movement·피해 통계 검증
-- [ ] 보스/엘리트/특수몹 중 1종을 골라 일반몹과 다른 행동, 경고, 보상, 연출 중 하나 이상 구현
+- [ ] W02-03 후속: F6에서 `Special B` 돌진·자폭·사망 burst 수동 확인 후 `Week02` 완료 기준 판정
 - [ ] 게임오버 또는 클리어 화면에 생존 시간, 도달 레벨, 처치 수 중 최소 2개 표시
 - [ ] 골드 상자 가격, 골드 수급, 등급 확률, 골드 부족/가방 가득 참 UX 1차 튜닝
 - [ ] F5 기준 10분 이상 또는 아레나 1~10웨이브 수동 기준선 플레이 기록
+
+---
 
 ## Done This Week
 
 - [x] 1주차 결과를 `Week01_Demo_ScopeLock.md`의 `Result`로 정리
 - [x] `Current.md`를 2주차 `Demo Core` 실행판으로 초기화
+- [x] 공격 시스템 1차 인프라: `AttackContext`, `AttackFactory`, `AttackServices`, `DamageResolver` (`game/attack/`)
+- [x] `Gun` 스폰 경로를 `AttackFactory`로 위임, `bullet_2d` 등 플레이어 발사체 `DamageResolver` 경유
+- [x] 특수몹 행동 6·4·5 1차 구현: `special_a` 사망 burst, `special_b` 트리거 거리 기반 돌진 + 저체력 자폭 (`mob.gd` export)
+- [x] 돌진 트리거: `charge_trigger_distance`가 근접 정지와 무관하게 동작하도록 수정
+- [x] 문서: [`Architecture_AttackSystem.md`](../../Architecture/Architecture_AttackSystem.md), [`Mobs.md`](../../Wiki/Mobs.md), [`Week02_Demo_Core.md`](Week02_Demo_Core.md) W02-03 문구 갱신
+
+---
 
 ## Decisions / Blockers
 
@@ -33,9 +44,11 @@
 - 결정: 인벤토리와 골드는 런 한정으로 유지하고, 웨이브 사이 상자 구매에 사용한다.
 - 결정: 아레나는 시간 강화가 아니라 웨이브 번호를 난이도 축으로 사용하며, 웨이브 시작은 중앙 텔레포터 상호작용으로 처리한다.
 - 결정: 아레나 MVP 1~10웨이브 상자는 `Common`/`Uncommon`만 지급한다.
+- 결정: W02-03 데모 체감은 **특수몹**으로 진행 — `special_a`(사망 burst), `special_b`(돌진+자폭). 보스 전용 패턴은 후속.
 - 결정 필요: 2주차 무기 성장 방식은 보유 무기 강화, 기본 스탯 보정, 신규 무기 중심 유지 중 하나로 좁힌다.
-- 결정 필요: 데모에서 먼저 고유 체감을 줄 보스/엘리트/특수몹 1종을 정한다.
-- 남은 확인: F5 아레나 웨이브 전환, 5/10 보스 웨이브, 10웨이브 클리어, F6 무기 후보 검증.
+- 남은 확인: F6 `Special A`/`Special B` 행동 검증, F5 아레나 웨이브 전환, 5/10 보스 웨이브, 10웨이브 클리어, F6 무기 후보 검증.
+
+---
 
 ## Verification
 
@@ -44,13 +57,16 @@
 - [ ] F5 서바이벌 비교: 로비 → 시작 무기 → 스폰/레벨업 → 패배 또는 클리어 경로
 - [ ] 웨이브 클리어 보상: 무기 획득 후 상자 가격 표시 → 구매 UI → 장비 배치 → 다음 텔레포터 활성화
 - [ ] F6 무기 검증: 데모 후보별 발사, 피해, 자동 공격 on/off, movement, 장애물 충돌
-- [ ] 보스/특수몹: 선택한 1종의 고유 체감과 사망 처리
+- [ ] F6 특수몹: `Special A` 사망 burst(근접 처치 시 피해), `Special B` 돌진·자폭·사망 burst
 - [ ] 게임오버/클리어 통계: 생존 시간, 도달 레벨, 처치 수 중 최소 2개 표시
-- [x] 문서/링크 확인
-- [ ] 기타:
+- [x] 문서/링크: `Architecture_AttackSystem.md`, `AGENTS.md` 진입 링크
+- [ ] CLI smoke (`scripts/verify/run_smoke.ps1`) 또는 에디터 파싱 — 저장소에 스크립트 없으면 F6/F5 수동 대체
+
+---
 
 ## Next Handoff
 
-- 다음에 이어서 할 일: 무기 성장 방식과 보스/특수몹 대상 1종을 먼저 확정한 뒤, 가장 작은 구현 단위부터 진행
+- 다음에 이어서 할 일: W02-03 F6 검증 완료 후 무기 성장 방식(D01) 확정 → W02-01 또는 대체안 착수
+- 공격 시스템 2차(보류): `AttackEntity` 베이스, `chain_on_end`, `TargetAttack` — [`Architecture_AttackSystem.md`](../../Architecture/Architecture_AttackSystem.md)
 - 3주차 후보: 데모 무기 풀 최종 고정, 남은 콘텐츠 작업 5개 이하로 축소, 사운드·UI 추가 중단 기준 정리
-- `Result`에 옮길 요약: 무기 성장 체감, 보스/특수몹 1종, 게임오버/클리어 통계, 상자 튜닝, F5 10분 기준선 결과
+- `Result`에 옮길 요약: 공격 인프라·특수몹 2종 행동, 무기 성장·통계·상자·F5 기준선(미완 시 주차 말에 기록)
