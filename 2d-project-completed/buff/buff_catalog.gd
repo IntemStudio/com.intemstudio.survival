@@ -5,6 +5,8 @@ extends RefCounted
 
 const BUFF_EN_GARDE := "en_garde"
 const BUFF_DASH_HASTE := "dash_haste"
+const BUFF_WAVE_VIGOR := "wave_vigor"
+const BUFF_KILL_MOMENTUM := "kill_momentum"
 
 static var _cache: Dictionary = {}
 
@@ -31,6 +33,22 @@ static func _build_cache() -> void:
 		BuffDuration.TYPE_SECONDS,
 		2.0,
 		{"move_speed_mult": 1.25}
+	)
+	_cache[BUFF_WAVE_VIGOR] = _create_buff(
+		BUFF_WAVE_VIGOR,
+		"Wave Vigor",
+		"웨이브 활력",
+		BuffDuration.TYPE_SECONDS,
+		8.0,
+		{"attack_speed_mult": 1.12}
+	)
+	_cache[BUFF_KILL_MOMENTUM] = _create_buff(
+		BUFF_KILL_MOMENTUM,
+		"Kill Momentum",
+		"처치 가속",
+		BuffDuration.TYPE_SECONDS,
+		1.5,
+		{"move_speed_mult": 1.2}
 	)
 
 

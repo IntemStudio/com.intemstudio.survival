@@ -1,7 +1,7 @@
 class_name LoadoutGrantPassive
 extends RefCounted
 
-## loadout grant_orbital · grant_on_dash 태그를 전투에 반영합니다.
+## loadout grant_* 태그를 전투에 반영합니다.
 
 const KING_BIBLE_ORB_SCENE := preload("res://weapons/magic/king_bible_orb.tscn")
 const THROWING_PROJECTILE_SCENE := preload("res://weapons/throwing/throwing_projectile.tscn")
@@ -12,6 +12,20 @@ const DASH_DART_SPREAD_DEG := 22.0
 const ORBITAL_WEAPON_BY_TAG: Dictionary = {
 	"sticky_orbital": "sticky_orbital",
 	"pyromancy_orbital": "pyromancy_orbital",
+}
+
+const _ON_DASH_HANDLERS: Dictionary = {
+	"haste": Callable(LoadoutGrantPassive, "_grant_dash_haste"),
+	"darts": Callable(LoadoutGrantPassive, "_grant_dash_darts"),
+}
+
+const _ON_KILL_HANDLERS: Dictionary = {
+	"magnet_pulse": Callable(LoadoutGrantPassive, "_grant_kill_magnet_pulse"),
+	"momentum": Callable(LoadoutGrantPassive, "_grant_kill_momentum"),
+}
+
+const _ON_WAVE_START_HANDLERS: Dictionary = {
+	"vigor": Callable(LoadoutGrantPassive, "_grant_wave_vigor"),
 }
 
 
@@ -49,26 +63,32 @@ static func clear_orbitals(tracked: Array) -> void:
 	tracked.clear()
 
 
-# 대시 시 grant_on_dash(haste·darts)를 적용합니다.
+# 대시 시 grant_on_dash 태그를 적용합니다.
 static func apply_on_dash(
 	player: Node2D,
 	registry: ItemRegistry,
 	modifiers: Dictionary
 ) -> void:
-	if player == null or modifiers.is_empty():
-		return
-	var tags: Variant = modifiers.get("grant_on_dash", [])
-	if not tags is Array:
-		return
-	for tag_variant in tags:
-		match String(tag_variant):
-			"haste":
-				if player.has_method(&"apply_loadout_dash_haste"):
-					player.call("apply_loadout_dash_haste")
-			"darts":
-				_spawn_dash_darts(player, registry, modifiers)
-			_:
-				push_warning("LoadoutGrantPassive: unknown grant_on_dash '%s'" % String(tag_variant))
+	_dispatch_grant_tags(player, registry, modifiers, "grant_on_dash", _ON_DASH_HANDLERS)
+
+
+# 처치 시 grant_on_kill 태그를 적용합니다.
+static func apply_on_kill(
+	player: Node2D,
+	registry: ItemRegistry,
+	modifiers: Dictionary
+) -> void:
+	_dispatch_grant_tags(player, registry, modifiers, "grant_on_kill", _ON_KILL_HANDLERS)
+
+
+# 웨이브 시작 시 grant_on_wave_start 태그를 적용합니다.
+static func apply_on_wave_start(
+	player: Node2D,
+	registry: ItemRegistry,
+	modifiers: Dictionary,
+	_wave_number: int = 0
+) -> void:
+	_dispatch_grant_tags(player, registry, modifiers, "grant_on_wave_start", _ON_WAVE_START_HANDLERS)
 
 
 # 활성 세트 offhand 장비 스프라이트를 표시합니다(양손 무기 시 숨김).
@@ -101,6 +121,59 @@ static func refresh_offhand_visual(
 	sprite.scale = Vector2(0.32, 0.32)
 	sprite.modulate = Color(0.82, 0.88, 1.0, 0.95)
 	pivot.visible = true
+
+
+static func _dispatch_grant_tags(
+	player: Node2D,
+	registry: ItemRegistry,
+	modifiers: Dictionary,
+	modifier_key: String,
+	handlers: Dictionary
+) -> void:
+	if player == null or modifiers.is_empty():
+		return
+	var tags: Variant = modifiers.get(modifier_key, [])
+	if not tags is Array:
+		return
+	for tag_variant in tags:
+		var tag := String(tag_variant)
+		var handler: Variant = handlers.get(tag)
+		if handler is Callable:
+			handler.call(player, registry, modifiers)
+		else:
+			push_warning(
+				"LoadoutGrantPassive: unknown %s '%s'" % [modifier_key, tag]
+			)
+
+
+static func _grant_dash_haste(player: Node2D, _registry: ItemRegistry, _modifiers: Dictionary) -> void:
+	if player.has_method(&"apply_loadout_dash_haste"):
+		player.call("apply_loadout_dash_haste")
+
+
+static func _grant_dash_darts(
+	player: Node2D, registry: ItemRegistry, modifiers: Dictionary
+) -> void:
+	_spawn_dash_darts(player, registry, modifiers)
+
+
+static func _grant_kill_magnet_pulse(
+	player: Node2D, _registry: ItemRegistry, _modifiers: Dictionary
+) -> void:
+	if player.has_method(&"magnetize_field_pickups"):
+		player.call("magnetize_field_pickups")
+
+
+static func _grant_kill_momentum(
+	player: Node2D, _registry: ItemRegistry, _modifiers: Dictionary
+) -> void:
+	BuffTriggerRouter.apply_loadout_kill_momentum(player)
+
+
+static func _grant_wave_vigor(
+	player: Node2D, _registry: ItemRegistry, _modifiers: Dictionary
+) -> void:
+	BuffTriggerRouter.apply_loadout_wave_vigor(player)
 
 
 static func _spawn_orbital(player: Node2D, weapon: WeaponData) -> Node:

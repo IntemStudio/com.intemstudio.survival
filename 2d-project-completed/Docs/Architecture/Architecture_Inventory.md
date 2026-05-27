@@ -1,6 +1,6 @@
 # Architecture — Inventory (인벤토리·장비)
 
-**진입:** [`AGENTS.md`](../../AGENTS.md) · 플레이 규칙: [`Wiki/Items_Inventory.md`](../Wiki/Items_Inventory.md) · 버프 구조: [`Architecture_Buffs.md`](Architecture_Buffs.md) · UI 스케일: [`AGENTS_Display_UI.md`](../Agents/AGENTS_Display_UI.md)
+**진입:** [`AGENTS.md`](../../AGENTS.md) · 플레이 규칙: [`Wiki/Items_Inventory.md`](../Wiki/Items_Inventory.md) · 패시브: [`Architecture_Passives.md`](Architecture_Passives.md) · 버프: [`Architecture_Buffs.md`](Architecture_Buffs.md) · UI 스케일: [`AGENTS_Display_UI.md`](../Agents/AGENTS_Display_UI.md)
 
 인벤토리·장비 시스템의 코드 구조와 변경 시 지켜야 할 경계를 정리한다. Phase 이력, PR 순서, 미구현 선택지는 이 문서가 아니라 [`BACKLOG.md`](../../BACKLOG.md)와 `Docs/Plan/`에서 관리한다.
 

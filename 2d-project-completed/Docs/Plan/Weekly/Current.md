@@ -41,6 +41,7 @@
 - [x] F6 특수 B — 돌진 거리 GUI·`mob_charge_lane` 레인 예고 후 돌진 (`TestArenaMobSnapshot`)
 - [x] fast 몹 시인성 — `mob_speed_trail` (이동 꼬리·먼지, `mob_fast.tscn`) — [`Mobs.md`](../../Wiki/Mobs.md)
 - [x] 상호작용 공통화 — `InteractableArea` (골드 상자·장비 드롭·아레나 텔레포터)
+- [x] **패시브 Phase A~C** — Loadout grant · RunPassive 8종 · 무기 런 강화 · 진화 · 악세서리 시너지 · [`Architecture_Passives.md`](../../Architecture/Architecture_Passives.md)
 
 ---
 
@@ -98,8 +99,8 @@ F5 → 로비 → **아레나**.
 
 | # | 확인 | Pass |
 |---|------|------|
-| 1 | 시작 무기 3택1 → 자동 장착 → 텔레포터 1웨이브 | [ ] |
-| 2 | 웨이브 클리어 → 무기 3택1 → 상자 구매 → 텔레포터 | [ ] |
+| 1 | 시작 무기 3택1 → 자동 장착 → 텔레포터 1웨이브 (혼합 보상은 레벨업·웨이브부터) | [ ] |
+| 2 | 웨이브 클리어 → 무기·강화·패시브 3택1 → 상자 구매 → 텔레포터 | [ ] |
 | 3 | 가방 가득 참 / 골드 부족 메시지 | [ ] |
 | 4 | 5·10 보스 웨이브 체감 | [ ] |
 | 5 | 10웨이브 클리어 또는 패배 시 **RunStatsLabel** 3항목 | [ ] |

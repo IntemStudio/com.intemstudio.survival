@@ -78,6 +78,9 @@ static func append_all(target: Array, create_gear: Callable) -> void:
 	_append(target, create_gear, "silver_ring", "Silver Ring", "은 반지", EquipSlots.ACCESSORY, {"fiend_undead_damage_mult": 1.3})
 	_append(target, create_gear, "sorcerer_ring", "Sorcerer Ring", "마법사 반지", EquipSlots.ACCESSORY, {"intelligence": 5})
 	_append(target, create_gear, "wooden_cross_pendant", "Wooden Cross Pendant", "나무 십자가 펜던트", EquipSlots.ACCESSORY, {"prevent_curse": true})
+	_append(target, create_gear, "hunter_charm", "Hunter Charm", "사냥꾼 부적", EquipSlots.ACCESSORY, {"grant_on_kill": "magnet_pulse"}, "On Kill, magnetizes nearby pickups.", "처치 시 주변 픽업을 끌어당깁니다.", 1)
+	_append(target, create_gear, "battle_crest", "Battle Crest", "전투 문장", EquipSlots.ACCESSORY, {"grant_on_wave_start": "vigor"}, "On Wave Start, gain Wave Vigor for 8s.", "웨이브 시작 시 8초간 공격 속도가 상승합니다.", 1)
+	_append(target, create_gear, "scout_medallion", "Scout Medallion", "정찰 메달", EquipSlots.ACCESSORY, {"grant_on_kill": "momentum"}, "On Kill, gain brief Kill Momentum.", "처치 시 잠시 이동 속도가 상승합니다.", 1)
 
 
 static func _append(

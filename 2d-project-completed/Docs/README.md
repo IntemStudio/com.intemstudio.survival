@@ -72,6 +72,7 @@
 - [`Architecture/Architecture_Weapons.md`](Architecture/Architecture_Weapons.md)
 - [`Architecture/Architecture_Projectiles.md`](Architecture/Architecture_Projectiles.md)
 - [`Architecture/Architecture_Buffs.md`](Architecture/Architecture_Buffs.md)
+- [`Architecture/Architecture_Passives.md`](Architecture/Architecture_Passives.md)
 - [`Architecture/Architecture_GameLoop_Balance.md`](Architecture/Architecture_GameLoop_Balance.md)
 - [`Architecture/Architecture_Mobs.md`](Architecture/Architecture_Mobs.md)
 - [`Architecture/Architecture_TestArena.md`](Architecture/Architecture_TestArena.md)

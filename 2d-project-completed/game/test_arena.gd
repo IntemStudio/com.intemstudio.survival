@@ -1344,6 +1344,8 @@ func _get_test_mob_hp_multiplier(scene: PackedScene, mob: Mob) -> float:
 
 # 몹 사망 시 선택적으로 동일 프리팹을 재스폰합니다.
 func register_kill() -> void:
+	if use_inventory_loadout and %Player.has_method(&"apply_loadout_on_kill"):
+		%Player.apply_loadout_on_kill()
 	_active_mob = null
 	if not mob_respawn_enabled or _last_mob_scene == null:
 		return

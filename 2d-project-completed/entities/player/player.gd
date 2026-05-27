@@ -19,6 +19,7 @@ var level := 1
 var experience := 0
 var gold := 0
 var _owned_weapons: Array[WeaponData] = []
+var _weapon_run_state: WeaponRunState = null
 var _damage_float_accumulator := 0.0
 var _damage_float_timer := 0.0
 var _last_move_direction := Vector2.RIGHT
@@ -252,28 +253,55 @@ func clear_weapons() -> void:
 # loadout 장비 stat_modifiers를 캐시하고 이동·무기 배율을 갱신합니다.
 func refresh_stats_from_loadout(registry: ItemRegistry, loadout: PlayerLoadoutState) -> void:
 	if registry == null or loadout == null:
-		_stats.set_loadout_modifiers({}, true)
+		_stats.set_loadout_modifiers({}, false)
 		_loadout_registry = null
 		_loadout_state = null
-		_clear_loadout_grant_passives()
 	else:
 		_stats.set_loadout_modifiers(registry.sum_stat_modifiers_for_loadout(loadout), true)
-	_loadout_registry = registry
-	_loadout_state = loadout
+		_loadout_registry = registry
+		_loadout_state = loadout
 	_sync_health_bar_max()
 	_refresh_loadout_grant_passives()
 	_refresh_weapon_combat_modifiers()
 
 
-# use_inventory_loadout off 시 기본 이동·무기 수치로 되돌립니다.
+func set_weapon_run_state(state: WeaponRunState) -> void:
+	_weapon_run_state = state
+
+
+func get_weapon_run_level(weapon: WeaponData) -> int:
+	if _weapon_run_state == null or weapon == null:
+		return 1
+	return _weapon_run_state.get_level(weapon)
+
+
+func get_persistent_stat_modifiers() -> Dictionary:
+	return _stats.get_combined_persistent_modifiers()
+
+
+# 런 패시브·악세서리 시너지 modifier를 반영합니다.
+func refresh_stats_from_passives(
+	run_state: PassiveRunState,
+	accessory_ids: Array[String] = []
+) -> void:
+	if run_state == null:
+		_stats.clear_passive_modifiers()
+	else:
+		_stats.set_passive_modifiers(PassiveStatMerge.merge_owned(run_state, accessory_ids))
+	_sync_health_bar_max()
+	_refresh_loadout_grant_passives()
+	_refresh_weapon_combat_modifiers()
+
+
+# use_inventory_loadout off 시 장비 source만 제거합니다(런 패시브는 유지).
 func clear_loadout_stats() -> void:
 	if not _stats.is_loadout_active():
 		return
 	_stats.clear_loadout_modifiers()
 	_loadout_registry = null
 	_loadout_state = null
-	_clear_loadout_grant_passives()
 	_sync_health_bar_max()
+	_refresh_loadout_grant_passives()
 	_refresh_weapon_combat_modifiers()
 
 
@@ -314,6 +342,28 @@ func apply_loadout_dash_haste() -> void:
 	BuffTriggerRouter.apply_loadout_dash_haste(self)
 
 
+# grant_on_kill — 장비·런 패시브 grant 태그를 처치 시 반영합니다.
+func apply_loadout_on_kill() -> void:
+	var grant_modifiers := _stats.get_combined_persistent_modifiers()
+	PassiveResolver.on_kill(self, _loadout_registry, grant_modifiers)
+
+
+# grant_on_wave_start — 장비·런 패시브 grant 태그를 웨이브 시작 시 반영합니다.
+func apply_loadout_on_wave_start(wave_number: int = 0) -> void:
+	var grant_modifiers := _stats.get_combined_persistent_modifiers()
+	PassiveResolver.on_wave_start(self, _loadout_registry, grant_modifiers, wave_number)
+
+
+# grant_on_kill: magnet_pulse — 필드의 경험치·골드를 플레이어에게 끌어옵니다.
+func magnetize_field_pickups() -> void:
+	for orb in get_tree().get_nodes_in_group("exp_orbs"):
+		if is_instance_valid(orb) and orb.has_method(&"start_magnet"):
+			orb.start_magnet(self)
+	for coin in get_tree().get_nodes_in_group("gold_coins"):
+		if is_instance_valid(coin) and coin.has_method(&"start_magnet"):
+			coin.start_magnet(self)
+
+
 # 외부 트리거가 플레이어에게 런타임 버프를 부여합니다.
 func apply_buff(buff_data: BuffData, source_id: String = "", stacks: int = 1) -> void:
 	_buff_controller.add_buff(buff_data, source_id, stacks)
@@ -328,14 +378,16 @@ func get_active_buff_summaries() -> Array[Dictionary]:
 
 
 func _refresh_loadout_grant_passives() -> void:
-	if not _stats.is_loadout_active():
-		_clear_loadout_grant_passives()
-		return
-	var loadout_modifiers := _stats.get_loadout_modifiers()
+	var grant_modifiers := _stats.get_combined_persistent_modifiers()
 	LoadoutGrantPassive.refresh_orbitals(
-		self, _loadout_registry, loadout_modifiers, _grant_orbital_nodes
+		self, _loadout_registry, grant_modifiers, _grant_orbital_nodes
 	)
-	LoadoutGrantPassive.refresh_offhand_visual(self, _loadout_registry, _loadout_state)
+	if _stats.is_loadout_active() and _loadout_registry != null and _loadout_state != null:
+		LoadoutGrantPassive.refresh_offhand_visual(self, _loadout_registry, _loadout_state)
+	else:
+		var pivot := get_node_or_null("%OffhandPivot") as Node2D
+		if pivot:
+			pivot.visible = false
 
 
 func _clear_loadout_grant_passives() -> void:
@@ -346,14 +398,13 @@ func _clear_loadout_grant_passives() -> void:
 
 
 func _apply_loadout_on_dash() -> void:
-	if not _stats.is_loadout_active():
-		return
-	LoadoutGrantPassive.apply_on_dash(self, _loadout_registry, _stats.get_loadout_modifiers())
+	var grant_modifiers := _stats.get_combined_persistent_modifiers()
+	PassiveResolver.on_dash(self, _loadout_registry, grant_modifiers)
 
 
-# 장비·버프 배율을 반영한 무기 피해 롤.
+# 장비·버프·무기 강화 배율을 반영한 무기 피해 롤.
 func roll_weapon_damage(weapon: WeaponData) -> int:
-	return _stats.roll_weapon_damage(weapon, level)
+	return _stats.roll_weapon_damage(weapon, level, get_weapon_run_level(weapon))
 
 
 # 장비·버프 배율을 반영한 무기 APS.
@@ -378,6 +429,8 @@ func add_weapon(weapon_data: WeaponData) -> void:
 		return
 
 	_owned_weapons.append(weapon_data)
+	if _weapon_run_state != null:
+		_weapon_run_state.ensure_registered(weapon_data)
 
 	var gun: Area2D = GUN_SCENE.instantiate()
 	%Weapons.add_child(gun)

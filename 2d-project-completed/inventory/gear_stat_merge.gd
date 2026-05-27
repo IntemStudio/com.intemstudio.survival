@@ -34,7 +34,12 @@ const _MAX_KEYS: Array[String] = [
 
 const _BOOL_OR_KEYS: Array[String] = ["prevent_curse"]
 
-const _TAG_LIST_KEYS: Array[String] = ["grant_orbital", "grant_on_dash"]
+const _TAG_LIST_KEYS: Array[String] = [
+	"grant_orbital",
+	"grant_on_dash",
+	"grant_on_kill",
+	"grant_on_wave_start",
+]
 
 
 # 레거시 flat armor 등을 min/max 쌍으로 정규화합니다.

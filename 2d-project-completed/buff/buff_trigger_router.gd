@@ -7,18 +7,29 @@ const SOURCE_WEAPON_PREFIX := "weapon:"
 const SOURCE_LOADOUT_PREFIX := "loadout:"
 
 
-static func apply_arena_wave_start(player: Node, _wave_number: int) -> void:
-	if player == null or not player.has_method(&"get_owned_weapons"):
+static func apply_arena_wave_start(player: Node, wave_number: int) -> void:
+	if player == null:
 		return
-	for weapon in player.call("get_owned_weapons"):
-		var weapon_data := weapon as WeaponData
-		if weapon_data != null and weapon_data.weapon_id == "rapier":
-			_apply_player_buff(player, BuffCatalog.BUFF_EN_GARDE, SOURCE_WEAPON_PREFIX + "rapier")
-			return
+	if player.has_method(&"get_owned_weapons"):
+		for weapon in player.call("get_owned_weapons"):
+			var weapon_data := weapon as WeaponData
+			if weapon_data != null and weapon_data.weapon_id == "rapier":
+				_apply_player_buff(player, BuffCatalog.BUFF_EN_GARDE, SOURCE_WEAPON_PREFIX + "rapier")
+				break
+	if player.has_method(&"apply_loadout_on_wave_start"):
+		player.call("apply_loadout_on_wave_start", wave_number)
 
 
 static func apply_loadout_dash_haste(player: Node) -> void:
 	_apply_player_buff(player, BuffCatalog.BUFF_DASH_HASTE, SOURCE_LOADOUT_PREFIX + "dash_haste")
+
+
+static func apply_loadout_wave_vigor(player: Node) -> void:
+	_apply_player_buff(player, BuffCatalog.BUFF_WAVE_VIGOR, SOURCE_LOADOUT_PREFIX + "wave_vigor")
+
+
+static func apply_loadout_kill_momentum(player: Node) -> void:
+	_apply_player_buff(player, BuffCatalog.BUFF_KILL_MOMENTUM, SOURCE_LOADOUT_PREFIX + "kill_momentum")
 
 
 static func _apply_player_buff(player: Node, buff_id: String, source_id: String) -> void:

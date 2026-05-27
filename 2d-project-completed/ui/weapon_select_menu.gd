@@ -15,11 +15,17 @@ const WEAPON_TYPE_BUTTON_COLORS := {
 	"Magic": Color(0.32, 0.38, 0.72, 1),
 }
 const DEFAULT_BUTTON_COLOR := Color(0.28, 0.28, 0.32, 1)
+const PASSIVE_BUTTON_COLOR := Color(0.42, 0.26, 0.58, 1)
+const WEAPON_UPGRADE_BUTTON_COLOR := Color(0.72, 0.52, 0.14, 1)
 const CHOICE_FONT_COLOR := Color(0.95, 0.95, 0.98, 1)
 const AUTO_GAUGE_DIM_ALPHA := 0.42
 const AUTO_GAUGE_FILL_ALPHA := 0.92
 
 var _current_choices: Array[WeaponData] = []
+var _reward_choices: Array = []
+var _use_reward_choices := false
+var _passive_run_state: PassiveRunState = null
+var _weapon_run_state: WeaponRunState = null
 var _owned_weapons: Array[WeaponData] = []
 var _discarded_weapons: Array[WeaponData] = []
 var _rerolls_remaining := MAX_REROLLS_PER_RUN
@@ -155,6 +161,9 @@ func _get_all_weapons() -> Array[WeaponData]:
 
 
 func present_random_choices(title_key: StringName = &"weapon_select.title", owned_weapons: Array[WeaponData] = []) -> bool:
+	_use_reward_choices = false
+	_reward_choices.clear()
+	_passive_run_state = null
 	_cancel_auto_select()
 	_menu_title_key = title_key
 	_owned_weapons = owned_weapons.duplicate()
@@ -167,13 +176,44 @@ func present_random_choices(title_key: StringName = &"weapon_select.title", owne
 	return not _current_choices.is_empty()
 
 
+func present_reward_choices(
+	title_key: StringName,
+	choices: Array,
+	owned_weapons: Array[WeaponData] = [],
+	passive_state: PassiveRunState = null,
+	weapon_state: WeaponRunState = null
+) -> bool:
+	_use_reward_choices = true
+	_reward_choices = choices.duplicate()
+	_passive_run_state = passive_state
+	_weapon_run_state = weapon_state
+	_cancel_auto_select()
+	_menu_title_key = title_key
+	_owned_weapons = owned_weapons.duplicate()
+	_current_choices.clear()
+	for choice_variant in _reward_choices:
+		var choice := choice_variant as RewardChoice
+		if choice != null and choice.is_weapon():
+			_current_choices.append(choice.weapon)
+	_title_label.text = UiLocale.t(_menu_title_key)
+	_detail_hover_index = -1
+	_update_button_labels()
+	_update_reroll_button_state()
+	_update_discarded_list_ui()
+	return not _reward_choices.is_empty()
+
+
 func reroll_choices() -> void:
 	if _rerolls_remaining <= 0:
 		return
 	_rerolls_remaining -= 1
 	_cancel_auto_select()
-	_current_choices = _pick_random_weapons(CHOICE_COUNT, _owned_weapons)
-	_update_button_labels()
+	var game := get_parent()
+	if _use_reward_choices and game != null and game.has_method(&"reroll_reward_choices"):
+		game.call("reroll_reward_choices")
+	else:
+		_current_choices = _pick_random_weapons(CHOICE_COUNT, _owned_weapons)
+		_update_button_labels()
 	_update_reroll_button_state()
 	if visible and _auto_select_toggle.button_pressed:
 		_begin_auto_select_if_enabled()
@@ -182,22 +222,46 @@ func reroll_choices() -> void:
 func discard_weapon_at_index(index: int) -> void:
 	if _discards_remaining <= 0:
 		return
-	if index < 0 or index >= _current_choices.size():
+	var weapon: WeaponData = null
+	if _use_reward_choices:
+		if index < 0 or index >= _reward_choices.size():
+			return
+		var reward_choice := _reward_choices[index] as RewardChoice
+		if reward_choice == null or not reward_choice.is_weapon():
+			return
+		weapon = reward_choice.weapon
+	elif index < 0 or index >= _current_choices.size():
 		return
+	else:
+		weapon = _current_choices[index]
 	_discards_remaining -= 1
 	_cancel_auto_select()
-	var weapon := _current_choices[index]
 	_register_discarded_weapon(weapon)
 	var replacement := _pick_replacement_weapon()
-	if replacement:
-		_current_choices[index] = replacement
+	if _use_reward_choices:
+		if replacement:
+			_reward_choices[index] = RewardChoice.from_weapon(replacement)
+		else:
+			_reward_choices.remove_at(index)
+		_rebuild_weapon_choices_from_rewards()
 	else:
-		_current_choices.remove_at(index)
+		if replacement:
+			_current_choices[index] = replacement
+		else:
+			_current_choices.remove_at(index)
 	_update_button_labels()
 	_update_discarded_list_ui()
 	_update_reroll_button_state()
 	if visible and _auto_select_toggle.button_pressed:
 		_begin_auto_select_if_enabled()
+
+
+func _rebuild_weapon_choices_from_rewards() -> void:
+	_current_choices.clear()
+	for choice_variant in _reward_choices:
+		var choice := choice_variant as RewardChoice
+		if choice != null and choice.is_weapon():
+			_current_choices.append(choice.weapon)
 
 
 func _pick_random_weapons(count: int, owned_weapons: Array[WeaponData]) -> Array[WeaponData]:
@@ -246,21 +310,25 @@ func _is_weapon_discarded(weapon: WeaponData) -> bool:
 
 func _update_reroll_button_state() -> void:
 	_reroll_button.text = UiLocale.t(&"weapon_select.reroll_remaining") % _rerolls_remaining
-	_reroll_button.disabled = (
-		_rerolls_remaining <= 0
-		or _build_selectable_weapon_pool(_owned_weapons).is_empty()
-	)
+	var can_reroll := _rerolls_remaining > 0
+	if _use_reward_choices:
+		var game := get_parent()
+		can_reroll = can_reroll and game != null and game.has_method(&"reroll_reward_choices")
+	else:
+		can_reroll = can_reroll and not _build_selectable_weapon_pool(_owned_weapons).is_empty()
+	_reroll_button.disabled = not can_reroll
 
 
 func _update_discard_buttons_state() -> void:
 	var show_discard := _discards_remaining > 0
 	for i in _discard_buttons.size():
-		var has_choice := i < _current_choices.size()
+		var has_choice := _has_reward_row(i)
 		var row: HBoxContainer = _choice_rows[i]
 		row.visible = has_choice
 		var discard_button := _discard_buttons[i]
-		discard_button.visible = show_discard and has_choice
-		if show_discard:
+		var can_discard := show_discard and has_choice and _is_weapon_reward_row(i)
+		discard_button.visible = can_discard
+		if can_discard:
 			discard_button.text = UiLocale.t(&"weapon_select.discard")
 
 
@@ -285,20 +353,30 @@ func _is_weapon_owned(weapon: WeaponData, owned_weapons: Array[WeaponData]) -> b
 func _update_button_labels() -> void:
 	for i in _buttons.size():
 		var button := _buttons[i]
-		if i < _current_choices.size() and i < _choice_rows.size():
-			var weapon := _current_choices[i]
+		if _has_reward_row(i) and i < _choice_rows.size():
 			button.visible = true
-			button.text = weapon.get_select_label()
 			button.disabled = false
-			_apply_choice_button_style(button, weapon)
+			if _use_reward_choices:
+				var choice := _reward_choices[i] as RewardChoice
+				button.text = choice.get_choice_label()
+				if choice.is_weapon():
+					_apply_choice_button_style(button, choice.weapon)
+				elif choice.is_weapon_upgrade():
+					_apply_weapon_upgrade_button_style(button)
+				else:
+					_apply_passive_button_style(button)
+			else:
+				var weapon := _current_choices[i]
+				button.text = weapon.get_select_label()
+				_apply_choice_button_style(button, weapon)
 		else:
 			button.visible = false
 			button.disabled = true
 	_update_discard_buttons_state()
-	if _detail_hover_index >= 0 and _detail_hover_index < _current_choices.size():
-		_show_weapon_detail(_detail_hover_index)
-	elif not _current_choices.is_empty():
-		_show_weapon_detail(0)
+	if _detail_hover_index >= 0 and _has_reward_row(_detail_hover_index):
+		_show_reward_detail(_detail_hover_index)
+	elif _has_any_reward_row():
+		_show_reward_detail(0)
 	else:
 		_detail_label.text = UiLocale.t(&"weapon_select.detail_hint")
 
@@ -330,7 +408,7 @@ func _setup_auto_gauge_fills() -> void:
 
 func _begin_auto_select_if_enabled() -> void:
 	_cancel_auto_select()
-	if not _auto_select_toggle.button_pressed or _current_choices.is_empty():
+	if not _auto_select_toggle.button_pressed or not _has_any_reward_row():
 		_auto_select_countdown_label.text = ""
 		return
 	_auto_select_target_index = _pick_auto_select_index()
@@ -338,7 +416,7 @@ func _begin_auto_select_if_enabled() -> void:
 		return
 	_auto_select_active = true
 	_auto_select_elapsed = 0.0
-	_show_weapon_detail(_auto_select_target_index)
+	_show_reward_detail(_auto_select_target_index)
 	_update_auto_select_ui(0.0, AUTO_SELECT_DELAY_SEC)
 	set_process(true)
 
@@ -361,11 +439,23 @@ func _get_auto_type_priority(weapon_type: String) -> int:
 func _pick_auto_select_index() -> int:
 	var best_index := -1
 	var best_priority := 99
-	for i in _current_choices.size():
-		var priority := _get_auto_type_priority(_current_choices[i].weapon_type)
-		if priority < best_priority:
-			best_priority = priority
-			best_index = i
+	var row_count := _reward_choices.size() if _use_reward_choices else _current_choices.size()
+	for i in row_count:
+		if _use_reward_choices:
+			var choice := _reward_choices[i] as RewardChoice
+			if choice == null:
+				continue
+			if choice.is_weapon() or choice.is_weapon_upgrade():
+				var weapon_data := choice.weapon
+				var priority := _get_auto_type_priority(weapon_data.weapon_type)
+				if priority < best_priority:
+					best_priority = priority
+					best_index = i
+		else:
+			var priority := _get_auto_type_priority(_current_choices[i].weapon_type)
+			if priority < best_priority:
+				best_priority = priority
+				best_index = i
 	return best_index
 
 
@@ -408,6 +498,23 @@ func _update_auto_select_ui(fill_ratio: float, remaining_sec: float) -> void:
 	_refresh_choice_button_styles()
 
 
+func _get_reward_choice_highlight_color(index: int) -> Color:
+	if _use_reward_choices and index >= 0 and index < _reward_choices.size():
+		var choice := _reward_choices[index] as RewardChoice
+		if choice == null:
+			return DEFAULT_BUTTON_COLOR
+		if choice.is_passive():
+			return PASSIVE_BUTTON_COLOR
+		if choice.is_weapon_upgrade():
+			return WEAPON_UPGRADE_BUTTON_COLOR
+		if choice.weapon != null:
+			return WEAPON_TYPE_BUTTON_COLORS.get(choice.weapon.weapon_type, DEFAULT_BUTTON_COLOR)
+	if index >= 0 and index < _current_choices.size():
+		var weapon := _current_choices[index]
+		return WEAPON_TYPE_BUTTON_COLORS.get(weapon.weapon_type, DEFAULT_BUTTON_COLOR)
+	return DEFAULT_BUTTON_COLOR
+
+
 func _update_auto_gauge_fills(fill_ratio: float) -> void:
 	for i in _gauge_fills.size():
 		var track: ColorRect = _gauge_tracks[i]
@@ -417,8 +524,12 @@ func _update_auto_gauge_fills(fill_ratio: float) -> void:
 			fill.visible = false
 			fill.anchor_right = 0.0
 			continue
-		var weapon := _current_choices[i]
-		var base_color: Color = WEAPON_TYPE_BUTTON_COLORS.get(weapon.weapon_type, DEFAULT_BUTTON_COLOR)
+		if not _has_reward_row(i):
+			track.visible = false
+			fill.visible = false
+			fill.anchor_right = 0.0
+			continue
+		var base_color: Color = _get_reward_choice_highlight_color(i)
 		var dimmed := base_color.darkened(0.35)
 		dimmed.a = AUTO_GAUGE_DIM_ALPHA
 		track.color = dimmed
@@ -439,18 +550,24 @@ func _reset_auto_gauge_fills() -> void:
 
 func _refresh_choice_button_styles() -> void:
 	for i in _buttons.size():
-		if i >= _current_choices.size():
+		if not _has_reward_row(i):
 			continue
 		var button := _buttons[i]
-		var weapon := _current_choices[i]
 		if _auto_select_active and i == _auto_select_target_index:
-			_apply_gauge_target_button_style(button, weapon)
+			_apply_gauge_target_button_style(button, _get_reward_choice_highlight_color(i))
+		elif _use_reward_choices:
+			var choice := _reward_choices[i] as RewardChoice
+			if choice.is_weapon():
+				_apply_choice_button_style(button, choice.weapon)
+			elif choice.is_weapon_upgrade():
+				_apply_weapon_upgrade_button_style(button)
+			else:
+				_apply_passive_button_style(button)
 		else:
-			_apply_choice_button_style(button, weapon)
+			_apply_choice_button_style(button, _current_choices[i])
 
 
-func _apply_gauge_target_button_style(button: Button, weapon: WeaponData) -> void:
-	var base_color: Color = WEAPON_TYPE_BUTTON_COLORS.get(weapon.weapon_type, DEFAULT_BUTTON_COLOR)
+func _apply_gauge_target_button_style(button: Button, base_color: Color) -> void:
 	var state_styles := _build_gauge_overlay_button_styles(base_color)
 	button.add_theme_stylebox_override("normal", state_styles["normal"])
 	button.add_theme_stylebox_override("hover", state_styles["hover"])
@@ -559,23 +676,77 @@ func _apply_choice_button_style(button: Button, weapon: WeaponData) -> void:
 
 func _on_choice_hovered(index: int) -> void:
 	_detail_hover_index = index
-	_show_weapon_detail(index)
+	_show_reward_detail(index)
 
 
-func _show_weapon_detail(index: int) -> void:
-	if index < 0 or index >= _current_choices.size():
+func _show_reward_detail(index: int) -> void:
+	if not _has_reward_row(index):
 		_detail_label.text = UiLocale.t(&"weapon_select.detail_hint")
 		return
-	_detail_label.text = _current_choices[index].build_select_tooltip_bbcode()
+	if _use_reward_choices:
+		var choice := _reward_choices[index] as RewardChoice
+		if choice == null:
+			_detail_label.text = UiLocale.t(&"weapon_select.detail_hint")
+			return
+		var current_passive_level := 0
+		var current_weapon_level := 1
+		if choice.is_passive() and _passive_run_state != null:
+			current_passive_level = _passive_run_state.get_level(choice.passive.passive_id)
+		if choice.is_weapon_upgrade() and _weapon_run_state != null:
+			current_weapon_level = _weapon_run_state.get_level(choice.weapon)
+		_detail_label.text = choice.get_detail_bbcode(current_passive_level, current_weapon_level)
+	else:
+		_detail_label.text = _current_choices[index].build_select_tooltip_bbcode()
 
 
 func _select_weapon_at_index(index: int) -> void:
-	if index < 0 or index >= _current_choices.size():
+	if not _has_reward_row(index):
 		return
 	_cancel_auto_select()
 	var game := get_parent()
-	if game.has_method("on_weapon_chosen"):
+	if _use_reward_choices and game.has_method(&"on_reward_chosen"):
+		game.call("on_reward_chosen", _reward_choices[index])
+	elif game.has_method("on_weapon_chosen"):
 		game.on_weapon_chosen(_current_choices[index])
+
+
+func _has_reward_row(index: int) -> bool:
+	if _use_reward_choices:
+		return index >= 0 and index < _reward_choices.size()
+	return index >= 0 and index < _current_choices.size()
+
+
+func _has_any_reward_row() -> bool:
+	return _reward_choices.size() > 0 if _use_reward_choices else not _current_choices.is_empty()
+
+
+func _is_weapon_reward_row(index: int) -> bool:
+	if not _has_reward_row(index):
+		return false
+	if _use_reward_choices:
+		var choice := _reward_choices[index] as RewardChoice
+		return choice != null and choice.is_weapon()
+	return true
+
+
+func _apply_passive_button_style(button: Button) -> void:
+	var state_styles: Dictionary = _build_button_state_styles(PASSIVE_BUTTON_COLOR)
+	button.add_theme_stylebox_override("normal", state_styles["normal"])
+	button.add_theme_stylebox_override("hover", state_styles["hover"])
+	button.add_theme_stylebox_override("pressed", state_styles["pressed"])
+	button.add_theme_stylebox_override("disabled", state_styles["disabled"])
+	button.add_theme_stylebox_override("focus", state_styles["hover"])
+	_apply_choice_button_font_colors(button)
+
+
+func _apply_weapon_upgrade_button_style(button: Button) -> void:
+	var state_styles: Dictionary = _build_button_state_styles(WEAPON_UPGRADE_BUTTON_COLOR)
+	button.add_theme_stylebox_override("normal", state_styles["normal"])
+	button.add_theme_stylebox_override("hover", state_styles["hover"])
+	button.add_theme_stylebox_override("pressed", state_styles["pressed"])
+	button.add_theme_stylebox_override("disabled", state_styles["disabled"])
+	button.add_theme_stylebox_override("focus", state_styles["hover"])
+	_apply_choice_button_font_colors(button)
 
 
 func _on_revolver_button_pressed() -> void:

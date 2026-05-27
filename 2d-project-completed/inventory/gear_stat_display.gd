@@ -143,9 +143,9 @@ static func format_stat_lines(modifiers: Dictionary) -> PackedStringArray:
 			lines.append("저주에 걸리지 않도록 보호합니다.")
 	if stats.has("weapon_upgrade_level"):
 		if en:
-			lines.append("+%d to Weapon Upgrade Level" % int(stats["weapon_upgrade_level"]))
+			lines.append("+%d on weapon upgrade picks" % int(stats["weapon_upgrade_level"]))
 		else:
-			lines.append("무기 강화 레벨 +%d" % int(stats["weapon_upgrade_level"]))
+			lines.append("무기 강화 선택 시 추가 +%d" % int(stats["weapon_upgrade_level"]))
 	if stats.has("invincibility_after_damage_sec"):
 		var sec_damage := float(stats["invincibility_after_damage_sec"])
 		if en:

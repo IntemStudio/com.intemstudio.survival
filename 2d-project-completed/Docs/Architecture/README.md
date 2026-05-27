@@ -30,6 +30,7 @@
 | `Architecture_Weapons.md` | `WeaponData`, 무기 카탈로그, 장착, `Gun`, 자동 공격, 무기별 피해 기록 | 발사체 이동·충돌 세부 구현, 무기별 데모 선정 기준, 성장 기획, 아이콘 정책 |
 | `Architecture_Projectiles.md` | 플레이어 발사체, movement, 장판, 궤도, 환경 충돌, 풀링, 피해 귀속 | 무기 획득·장착, 몹 원거리 투사체, 플레이어-facing 기획 설명 |
 | `Architecture_Buffs.md` | 런타임 버프 정의, 지속시간, 스택, 플레이어 스탯 modifier 반영, 웨이브/대시 트리거 | 영구 성장, 장비 상시 스탯, HUD 버프 아이콘, 몹 상태이상 통합 |
+| `Architecture_Passives.md` | LoadoutPassive·RunPassive·TimedBuff·WaveModifier 4층, `WeaponRunState`, `AccessorySynergy`, `PassiveResolver` | HUD, 이벤트 큐·확률 데이터(EA), GDD Enabler 정의 본문 |
 | `Architecture_GameLoop_Balance.md` | 로비 이후 런 시작, 스폰 타이머, `BalanceTable`, `BalanceTimeline`, 클리어/게임오버, 보상 호출 경로 | 출시 일정, 플레이테스트 TODO, 장기 난이도 아이디어 |
 | `Architecture_Mobs.md` | `mob.gd` 공통 계약, 변종 씬, 원거리 공격, 접촉 피해, 사망·보상·풀 반환, 보스/특수몹 확장 지점 | 몹 역할 기획, 등장 체감, 데모 콘텐츠 우선순위 |
 | `Architecture_TestArena.md` | F6 씬, 몹/무기 튜닝(피해·APS·사거리·발사체 수·movement, 적용/저장), 사망 폭발 지연·예고 링, 인벤 GUI, 탭 UI | F5 웨이브·상자·밸런스 타임라인 |

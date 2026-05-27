@@ -38,6 +38,9 @@ var _game_started := false
 var _run_cleared := false
 var _run_failed := false
 var _pending_weapon_selects := 0
+var _passive_run_state := PassiveRunState.new()
+var _weapon_run_state := WeaponRunState.new()
+var _last_reward_title_key: StringName = &"weapon_select.level_up"
 var _weapon_damage := WeaponDamageTracker.new()
 var _timeline_fired_keys: Dictionary = {}
 var _density_event_mult := 1.0
@@ -77,8 +80,10 @@ func _ready() -> void:
 		balance_timeline = DEFAULT_BALANCE_TIMELINE
 	_update_kill_count_hud()
 	$Timer.stop()
+	if %Player.has_method(&"set_weapon_run_state"):
+		%Player.set_weapon_run_state(_weapon_run_state)
 	%Player.leveled_up.connect(_on_player_leveled_up)
-	if not show_weapon_select(&"weapon_select.title"):
+	if not show_reward_select(&"weapon_select.title"):
 		_ensure_game_started()
 	refresh_locale()
 
@@ -112,10 +117,26 @@ func is_chest_purchase_open() -> bool:
 
 
 func show_weapon_select(title_key: StringName = &"weapon_select.level_up") -> bool:
+	return show_reward_select(title_key)
+
+
+func show_reward_select(title_key: StringName = &"weapon_select.level_up") -> bool:
 	if _weapon_select_menu == null:
 		push_error("Game: WeaponSelectMenu node missing.")
 		return false
-	if not _weapon_select_menu.present_random_choices(title_key, _get_weapon_choice_owned_weapons()):
+	_last_reward_title_key = title_key
+	var wave_number := _get_current_wave_number_for_rewards()
+	var choices := _roll_reward_choices(wave_number)
+	if choices.is_empty():
+		_consume_pending_weapon_select()
+		return false
+	if not _weapon_select_menu.present_reward_choices(
+		title_key,
+		choices,
+		_get_weapon_choice_owned_weapons(),
+		_passive_run_state,
+		_weapon_run_state
+	):
 		_consume_pending_weapon_select()
 		return false
 
@@ -123,6 +144,138 @@ func show_weapon_select(title_key: StringName = &"weapon_select.level_up") -> bo
 	_weapon_select_menu.on_menu_opened()
 	get_tree().paused = true
 	return true
+
+
+func reroll_reward_choices() -> void:
+	if _weapon_select_menu == null:
+		return
+	var choices := _roll_reward_choices(_get_current_wave_number_for_rewards())
+	if choices.is_empty():
+		return
+	_weapon_select_menu.present_reward_choices(
+		_last_reward_title_key,
+		choices,
+		_get_weapon_choice_owned_weapons(),
+		_passive_run_state,
+		_weapon_run_state
+	)
+
+
+func get_passive_run_state() -> PassiveRunState:
+	return _passive_run_state
+
+
+func get_weapon_run_state() -> WeaponRunState:
+	return _weapon_run_state
+
+
+func on_reward_chosen(choice: RewardChoice) -> void:
+	if choice == null:
+		return
+	if choice.is_weapon():
+		on_weapon_chosen(choice.weapon)
+	elif choice.is_weapon_upgrade():
+		on_weapon_upgrade_chosen(choice.weapon)
+	elif choice.is_passive():
+		on_passive_chosen(choice.passive)
+
+
+func on_passive_chosen(passive: PassiveData) -> void:
+	if passive == null:
+		return
+	var new_level := _passive_run_state.add_level(passive.passive_id, passive.max_level)
+	if new_level <= 0:
+		if show_reward_select(_last_reward_title_key):
+			return
+		_finish_reward_flow(false)
+		return
+	if new_level >= passive.max_level:
+		_passive_run_state.try_evolve(passive)
+	_refresh_passive_stats()
+	_finish_reward_flow(false)
+
+
+func on_weapon_upgrade_chosen(weapon: WeaponData) -> void:
+	if weapon == null:
+		return
+	var bonus := _get_weapon_upgrade_bonus_levels()
+	var new_level := _weapon_run_state.add_level(weapon, bonus)
+	if new_level <= 0:
+		if show_reward_select(_last_reward_title_key):
+			return
+		_finish_reward_flow(false)
+		return
+	_finish_reward_flow(false)
+
+
+func _refresh_passive_stats() -> void:
+	%Player.refresh_stats_from_passives(_passive_run_state, _get_equipped_accessory_ids())
+
+
+func _roll_reward_choices(wave_number: int) -> Array:
+	const MAX_EMPTY_REROLLS := 3
+	_sync_weapon_run_state_from_owned()
+	var owned := _get_weapon_choice_owned_weapons()
+	var upgrade_pool := _get_upgrade_eligible_weapons()
+	var upgrade_bonus := _get_weapon_upgrade_bonus_levels()
+	for _attempt in MAX_EMPTY_REROLLS:
+		var choices := RewardPool.roll_choices(
+			owned,
+			upgrade_pool,
+			_passive_run_state,
+			_weapon_run_state,
+			%Player.level,
+			wave_number,
+			_chest_rng,
+			upgrade_bonus,
+			use_inventory_loadout
+		)
+		if not choices.is_empty():
+			return choices
+	return []
+
+
+func _get_upgrade_eligible_weapons() -> Array[WeaponData]:
+	if not use_inventory_loadout:
+		return %Player.get_owned_weapons()
+	var service := _get_inventory_service()
+	if service == null:
+		return %Player.get_owned_weapons()
+	var weapon_id := InventoryCombatBridge.get_active_weapon_id(service.loadout)
+	if weapon_id.is_empty():
+		return []
+	var weapon := service.registry.resolve_weapon(weapon_id)
+	if weapon == null:
+		return []
+	return [weapon]
+
+
+func _sync_weapon_run_state_from_owned() -> void:
+	for weapon in _get_weapon_choice_owned_weapons():
+		_weapon_run_state.ensure_registered(weapon)
+
+
+func _get_equipped_accessory_ids() -> Array[String]:
+	var ids: Array[String] = []
+	if not use_inventory_loadout:
+		return ids
+	var service := _get_inventory_service()
+	if service == null:
+		return ids
+	var accessory_id := service.loadout.get_set_item_id(
+		service.loadout.active_set_index,
+		EquipSlots.ACCESSORY
+	)
+	if not accessory_id.is_empty():
+		ids.append(accessory_id)
+	return ids
+
+
+func _get_weapon_upgrade_bonus_levels() -> int:
+	if not %Player.has_method(&"get_persistent_stat_modifiers"):
+		return 0
+	var mods: Dictionary = %Player.get_persistent_stat_modifiers()
+	return maxi(int(mods.get("weapon_upgrade_level", 0)), 0)
 
 
 func on_weapon_chosen(weapon: WeaponData) -> void:
@@ -137,18 +290,20 @@ func on_weapon_chosen(weapon: WeaponData) -> void:
 			return
 		_show_weapon_reward_error(acquire_err)
 		return
-	_finish_weapon_reward_flow(weapon, true)
+	_finish_reward_flow(true, weapon)
 
 
-# 무기 획득 선택을 끝내고 게임 흐름을 재개합니다.
-func _finish_weapon_reward_flow(weapon: WeaponData, acquired: bool) -> void:
+# 보상 선택 UI를 닫고 게임 흐름을 재개합니다.
+func _finish_reward_flow(weapon_acquired: bool, weapon: WeaponData = null) -> void:
 	_weapon_select_menu.on_menu_closed()
 	_weapon_select_menu.hide()
 	get_tree().paused = false
-	if acquired and use_inventory_loadout:
-		apply_inventory_loadout_to_player()
-	elif acquired:
-		%Player.add_weapon.call_deferred(weapon)
+	if weapon_acquired and weapon != null:
+		_weapon_run_state.ensure_registered(weapon)
+		if use_inventory_loadout:
+			apply_inventory_loadout_to_player()
+		else:
+			%Player.add_weapon.call_deferred(weapon)
 
 	_ensure_game_started()
 	_consume_pending_weapon_select()
@@ -157,7 +312,18 @@ func _finish_weapon_reward_flow(weapon: WeaponData, acquired: bool) -> void:
 		_enable_pending_arena_teleporter()
 
 
+# 무기 획득 선택을 끝내고 게임 흐름을 재개합니다.
+func _finish_weapon_reward_flow(weapon: WeaponData, acquired: bool) -> void:
+	_finish_reward_flow(acquired, weapon)
+
+
 # 무기 획득 UI 필터용 — 인벤토리 안의 무기까지 보유로 봅니다.
+func _get_current_wave_number_for_rewards() -> int:
+	if _is_arena_mode() and _arena_director != null:
+		return _arena_director.current_wave
+	return 0
+
+
 func _get_weapon_choice_owned_weapons() -> Array[WeaponData]:
 	if not use_inventory_loadout:
 		return %Player.get_owned_weapons()
@@ -456,6 +622,8 @@ func _on_player_leveled_up(_new_level: int) -> void:
 func register_kill() -> void:
 	kill_count += 1
 	_update_kill_count_hud()
+	if %Player.has_method(&"apply_loadout_on_kill"):
+		%Player.apply_loadout_on_kill()
 	if _is_arena_mode():
 		call_deferred("_check_arena_wave_completion")
 
@@ -683,7 +851,7 @@ func _on_arena_wave_completed(wave_number: int) -> void:
 	_pending_arena_chest_reward_wave = wave_number
 	var next_wave_message := "Wave %d 클리어 · 텔레포터로 다음 웨이브 시작" % wave_number
 	_queue_arena_teleporter_after_weapon_select(next_wave_message)
-	if not show_weapon_select(&"weapon_select.arena_wave_clear"):
+	if not show_reward_select(&"weapon_select.arena_wave_clear"):
 		_show_pending_arena_chest_reward()
 		_enable_pending_arena_teleporter()
 
@@ -988,6 +1156,8 @@ func apply_inventory_loadout_to_player() -> void:
 		menu_service.registry,
 		menu_service.loadout
 	)
+	_sync_weapon_run_state_from_owned()
+	_refresh_passive_stats()
 	InventoryGameBridge.refresh_combat_set_hud(self, _inventory_menu)
 
 
