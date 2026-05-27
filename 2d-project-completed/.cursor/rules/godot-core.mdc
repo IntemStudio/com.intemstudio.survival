@@ -18,7 +18,7 @@ Godot 4.x GDScript survivors-like game. Main scene: `res://survivors_game.tscn`.
 
 ## Must (scene contract)
 
-- Spawn position must come from `%MapArena.get_random_spawn_position(exclude_near_world)` (global coords, inside `arena_rect` minus `spawn_margin`; obstacle overlap retried on physics layer 1; optional world point excludes spawns within `player_clear_radius + mob_spawn_player_clear_extra`). Main play passes `%Player.global_position`. Main play (`survivors_game.tscn`) overrides `%MapArena` to 3× arena size; do not change main map size by editing `map_arena.gd` defaults only — update the scene instance override and `Docs/AGENTS_MapArena.md` / `AGENTS.md`. Do not reintroduce `Player/Path2D` perimeter spawn without updating those docs and this rule.
+- Spawn position must come from `%MapArena.get_random_spawn_position(exclude_near_world)` (global coords, inside `arena_rect` minus `spawn_margin`; obstacle overlap retried on physics layer 1; optional world point excludes spawns within `player_clear_radius + mob_spawn_player_clear_extra`). Main play passes `%Player.global_position`. Main play (`survivors_game.tscn`) overrides `%MapArena` to 3× arena size; do not change main map size by editing `map_arena.gd` defaults only — update the scene instance override and `Docs/Agents/AGENTS_MapArena.md` / `AGENTS.md`. Do not reintroduce `Player/Path2D` perimeter spawn without updating those docs and this rule.
 - `Game.spawn_mob()` must acquire a `Mob` via `ScenePool.acquire(scene, parent, spawn_global_position)` (or instantiate fallback with the same position), then call `initialize_spawn_health()`.
 - On mob death, kills must still reach `Game.register_kill()` via the existing `mob.gd` `_die()` path.
 

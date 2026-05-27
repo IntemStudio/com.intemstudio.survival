@@ -2,11 +2,6 @@ extends Area2D
 
 @export var weapon: WeaponData = preload("res://weapons/data/revolver.tres")
 
-const BULLET_SCENE := preload("res://weapons/core/bullet_2d.tscn")
-const MELEE_PROJECTILE_SCENE := preload("res://weapons/melee/melee_projectile.tscn")
-const MAGIC_BOLT_SCENE := preload("res://weapons/magic/magic_bolt.tscn")
-const KING_BIBLE_ORB_SCENE := preload("res://weapons/magic/king_bible_orb.tscn")
-const THROWING_PROJECTILE_SCENE := preload("res://weapons/throwing/throwing_projectile.tscn")
 const KING_BIBLE_ORB_COUNT := 2
 
 @onready var _shoot_timer: Timer = $Timer
@@ -315,17 +310,24 @@ func _roll_combat_damage() -> int:
 	return 1
 
 
-func _get_scene_pool(game: Node) -> ScenePool:
-	return game.get_node_or_null("ObjectPools") as ScenePool
+func _get_attack_factory() -> AttackFactory:
+	var game := get_node_or_null("/root/Game")
+	if game == null:
+		AttackServices.warn_missing_factory()
+		return null
+	return AttackServices.find_factory(game)
 
 
-func _spawn_from_pool(game: Node, scene: PackedScene) -> Node:
-	var pool := _get_scene_pool(game)
-	if pool:
-		return pool.acquire(scene, game)
-	var node := scene.instantiate()
-	game.add_child(node)
-	return node
+func _build_attack_context(pre_rolled_damage: int = -1) -> AttackContext:
+	var target: Node2D = _current_target if is_instance_valid(_current_target) else null
+	return AttackContext.from_gun(
+		weapon,
+		_get_spawn_transform(),
+		_get_shoot_direction(),
+		_get_player(),
+		target,
+		pre_rolled_damage
+	)
 
 
 func _clear_magic_companion() -> void:
@@ -337,17 +339,17 @@ func _clear_magic_companion() -> void:
 
 func _spawn_orbit_companion() -> void:
 	var player := _get_player()
-	var game := get_node_or_null("/root/Game")
-	if not player or not game or not weapon:
+	var factory := _get_attack_factory()
+	if not player or not factory or not weapon:
 		return
 
 	var count := _get_orbit_companion_count()
 	var base_angle := randf() * TAU
 	for index in count:
-		var orb: Area2D = _spawn_from_pool(game, KING_BIBLE_ORB_SCENE) as Area2D
 		var angle := base_angle + TAU * float(index) / float(count)
-		orb.setup(weapon, player, angle)
-		_magic_companions.append(orb)
+		var orb := factory.spawn_orbit_orb(weapon, player, angle)
+		if orb:
+			_magic_companions.append(orb)
 
 
 func _get_orbit_companion_count() -> int:
@@ -360,29 +362,29 @@ func _shoot_magic() -> void:
 	if weapon.is_orbit_attack():
 		return
 
-	var game := get_node_or_null("/root/Game")
-	if not game:
+	var factory := _get_attack_factory()
+	if factory == null:
 		return
 
 	_refresh_current_target()
-	var bolt: Area2D = _spawn_from_pool(game, MAGIC_BOLT_SCENE) as Area2D
-	bolt.setup(weapon, _get_spawn_transform())
+	factory.spawn_magic_bolt(_build_attack_context())
 
 
 func _shoot_melee_projectile() -> void:
-	var game := get_node_or_null("/root/Game")
-	if not game:
+	var factory := _get_attack_factory()
+	if factory == null:
 		return
 
 	_refresh_current_target()
 	var projectile_owner := _get_player()
 	var base_transform := _get_spawn_transform()
+	var context := _build_attack_context()
 	var spread_count := weapon.get_melee_spread_count()
 	if spread_count <= 1:
-		_spawn_melee_projectile(game, weapon, base_transform, projectile_owner)
+		factory.spawn_melee_projectile(context, base_transform, projectile_owner)
 		return
 	if weapon.has_melee_parallel_spawn():
-		_shoot_parallel_melee_projectiles(game, projectile_owner, base_transform, spread_count)
+		_shoot_parallel_melee_projectiles(factory, context, projectile_owner, base_transform, spread_count)
 		return
 
 	var origin := base_transform.origin
@@ -393,11 +395,12 @@ func _shoot_melee_projectile() -> void:
 		var t := float(index) / float(last_index)
 		var angle := base_angle - half_spread + t * half_spread * 2.0
 		var spread_transform := Transform2D(angle, origin)
-		_spawn_melee_projectile(game, weapon, spread_transform, projectile_owner)
+		factory.spawn_melee_projectile(context, spread_transform, projectile_owner)
 
 
 func _shoot_parallel_melee_projectiles(
-	game: Node,
+	factory: AttackFactory,
+	context: AttackContext,
 	projectile_owner: Node2D,
 	base_transform: Transform2D,
 	spread_count: int
@@ -409,62 +412,31 @@ func _shoot_parallel_melee_projectiles(
 	for index in spread_count:
 		var lane_offset := (float(index) - center_index) * weapon.melee_parallel_offset * 2.0
 		var parallel_transform := Transform2D(angle, origin + perpendicular * lane_offset)
-		_spawn_melee_projectile(game, weapon, parallel_transform, projectile_owner)
-
-
-func _spawn_melee_projectile(
-	game: Node,
-	weapon_data: WeaponData,
-	spawn_transform: Transform2D,
-	projectile_owner: Node2D
-) -> void:
-	var projectile: Area2D = _spawn_from_pool(game, MELEE_PROJECTILE_SCENE) as Area2D
-	projectile.setup(weapon_data, spawn_transform, projectile_owner)
+		factory.spawn_melee_projectile(context, parallel_transform, projectile_owner)
 
 
 func _shoot_bullet() -> void:
-	var game := get_node_or_null("/root/Game")
-	if not game:
+	var factory := _get_attack_factory()
+	if factory == null:
 		return
-
-	var new_bullet: Area2D = _spawn_from_pool(game, BULLET_SCENE) as Area2D
-	if new_bullet.has_method("setup"):
-		new_bullet.setup(weapon, _get_spawn_transform())
-	else:
-		new_bullet.global_transform = _get_spawn_transform()
-		new_bullet.set("damage", _roll_combat_damage())
+	factory.spawn_bullet(_build_attack_context(_roll_combat_damage()))
 
 
 func _shoot_throwing() -> void:
 	var player := _get_player()
-	var game := get_node_or_null("/root/Game")
-	if not player or not game:
+	var factory := _get_attack_factory()
+	if not player or factory == null:
 		return
 
 	_refresh_current_target()
-
-	var projectile: Node
-	if weapon.uses_arc_throw and weapon.projectile_scene:
-		projectile = _spawn_from_pool(game, weapon.projectile_scene)
-		projectile.global_position = _shooting_point.global_position
-		projectile.setup_weapon(player, _get_throw_aim_position(), weapon)
-	elif weapon.projectile_scene:
-		projectile = _spawn_from_pool(game, weapon.projectile_scene)
-		projectile.global_position = _shooting_point.global_position
-		if projectile.has_method("setup_weapon"):
-			projectile.setup_weapon(player, _get_shoot_direction(), weapon)
-		else:
-			projectile.setup(
-				player,
-				_get_shoot_direction(),
-				_roll_combat_damage(),
-				weapon.get_projectile_range(),
-				weapon.throw_speed
-			)
-	else:
-		projectile = _spawn_from_pool(game, THROWING_PROJECTILE_SCENE)
-		projectile.global_position = _shooting_point.global_position
-		projectile.setup_weapon(player, _get_shoot_direction(), weapon)
+	factory.spawn_throwing_from_gun(
+		player,
+		weapon,
+		_shooting_point.global_position,
+		_get_throw_aim_position(),
+		_get_shoot_direction(),
+		_roll_combat_damage()
+	)
 
 
 func _exit_tree() -> void:

@@ -300,10 +300,7 @@ func _deal_damage(body: Node) -> void:
 	if not _weapon:
 		return
 	var damage := _roll_weapon_damage()
-	if body.has_method("apply_weapon_damage"):
-		body.apply_weapon_damage(damage, _weapon)
-	elif body.has_method("take_damage"):
-		body.take_damage(damage)
+	DamageResolver.apply_weapon_to_mob(body, damage, _weapon)
 
 
 func _roll_weapon_damage() -> int:

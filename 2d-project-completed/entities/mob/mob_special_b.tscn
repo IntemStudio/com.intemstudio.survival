@@ -19,6 +19,18 @@ base_max_health = 220
 speed_min = 140.0
 speed_max = 200.0
 slime_tint = Color(0.45, 0.85, 1, 1)
+death_burst_enabled = true
+death_burst_radius = 118.0
+death_burst_damage = 16
+charge_attack_enabled = true
+charge_trigger_distance = 250.0
+charge_speed_mult = 3.0
+charge_duration = 0.34
+charge_cooldown = 2.6
+charge_end_burst_radius = 82.0
+charge_end_burst_damage = 9
+self_destruct_enabled = true
+self_destruct_health_ratio = 0.18
 
 [node name="Slime" parent="." instance=ExtResource("2_slime")]
 unique_name_in_owner = true

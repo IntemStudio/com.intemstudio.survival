@@ -4,6 +4,16 @@
 
 `Plan/` 바로 아래 문서는 마일스톤, Epic, 장기 범위, 완료 기준처럼 여러 주에 걸치는 계획을 다룹니다. `Weekly/` 아래 문서는 상위 계획을 1주 단위로 쪼갠 실행 계획입니다. 두 문서는 서로 대체하지 않고, 상위 계획은 방향과 기준을, 주차 계획은 이번 주 실행과 검증을 담당합니다.
 
+## Plans 레이어
+
+| 레이어 | 경로 | 용도 |
+|--------|------|------|
+| Active | [`Weekly/Current.md`](Weekly/Current.md) | 이번 주 진행·막힘·다음 액션 |
+| Completed | [`Weekly/Week*.md`](Weekly/) → `Result` | 주차 종료 요약 |
+| Tech debt | [`../../BACKLOG.md`](../../BACKLOG.md) | 미구현·후속·기술 부채 |
+
+에이전트·개발자 참고 순서: **Current → 해당 Week 문서 → BACKLOG**
+
 ## 문서 구분
 
 | 위치 | 역할 | 작성할 내용 |

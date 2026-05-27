@@ -1,6 +1,6 @@
 # Architecture — Weapons (무기)
 
-**진입:** [`AGENTS.md`](../../AGENTS.md) · 플레이 규칙: [`Wiki/Weapons.md`](../Wiki/Weapons.md), [`Wiki/Projectiles.md`](../Wiki/Projectiles.md), [`Wiki/Combat.md`](../Wiki/Combat.md) · 발사체 구조: [`Architecture_Projectiles.md`](Architecture_Projectiles.md) · 버프 구조: [`Architecture_Buffs.md`](Architecture_Buffs.md) · 인벤 연동: [`Architecture_Inventory.md`](Architecture_Inventory.md)
+**진입:** [`AGENTS.md`](../../AGENTS.md) · 공격 시스템 목표: [`Architecture_AttackSystem.md`](Architecture_AttackSystem.md) · 플레이 규칙: [`Wiki/Weapons.md`](../Wiki/Weapons.md), [`Wiki/Projectiles.md`](../Wiki/Projectiles.md), [`Wiki/Combat.md`](../Wiki/Combat.md) · 발사체 구조: [`Architecture_Projectiles.md`](Architecture_Projectiles.md) · 버프 구조: [`Architecture_Buffs.md`](Architecture_Buffs.md) · 인벤 연동: [`Architecture_Inventory.md`](Architecture_Inventory.md)
 
 무기 시스템의 데이터, 장착, 발사 트리거, 피해 기록 흐름을 정리한다. `Gun.shoot()` 이후의 발사체 이동·충돌·풀링 세부 구조는 `Architecture_Projectiles.md`에서 관리한다. 무기별 데모 선정, 성장 기획, 아이콘 정책은 `Docs/Wiki/Weapons.md`와 `BACKLOG.md`에서 관리한다.
 

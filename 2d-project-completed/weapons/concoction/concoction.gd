@@ -102,18 +102,18 @@ func _explode_at(impact_position: Vector2) -> void:
 
 
 func _spawn_area_damage_zone(impact_position: Vector2, radius: float) -> void:
-	var game := get_node_or_null("/root/Game")
-	if not game or not _weapon:
+	if not _weapon:
+		return
+	var factory := AttackServices.find_factory()
+	if factory:
+		factory.spawn_area_circle(_weapon, impact_position, radius, true)
 		return
 
-	var zone: AreaDamageZone
-	var pool := game.get_node_or_null("ObjectPools")
-	if pool and pool.has_method("acquire"):
-		zone = pool.acquire(AREA_DAMAGE_ZONE_SCENE, game) as AreaDamageZone
-	else:
-		zone = AREA_DAMAGE_ZONE_SCENE.instantiate() as AreaDamageZone
-		game.add_child(zone)
-
+	var game := get_node_or_null("/root/Game")
+	if not game:
+		return
+	var zone: AreaDamageZone = AREA_DAMAGE_ZONE_SCENE.instantiate() as AreaDamageZone
+	game.add_child(zone)
 	zone.global_position = impact_position
 	zone.setup_circle(_weapon, radius, true)
 

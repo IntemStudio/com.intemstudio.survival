@@ -23,6 +23,18 @@ signal died
 @export var ranged_spawn_offset := Vector2.ZERO
 @export var ranged_telegraph_delay := 0.5
 @export var ranged_attack_mark_offset := Vector2(0, -72)
+@export var death_burst_enabled := false
+@export var death_burst_radius := 96.0
+@export var death_burst_damage := 12
+@export var charge_attack_enabled := false
+@export var charge_trigger_distance := 230.0
+@export var charge_speed_mult := 2.6
+@export var charge_duration := 0.32
+@export var charge_cooldown := 2.2
+@export var charge_end_burst_radius := 76.0
+@export var charge_end_burst_damage := 10
+@export var self_destruct_enabled := false
+@export var self_destruct_health_ratio := 0.2
 
 var speed := 200.0
 var max_health := base_max_health
@@ -39,6 +51,11 @@ var _contact_attack_cooldown_remaining := 0.0
 var _ranged_windup_active := false
 var _pending_ranged_direction := Vector2.RIGHT
 var _active_attack_mark: Node2D = null
+var _charge_active := false
+var _charge_direction := Vector2.RIGHT
+var _charge_time_remaining := 0.0
+var _charge_cooldown_remaining := 0.0
+var _self_destruct_armed := false
 
 const TARGET_INDICATOR_BASE_SCALE := Vector2(2.4, 2.4)
 const EXP_ORB_SCENE := preload("res://effects/exp_orb/exp_orb.tscn")
@@ -77,6 +94,11 @@ func pool_reset() -> void:
 	_ranged_cooldown_remaining = 0.0
 	_contact_attack_cooldown_remaining = 0.0
 	_cancel_ranged_telegraph()
+	_charge_active = false
+	_charge_direction = Vector2.RIGHT
+	_charge_time_remaining = 0.0
+	_charge_cooldown_remaining = 0.0
+	_self_destruct_armed = false
 	velocity = Vector2.ZERO
 	collision_layer = 0
 	collision_mask = 0
@@ -107,6 +129,8 @@ func pool_on_acquire() -> void:
 			_contact_attack_cooldown_remaining = randf_range(
 				0.0, maxf(contact_attack_interval, 0.01) * 0.5
 			)
+		if charge_attack_enabled:
+			_charge_cooldown_remaining = randf_range(0.0, maxf(charge_cooldown, 0.01) * 0.5)
 		_sync_attack_range_ring()
 	else:
 		_set_attack_range_ring_visible(false)
@@ -229,6 +253,18 @@ func _process(delta: float) -> void:
 func _physics_process(delta: float) -> void:
 	if ranged_attack_enabled and combat_enabled and _ranged_cooldown_remaining > 0.0:
 		_ranged_cooldown_remaining = maxf(_ranged_cooldown_remaining - delta, 0.0)
+	if charge_attack_enabled and _charge_cooldown_remaining > 0.0:
+		_charge_cooldown_remaining = maxf(_charge_cooldown_remaining - delta, 0.0)
+	_process_self_destruct()
+	if _is_dying:
+		return
+
+	if _charge_active:
+		_process_charge_attack(delta)
+		_status_effects.tick(delta, self)
+		_process_nettles(delta)
+		move_and_slide()
+		return
 
 	if movement_enabled:
 		var offset: Vector2 = (
@@ -237,6 +273,19 @@ func _physics_process(delta: float) -> void:
 		)
 		var distance: float = offset.length()
 		var stop_distance := _get_contact_standoff_distance()
+		var can_start_charge := (
+			charge_attack_enabled
+			and combat_enabled
+			and _charge_cooldown_remaining <= 0.0
+			and offset.length_squared() <= charge_trigger_distance * charge_trigger_distance
+		)
+
+		if can_start_charge:
+			_begin_charge_attack(offset)
+			_status_effects.tick(delta, self)
+			_process_nettles(delta)
+			move_and_slide()
+			return
 
 		if distance > stop_distance:
 			velocity = offset / distance * _get_effective_speed()
@@ -259,6 +308,54 @@ func _physics_process(delta: float) -> void:
 	_status_effects.tick(delta, self)
 	_process_nettles(delta)
 	move_and_slide()
+
+
+## 돌진 시작 — 트리거 거리 안에서 짧게 가속 이동 후 도착 범위 피해.
+func _begin_charge_attack(offset: Vector2) -> void:
+	if _charge_active or offset.length_squared() <= 0.01:
+		return
+	_cancel_ranged_telegraph()
+	_charge_active = true
+	_charge_direction = offset.normalized()
+	_charge_time_remaining = maxf(charge_duration, 0.01)
+
+
+## 돌진 진행 — 종료 시 플레이어 반경 피해를 1회 적용합니다.
+func _process_charge_attack(delta: float) -> void:
+	var effective_speed := _get_effective_speed() * maxf(charge_speed_mult, 1.0)
+	velocity = _charge_direction * effective_speed
+	_charge_time_remaining -= delta
+	if _charge_time_remaining > 0.0:
+		return
+	_end_charge_attack()
+
+
+func _end_charge_attack() -> void:
+	_charge_active = false
+	_charge_time_remaining = 0.0
+	_charge_cooldown_remaining = maxf(charge_cooldown, 0.01)
+	velocity = Vector2.ZERO
+	if charge_end_burst_damage > 0 and charge_end_burst_radius > 0.0:
+		DamageResolver.apply_burst_damage_to_player_in_radius(
+			get_footprint_global_center(),
+			charge_end_burst_radius,
+			charge_end_burst_damage
+		)
+
+
+## 자폭 조건 — 체력 임계치에 도달하면 일반 사망 경로를 요청합니다.
+func _process_self_destruct() -> void:
+	if (
+		not self_destruct_enabled
+		or _self_destruct_armed
+		or _is_dying
+		or max_health <= 0
+	):
+		return
+	if health > int(roundi(float(max_health) * clampf(self_destruct_health_ratio, 0.01, 1.0))):
+		return
+	_self_destruct_armed = true
+	_request_die()
 
 
 func _apply_mob_separation() -> void:
@@ -589,6 +686,22 @@ func _request_die() -> void:
 	call_deferred("_die")
 
 
+# 일반 사망 시 플레이어 범위 피해(특수몹 등 export 활성 변종)
+func _trigger_death_burst() -> void:
+	if not death_burst_enabled or death_burst_damage <= 0 or death_burst_radius <= 0.0:
+		return
+	var burst_position := get_footprint_global_center()
+	var factory := AttackServices.find_factory(null, false)
+	if factory:
+		factory.spawn_mob_death_burst(burst_position, death_burst_radius, death_burst_damage)
+	else:
+		DamageResolver.apply_burst_damage_to_player_in_radius(
+			burst_position,
+			death_burst_radius,
+			death_burst_damage
+		)
+
+
 func _die() -> void:
 	if not is_inside_tree():
 		return
@@ -598,6 +711,8 @@ func _die() -> void:
 	if _stage_clear_death:
 		PoolUtil.release_node(self)
 		return
+
+	_trigger_death_burst()
 
 	var smoke_scene = preload("res://effects/smoke_explosion/smoke_explosion.tscn")
 	var smoke = smoke_scene.instantiate()

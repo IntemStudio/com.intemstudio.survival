@@ -1,6 +1,6 @@
 # Architecture — Projectiles (발사체)
 
-**진입:** [`AGENTS.md`](../../AGENTS.md) · 플레이 규칙: [`Wiki/Projectiles.md`](../Wiki/Projectiles.md), [`Wiki/Combat.md`](../Wiki/Combat.md) · 무기 연동: [`Architecture_Weapons.md`](Architecture_Weapons.md)
+**진입:** [`AGENTS.md`](../../AGENTS.md) · 공격 시스템 목표: [`Architecture_AttackSystem.md`](Architecture_AttackSystem.md) · 플레이 규칙: [`Wiki/Projectiles.md`](../Wiki/Projectiles.md), [`Wiki/Combat.md`](../Wiki/Combat.md) · 무기 연동: [`Architecture_Weapons.md`](Architecture_Weapons.md)
 
 발사체 시스템은 `WeaponData`의 delivery와 movement를 실제 이동, 충돌, 피해 귀속으로 바꾸는 계층이다. 무기 획득, 장착, 자동 공격 타이머는 `Architecture_Weapons.md`에서 다루고, 이 문서는 `Gun.shoot()` 이후 생성되는 탄환, 근접 관통 탄, 마법 탄, 투척체, 영역 존, 궤도 companion의 런타임 계약을 정리한다.
 

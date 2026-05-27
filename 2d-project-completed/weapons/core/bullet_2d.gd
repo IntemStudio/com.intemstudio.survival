@@ -17,7 +17,11 @@ func pool_on_acquire() -> void:
 	PhysicsLayers.apply_player_projectile(self)
 
 
-func setup(weapon_data: WeaponData, spawn_transform: Transform2D) -> void:
+func setup(
+	weapon_data: WeaponData,
+	spawn_transform: Transform2D,
+	pre_rolled_damage: int = -1
+) -> void:
 	if not WeaponData.is_valid_projectile_pierce_count(weapon_data.projectile_pierce_count):
 		push_error(
 			"Bullet2D: projectile_pierce_count가 0입니다 (무기=%s)." % weapon_data.get_unique_key()
@@ -25,7 +29,10 @@ func setup(weapon_data: WeaponData, spawn_transform: Transform2D) -> void:
 		PoolUtil.release_node(self)
 		return
 	_weapon = weapon_data
-	_damage = LoadoutStatApply.roll_combat_damage(weapon_data)
+	if pre_rolled_damage >= 0:
+		_damage = pre_rolled_damage
+	else:
+		_damage = LoadoutStatApply.roll_combat_damage(weapon_data)
 	_hit_mob_ids.clear()
 	global_transform = spawn_transform
 	if has_node("Sprite"):
@@ -91,8 +98,8 @@ func _is_environment_body(body: Node) -> bool:
 
 
 func _hit_mob(body: Node) -> void:
-	if _weapon and body.has_method("apply_weapon_damage"):
-		body.apply_weapon_damage(_damage, _weapon)
+	if _weapon:
+		DamageResolver.apply_weapon_to_mob(body, _damage, _weapon)
 	elif body.has_method("take_damage"):
 		body.take_damage(_damage)
 
@@ -112,7 +119,4 @@ func _explode_at(center: Vector2) -> void:
 		if GroundShadowFootprint.get_combat_target_center(mob_node).distance_to(center) > radius:
 			continue
 		var damage := LoadoutStatApply.roll_combat_damage(_weapon)
-		if mob.has_method("apply_weapon_damage"):
-			mob.apply_weapon_damage(damage, _weapon)
-		elif mob.has_method("take_damage"):
-			mob.take_damage(damage)
+		DamageResolver.apply_weapon_to_mob(mob, damage, _weapon)

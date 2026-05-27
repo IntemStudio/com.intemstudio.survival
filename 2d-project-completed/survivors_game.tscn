@@ -8,6 +8,7 @@
 [ext_resource type="PackedScene" uid="uid://dsw8raqgacxsc" path="res://entities/player/player.tscn" id="2_a7q7f"]
 [ext_resource type="Script" path="res://world/floor/checker_background.gd" id="6_checker_bg"]
 [ext_resource type="Script" path="res://game/pool/scene_pool.gd" id="7_scene_pool"]
+[ext_resource type="Script" path="res://game/attack/attack_services.gd" id="19_attack_services"]
 [ext_resource type="Script" path="res://game/speed_cheat.gd" id="8_speed_cheat"]
 [ext_resource type="PackedScene" path="res://world/map_arena/map_arena.tscn" id="10_map_arena"]
 [ext_resource type="Script" path="res://ui/ui_viewport_layout.gd" id="12_ui_viewport_layout"]
@@ -77,6 +78,10 @@ unique_name_in_owner = true
 script = ExtResource("7_scene_pool")
 prewarm_mob_projectiles = 32
 prewarm_mob_attack_marks = 20
+
+[node name="AttackServices" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("19_attack_services")
 
 [node name="SpeedCheat" type="Node" parent="."]
 script = ExtResource("8_speed_cheat")

@@ -124,10 +124,7 @@ func _apply_hit(body: Node) -> void:
 		_spawn_explosion(global_position)
 		return
 
-	if body.has_method("apply_weapon_damage"):
-		body.apply_weapon_damage(_damage, _weapon)
-	elif body.has_method("take_damage"):
-		body.take_damage(_damage)
+	DamageResolver.apply_weapon_to_mob(body, _damage, _weapon)
 
 
 func _spawn_explosion(center: Vector2) -> void:
@@ -146,7 +143,4 @@ func _spawn_explosion(center: Vector2) -> void:
 		if GroundShadowFootprint.get_combat_target_center(mob_node).distance_to(center) > radius:
 			continue
 		var damage := LoadoutStatApply.roll_combat_damage(_weapon)
-		if mob.has_method("apply_weapon_damage"):
-			mob.apply_weapon_damage(damage, _weapon)
-		elif mob.has_method("take_damage"):
-			mob.take_damage(damage)
+		DamageResolver.apply_weapon_to_mob(mob, damage, _weapon)

@@ -55,7 +55,7 @@
 |----|------|------|-----------|------|
 | W02-01 | 무기 성장 대체안 구현 | Todo | 보유 무기 강화 또는 선택한 대체안이 F5에서 체감됨 | `Weapons.md` |
 | W02-02 | 데모 무기 풀 1차 검증 | Todo | 후보 10~15종을 F6 더미/기본 몹 상대로 movement와 피해 통계까지 확인 | `Weapons.md`, `Projectiles.md` |
-| W02-03 | 보스/특수몹 고유 체감 1종 구현 | Todo | 일반몹과 다른 행동, 경고, 보상, 연출 중 하나 이상 | `Mobs.md` |
+| W02-03 | 보스/특수몹 고유 체감 1종 구현 | In progress | **special_b 트리거 거리 기반 돌진 + 저체력 자폭형** 구현 — F6 Special B로 확인. 보스/추가 패턴은 후속 | `Mobs.md`, `Architecture_AttackSystem.md` |
 | W02-04 | 게임오버·클리어 통계 보강 | Todo | 생존 시간, 레벨, 처치 수 중 최소 2개 표시 | `GameRules.md` |
 | W02-05 | 기본 사운드 연결 지점 확정 | Todo | BGM, 피격, 레벨업, 보스, 클리어 후보 위치 기록 | `Plan_Release_Roadmap.md` |
 | W02-06 | 골드 상자 보상 튜닝 | Todo | F5 아레나에서 가격, 골드 수급, 등급 확률, 실패 UX를 1차 조정 | `Progression.md` |

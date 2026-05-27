@@ -12,6 +12,7 @@
 - 이번 주의 실시간 진행 상태는 [`Current.md`](Current.md)에 기록합니다.
 - 매주 끝에 `Result`를 기록하고, 다음 주 계획을 현실에 맞게 갱신합니다.
 - 한 주 문서는 구현 목록보다 **결정, 완료 기준, 검증 항목**을 우선합니다.
+- 검증 항목은 주차 문서 `QA / Verification`과 [`Current.md`](Current.md)의 Verification에 둡니다. 공통 최소 확인은 [`AGENTS.md`](../../../AGENTS.md)의 «변경 후 확인»을 참고합니다.
 - 이번 주에 끝낼 수 없는 작업은 다음 주 또는 `Plan_Release_Roadmap.md`로 되돌립니다.
 - `Current.md`는 장기 기록이 아닙니다. 주가 끝나면 결과만 주차 문서의 `Result`로 옮기고 초기화합니다.
 

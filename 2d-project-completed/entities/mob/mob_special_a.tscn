@@ -19,6 +19,9 @@ base_max_health = 220
 speed_min = 170.0
 speed_max = 250.0
 slime_tint = Color(0.55, 1, 0.65, 1)
+death_burst_enabled = true
+death_burst_radius = 100.0
+death_burst_damage = 14
 
 [node name="Slime" parent="." instance=ExtResource("2_slime")]
 unique_name_in_owner = true

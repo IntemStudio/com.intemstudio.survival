@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://bv0f4mbblyic3" path="res://game/test_arena.gd" id="1_test_arena"]
 [ext_resource type="Script" uid="uid://cqbd8sol45it1" path="res://game/pool/scene_pool.gd" id="2_scene_pool"]
+[ext_resource type="Script" path="res://game/attack/attack_services.gd" id="10_attack_services"]
 [ext_resource type="PackedScene" uid="uid://dsw8raqgacxsc" path="res://entities/player/player.tscn" id="3_player"]
 [ext_resource type="Script" uid="uid://8eenh1tol2s4" path="res://world/floor/checker_background.gd" id="4_checker_bg"]
 [ext_resource type="PackedScene" path="res://world/map_arena/map_arena.tscn" id="5_map_arena"]
@@ -17,6 +18,10 @@ script = ExtResource("1_test_arena")
 [node name="ObjectPools" type="Node" parent="." unique_id=2091482327]
 unique_name_in_owner = true
 script = ExtResource("2_scene_pool")
+
+[node name="AttackServices" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("10_attack_services")
 
 [node name="SpeedCheat" type="Node" parent="."]
 script = ExtResource("8_speed_cheat")

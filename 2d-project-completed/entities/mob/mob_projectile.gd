@@ -227,7 +227,7 @@ func _resolve_hit_skip_reason(body: Node) -> String:
 
 	if not damage_target.has_method(&"apply_mob_projectile_damage"):
 		return "player_missing_apply_mob_projectile_damage"
-	return damage_target.call(&"apply_mob_projectile_damage", _damage) as String
+	return DamageResolver.apply_mob_projectile_to_player(damage_target, _damage)
 
 
 func _get_game_player() -> CharacterBody2D:
