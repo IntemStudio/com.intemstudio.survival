@@ -327,7 +327,7 @@ func _on_slot_pressed(slot: InventorySlot, mouse_button: int, left_shift_pressed
 	if mouse_button == MOUSE_BUTTON_LEFT and desc.get("kind") == &"bag":
 		should_sync = _try_equip_from_bag_slot(desc["bag_index"])
 	elif mouse_button == MOUSE_BUTTON_RIGHT and desc.get("kind") == &"bag":
-		should_sync = _try_equip_from_bag_slot(desc["bag_index"])
+		should_sync = _try_equip_from_bag_on_right_click(desc["bag_index"])
 	elif mouse_button == MOUSE_BUTTON_RIGHT and desc.get("kind") == &"set":
 		var unequip_err := service.try_unequip(desc["set_index"], desc["slot_key"])
 		_show_error(unequip_err)
@@ -415,6 +415,21 @@ func _try_equip_from_bag_slot(bag_index: int) -> bool:
 	var err := service.try_equip_from_bag_smart(bag_index, EquipSlots.SHARED_ARMOR_SET_INDEX)
 	_show_error(err)
 	return err.is_empty()
+
+
+# 가방 우클릭 — 무기는 활성 전투 세트 weapon과 교환, 그 외는 스마트 장착.
+func _try_equip_from_bag_on_right_click(bag_index: int) -> bool:
+	if service == null:
+		return false
+	var item_id := service.loadout.get_bag_item_id(bag_index)
+	if item_id.is_empty():
+		_show_error(InventoryService.ERROR_EMPTY)
+		return false
+	if service.registry.resolve_weapon(item_id) != null:
+		var err := service.try_equip_weapon_from_bag_to_active_set(bag_index)
+		_show_error(err)
+		return err.is_empty()
+	return _try_equip_from_bag_slot(bag_index)
 
 
 # 왼쪽 Shift+좌클릭으로 슬롯 장비를 월드에 내려놓습니다.
