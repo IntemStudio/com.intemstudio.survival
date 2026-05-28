@@ -29,6 +29,13 @@ corner_radius_top_right = 2
 corner_radius_bottom_right = 2
 corner_radius_bottom_left = 2
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_stamina_wait_fill"]
+bg_color = Color(0.95, 0.68, 0.22, 0.95)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
 [node name="Player" type="CharacterBody2D" unique_id=1546396198]
 collision_layer = 8
 collision_mask = 1
@@ -111,7 +118,20 @@ offset_left = -28.0
 offset_top = 23.0
 offset_right = 28.0
 offset_bottom = 35.0
-max_value = 0.5
+max_value = 3.0
 theme_override_styles/background = SubResource("StyleBoxFlat_dash_bg")
 theme_override_styles/fill = SubResource("StyleBoxFlat_dash_fill")
+show_percentage = false
+
+[node name="StaminaRegenWaitBar" type="ProgressBar" parent="."]
+unique_name_in_owner = true
+visible = false
+z_index = 100
+offset_left = -28.0
+offset_top = 36.0
+offset_right = 28.0
+offset_bottom = 42.0
+max_value = 2.0
+theme_override_styles/background = SubResource("StyleBoxFlat_dash_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_stamina_wait_fill")
 show_percentage = false

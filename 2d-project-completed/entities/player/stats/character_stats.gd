@@ -62,6 +62,32 @@ func get_max_health() -> float:
 	return LoadoutStatApply.compute_max_health(mods)
 
 
+# 장비·패시브 stamina → 최대 스태미나.
+func get_max_stamina() -> float:
+	return LoadoutStatApply.compute_max_stamina(get_combined_persistent_modifiers())
+
+
+func get_stamina_regen_mult() -> float:
+	return LoadoutStatApply.compute_stamina_regen_mult(_get_all_source_modifiers())
+
+
+func get_dash_duration_mult() -> float:
+	return LoadoutStatApply.compute_dash_duration_mult(_get_all_source_modifiers())
+
+
+func get_invincibility_after_dash_sec() -> float:
+	return LoadoutStatApply.get_invincibility_after_dash_sec(get_combined_persistent_modifiers())
+
+
+func get_invincibility_after_damage_sec() -> float:
+	return LoadoutStatApply.get_invincibility_after_damage_sec(get_combined_persistent_modifiers())
+
+
+# revive_* 합산 → 런 부활 최대 횟수.
+func get_revive_charges_max() -> int:
+	return LoadoutStatApply.compute_revive_charges(get_combined_persistent_modifiers())
+
+
 # 방패·방어구·패시브 source로 피격 피해 경감.
 func mitigate_incoming_damage(raw_amount: int) -> int:
 	if raw_amount <= 0:

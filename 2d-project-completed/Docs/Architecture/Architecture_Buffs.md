@@ -1,6 +1,6 @@
 # Architecture — Buffs (버프)
 
-**진입:** [`AGENTS.md`](../../AGENTS.md) · 패시브: [`Architecture_Passives.md`](Architecture_Passives.md) · 장비 연동: [`Architecture_Inventory.md`](Architecture_Inventory.md) · 런 루프: [`Architecture_GameLoop_Balance.md`](Architecture_GameLoop_Balance.md) · 무기: [`Architecture_Weapons.md`](Architecture_Weapons.md) · 몹 상태이상: [`Architecture_StatusEffects.md`](Architecture_StatusEffects.md)
+**진입:** [`AGENTS.md`](../../AGENTS.md) · 플레이어·대시: [`Architecture_Player.md`](Architecture_Player.md) · 패시브: [`Architecture_Passives.md`](Architecture_Passives.md) · 장비 연동: [`Architecture_Inventory.md`](Architecture_Inventory.md) · 런 루프: [`Architecture_GameLoop_Balance.md`](Architecture_GameLoop_Balance.md) · 무기: [`Architecture_Weapons.md`](Architecture_Weapons.md) · 몹 상태이상: [`Architecture_StatusEffects.md`](Architecture_StatusEffects.md)
 
 버프 시스템의 데이터, 런타임 인스턴스, 지속시간 처리, 플레이어 스탯 반영 흐름을 정리한다. 영구 성장과 장착 장비 스탯은 이 문서의 `ActiveBuff` 대상이 아니며, 런 중 조건으로 켜졌다 꺼지는 효과만 버프 런타임 계층에서 관리한다.
 
@@ -30,6 +30,7 @@
 | HUD 버프 아이콘 | 현재는 `get_active_buff_summaries()` 조회 API만 제공하고 UI는 후속 범위다. |
 | 몹 상태이상 | `status/`가 담당한다. DoT 피해 통계와 풀 reset 규칙은 `Architecture_Mobs.md`를 따른다. |
 | 발사체별 특수 효과 | 발사체 이동·충돌은 `Architecture_Projectiles.md` 범위다. |
+| 대시·스태미나·대시 중 무적 | `Architecture_Player.md`. `dash_haste`는 대시 **성공 시**만 부여한다. |
 
 ## Key Types & Relationships
 
@@ -104,7 +105,7 @@ Game wave event / Player dash / Loadout grant
 | 새 지속 타입 추가 | `BuffDuration`, `ActiveBuff`, `BuffController` 만료 처리, pause/웨이브 이벤트 |
 | 새 스탯 키 추가 | `GearStatMerge`, `LoadoutStatApply`, `CharacterStats`, 장비/버프 툴팁 표시, 플레이어 적용 위치 |
 | 웨이브 트리거 변경 | `Game._on_arena_wave_started`, `_on_arena_wave_completed`, 보상 UI pause 흐름 |
-| 대시 트리거 변경 | `Player._apply_loadout_on_dash`, `LoadoutGrantPassive`, dash darts와 동시 발동 |
+| 대시 트리거 변경 | `Architecture_Player.md`(스태미나·대시 성공 조건), `Player._apply_loadout_on_dash`, `LoadoutGrantPassive`, dash darts와 동시 발동 |
 | 버프 UI 추가 | `get_active_buff_summaries()`, UI 스케일 규칙, pause 중 표시 갱신 |
 | 몹 상태이상 변경 | `status/`, `mob.gd`, 피해 통계, 사망/풀 reset, 플로팅 텍스트 |
 

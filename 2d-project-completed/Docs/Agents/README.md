@@ -19,6 +19,7 @@
 | 맵 크기·스폰·소나무 | `AGENTS_MapArena.md`, `world/map_arena/map_arena.gd`, `survivors_game.tscn`, `test_arena.tscn` |
 | UI 스케일·카메라 | `AGENTS_Display_UI.md`, `ui/ui_viewport_layout.gd`, `ui/ui_resolution_config.gd`, `entities/player/player.tscn` |
 | 입력·조작 설정 | `Docs/Architecture/Architecture_Input.md`, `game/input/*`, `ui/settings/input_binding_settings_ui.gd`, `ui/pause_menu_overlay.tscn` |
+| 대시·스태미나·피격 무적 | `Docs/Architecture/Architecture_Player.md`, `entities/player/player.gd`, `entities/player/stats/character_stats.gd`, `inventory/loadout_stat_apply.gd` |
 | 런 루프·스폰·클리어 | `Docs/Architecture/Architecture_GameLoop_Balance.md`, `game/game.gd`, `game/balance/*` |
 | 아레나 웨이브 | `game/arena/arena_wave_director.gd`, `game/game.gd`, `Docs/Wiki/GameRules.md` |
 | 버프·조건부 스탯 효과 | `Docs/Architecture/Architecture_Buffs.md`, `buff/*`, `entities/player/player.gd`, `game/game.gd` |

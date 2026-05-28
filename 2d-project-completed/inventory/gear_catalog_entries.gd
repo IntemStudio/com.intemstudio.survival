@@ -46,7 +46,18 @@ static func append_all(target: Array, create_gear: Callable) -> void:
 	_append(target, create_gear, "monk_gi", "Monk Gi", "승려 도복", EquipSlots.ARMOR, {"block_min": 1, "block_max": 1})
 	_append(target, create_gear, "pyromancer_coat", "Pyromancer Coat", "화염술사 코트", EquipSlots.ARMOR, {"fire_damage_mult": 1.2}, "", "", 0)
 	_append(target, create_gear, "sage_robe", "Sage Robe", "현자 로브", EquipSlots.ARMOR, {"magic_damage_mult": 1.2}, "", "", 0)
-	_append(target, create_gear, "shinobi_suit", "Shinobi Suit", "시노비 슈트", EquipSlots.ARMOR, {"throwing_damage_mult": 1.2}, "", "", 0)
+	_append(
+		target,
+		create_gear,
+		"shinobi_suit",
+		"Shinobi Suit",
+		"시노비 슈트",
+		EquipSlots.ARMOR,
+		{"throwing_damage_mult": 1.2, "dash_duration_mult": 1.2},
+		"",
+		"",
+		0,
+	)
 	_append(target, create_gear, "sorcerer_cloak", "Sorcerer Cloak", "소서러 망토", EquipSlots.ARMOR, {"mana_recovery_mult": 1.3})
 	_append(target, create_gear, "super_hero_suit", "Super Hero Suit", "슈퍼 히어로 슈트", EquipSlots.ARMOR, {"invincibility_after_damage_sec": 4})
 	_append(target, create_gear, "town_guard_armor", "Town Guard Armor", "마을 경비 갑옷", EquipSlots.ARMOR, {"weapon_upgrade_level": 1}, "", "", 0)

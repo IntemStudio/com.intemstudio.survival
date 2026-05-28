@@ -52,7 +52,7 @@
 | `game/input/` | 액션 이름, 기본 바인딩, 리맵 저장/로드 |
 | `game/pool/` | `ScenePool`, `PoolUtil` |
 | `buff/` | 런타임 버프 데이터, 지속시간, 스택, 트리거 연결 |
-| `entities/player/` | 이동, 대시, 경험치, 무기 컨테이너, 피격 |
+| `entities/player/` | 이동, 대시, 스태미나, 경험치, 무기 컨테이너, 피격 — [`Architecture_Player.md`](Architecture/Architecture_Player.md) |
 | `entities/mob/` | 공통 `Mob`, 변종, 원거리 투사체, 공격 예고 |
 | `weapons/` | `WeaponData`, 카탈로그, `Gun`, 발사체·장판·궤도 |
 | `inventory/` | 장비 loadout, 세이브, registry, 전투 bridge |
@@ -66,6 +66,7 @@
 
 ## 현재 주요 문서
 
+- [`Architecture/Architecture_Player.md`](Architecture/Architecture_Player.md)
 - [`Architecture/Architecture_Inventory.md`](Architecture/Architecture_Inventory.md)
 - [`Architecture/Architecture_Input.md`](Architecture/Architecture_Input.md)
 - [`Architecture/Architecture_AttackSystem.md`](Architecture/Architecture_AttackSystem.md)

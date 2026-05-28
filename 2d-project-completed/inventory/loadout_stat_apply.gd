@@ -4,6 +4,7 @@ extends RefCounted
 ## loadout 합산 stat_modifiers → Player·Gun에 적용할 배율·방어·체력 계산.
 
 const BASE_MAX_HEALTH := 100.0
+const BASE_MAX_STAMINA := 3.0
 ## heart min/max 합산값 1당 최대 체력 보너스(툴팁 "+1 Heart" 체감용).
 const HEART_HP_PER_POINT := 10.0
 const POWER_DAMAGE_PER_POINT := 0.01
@@ -14,6 +15,31 @@ const POWER_SOFTCAP_SLOPE := 0.5
 
 static func get_mult(modifiers: Dictionary, key: String) -> float:
 	return float(modifiers.get(key, 1.0))
+
+
+# 장비·패시브 stamina flat 합산 → 최대 스태미나.
+static func compute_max_stamina(modifiers: Dictionary) -> float:
+	return BASE_MAX_STAMINA + float(modifiers.get("stamina", 0.0))
+
+
+# 스태미나 회복 속도 배율(stamina_recovery_mult).
+static func compute_stamina_regen_mult(modifiers: Dictionary) -> float:
+	return get_mult(modifiers, "stamina_recovery_mult")
+
+
+# 대시 지속 시간 배율(dash_duration_mult).
+static func compute_dash_duration_mult(modifiers: Dictionary) -> float:
+	return get_mult(modifiers, "dash_duration_mult")
+
+
+# 대시 종료 후 추가 무적 시간(장비 max 병합 결과).
+static func get_invincibility_after_dash_sec(modifiers: Dictionary) -> float:
+	return float(modifiers.get("invincibility_after_dash_sec", 0.0))
+
+
+# 피격(HP 실감) 후 추가 무적 시간(장비 max 병합 결과).
+static func get_invincibility_after_damage_sec(modifiers: Dictionary) -> float:
+	return float(modifiers.get("invincibility_after_damage_sec", 0.0))
 
 
 # 이동 속도 배율(move_speed_mult).
@@ -83,6 +109,20 @@ static func compute_power_damage_mult(modifiers: Dictionary) -> float:
 # power 1당 범위/반경 +1%(점감 포함).
 static func compute_power_radius_mult(modifiers: Dictionary) -> float:
 	return 1.0 + compute_effective_power(modifiers) * POWER_RADIUS_PER_POINT
+
+
+# min/max 합산 → 런 차지 수(heart·revive 등). min·max 평균을 반올림합니다.
+static func compute_charge_count(modifiers: Dictionary, min_key: String, max_key: String) -> int:
+	var lo := float(modifiers.get(min_key, 0.0))
+	var hi := float(modifiers.get(max_key, 0.0))
+	if lo <= 0.0 and hi <= 0.0:
+		return 0
+	return maxi(0, int(round((lo + hi) * 0.5)))
+
+
+# revive_* 합산 → 런 부활 가능 횟수.
+static func compute_revive_charges(modifiers: Dictionary) -> int:
+	return compute_charge_count(modifiers, "revive_min", "revive_max")
 
 
 # heart_* 합산 → 최대 체력. min·max 평균 × HEART_HP_PER_POINT.

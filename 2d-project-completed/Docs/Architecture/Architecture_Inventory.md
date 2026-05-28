@@ -1,6 +1,6 @@
 # Architecture — Inventory (인벤토리·장비)
 
-**진입:** [`AGENTS.md`](../../AGENTS.md) · 플레이 규칙: [`Wiki/Items_Inventory.md`](../Wiki/Items_Inventory.md) · 패시브: [`Architecture_Passives.md`](Architecture_Passives.md) · 버프: [`Architecture_Buffs.md`](Architecture_Buffs.md) · UI 스케일: [`AGENTS_Display_UI.md`](../Agents/AGENTS_Display_UI.md)
+**진입:** [`AGENTS.md`](../../AGENTS.md) · 플레이어·대시·스태미나: [`Architecture_Player.md`](Architecture_Player.md) · 플레이 규칙: [`Wiki/Items_Inventory.md`](../Wiki/Items_Inventory.md) · 패시브: [`Architecture_Passives.md`](Architecture_Passives.md) · 버프: [`Architecture_Buffs.md`](Architecture_Buffs.md) · UI 스케일: [`AGENTS_Display_UI.md`](../Agents/AGENTS_Display_UI.md)
 
 인벤토리·장비 시스템의 코드 구조와 변경 시 지켜야 할 경계를 정리한다. Phase 이력, PR 순서, 미구현 선택지는 이 문서가 아니라 [`BACKLOG.md`](../../BACKLOG.md)와 `Docs/Plan/`에서 관리한다.
 
@@ -23,7 +23,8 @@
 | 런 수명 | 새 런 시작 시 상태 생성, 런 종료 시 가방·장비 세트·상자 보상 초기화 |
 | UI 연동 | `InventoryService`를 통해 드래그, 우클릭, 더블클릭, 세트 전환, 왼쪽 Shift+좌클릭 버리기를 상태 변경으로 반영 |
 | 전투 연동 | 장착된 활성 세트 weapon/offhand와 공유 방어구만 현재 런의 플레이어에 적용 |
-| 조건부 장비 효과 | `grant_on_dash`·`grant_on_hit` 같은 태그를 런타임 버프, 발사체, 상태이상 부여로 연결 |
+| **부활(revive)** | `revive_min`/`revive_max` 합산 → 런 차지. 체력 0 시 `Player`가 소비·부활(`health_depleted` 미발행). 상세: [`Architecture_Player.md`](Architecture_Player.md) |
+| 조건부 장비 효과 | `grant_on_dash`·`grant_on_hit` 같은 태그를 런타임 버프, 발사체, 상태이상 부여로 연결 (`grant_on_dash`는 [`Architecture_Player.md`](Architecture_Player.md) 대시 성공 시) |
 
 ### Out of Scope
 
@@ -34,6 +35,8 @@
 | 강화·내구도·소켓 | 현재 상태는 인스턴스 데이터 없이 `item_id` 단위다. |
 | 퀵슬롯 4칸 | 선택 후속 작업으로 `BACKLOG.md`에서 관리한다. |
 | Rare 이상 장비 확장 | 11웨이브 이후, 하드 모드, 보스 보상 같은 후속 범위에서 다룬다. |
+| **죽음 거부(defy_death)** | 카탈로그·툴팁만 존재. lethal 전 생존은 2단계 후속. |
+| 피격·대시 후 무적 런타임 | [`Architecture_Player.md`](Architecture_Player.md) — `invincibility_after_*` max 병합 후 `_gear_invincibility_remaining` |
 
 ## Key Types & Relationships
 
@@ -51,7 +54,7 @@
 | `inventory/inventory_service.gd` | UI가 호출하는 장착·해제·드래그·세트 전환·버리기 API. F6 GUI: `try_force_equip_weapon_on_active_set()` |
 | `inventory/inventory_combat_bridge.gd` | 장착된 활성 weapon과 장비 스탯을 `Player`에 적용 |
 | `inventory/inventory_game_bridge.gd` | I/Tab/RMB 입력, 메뉴 열기/닫기, HUD 전투 세트 표시 연결 |
-| `inventory/loadout_stat_apply.gd` | 이동·피해·공격속도·방어·체력 스탯 공식 제공 (`power` softcap 포함) |
+| `inventory/loadout_stat_apply.gd` | 이동·피해·공격속도·방어·체력·**revive 차지** 공식 (`compute_charge_count`, `power` softcap) |
 | `entities/player/stats/character_stats.gd` | 장비·버프 modifier source를 보관하고 `LoadoutStatApply` 공식으로 최종 플레이어 수치 계산 (`power`는 source 합산 후 1회 적용) |
 | `inventory/loadout_grant_passive.gd` | 장착 장비 grant 태그로 궤도, dash haste 버프, dash darts, on-hit 상태이상, offhand 비주얼 적용 |
 | `ui/inventory/inventory_menu.gd` | 4칸 전투 슬롯, 공유 방어구, 가방 UI, `InventoryService` 호출, 버린 장비 월드 드롭 위임 |
@@ -93,8 +96,9 @@ Game / TestArena
 10. 인벤토리에서 왼쪽 Shift+좌클릭으로 가방 또는 장착 슬롯 장비를 버리면 `Game.can_drop_equipment_item()`을 먼저 확인한 뒤 슬롯을 비우고 `EquipmentDrop`을 플레이어 앞에 생성한다. 생성 실패 시 같은 슬롯에 원래 `item_id`를 복원한다.
 11. weapon/offhand는 `active_set_index` 세트에 장착되고, 방어구·악세는 `sets[0]`에 장착된다.
 12. Tab·닫힌 RMB·비활성 전투 슬롯 좌클릭은 활성 세트를 바꾸고 HUD 갱신, 전투 재적용을 수행한다.
-13. `InventoryCombatBridge.apply_loadout_to_player()`가 장착된 활성 세트 weapon/offhand와 공유 방어구의 스탯을 `Player.refresh_stats_from_loadout()`에 전달하고, 플레이어는 합산 modifier를 `CharacterStats`의 loadout source로 저장한다. grant 패시브와 offhand 비주얼만 별도 적용하며, `grant_on_dash: haste`처럼 시간이 있는 효과는 `BuffTriggerRouter`를 통해 `Player`의 런타임 버프로 부여하고 `grant_on_hit: sticky_goo` 같은 태그는 무기 적중 시 `LoadoutGrantPassive`를 통해 몹 상태이상으로 적용한다.
-14. 클리어, 패배, 로비 복귀, 새 런 시작 시 런 인벤토리 상태를 영구 저장하지 않고 폐기한다.
+13. `InventoryCombatBridge.apply_loadout_to_player()`가 장착된 활성 세트 weapon/offhand와 공유 방어구의 스탯을 `Player.refresh_stats_from_loadout()`에 전달하고, 플레이어는 합산 modifier를 `CharacterStats`의 loadout source로 저장한다. `refresh_stats_from_loadout()`·`refresh_stats_from_passives()` 직후 `Player._sync_revive_charges_from_stats()`로 **revive 상한 증가분만** 런 차지에 반영한다. grant 패시브와 offhand 비주얼만 별도 적용하며, `grant_on_dash: haste`처럼 시간이 있는 효과는 `BuffTriggerRouter`를 통해 `Player`의 런타임 버프로 부여하고 `grant_on_hit: sticky_goo` 같은 태그는 무기 적중 시 `LoadoutGrantPassive`를 통해 몹 상태이상으로 적용한다.
+14. 체력이 0이 되면 `Player._try_emit_health_depleted()`가 부활 차지·현재 `get_revive_charges_max()`를 확인한다. 성공 시 최대 체력 50%·2초 무적·`combat.revived` 플로팅 후 전투 지속(`health_depleted`·`Game` 패배 없음). 실패 시 `health_depleted` → 패배 UI.
+15. 클리어, 패배, 로비 복귀, 새 런 시작 시 런 인벤토리 상태를 영구 저장하지 않고 폐기한다(부활 차지·`_revive_cap_granted` 포함, 씬의 새 `Player`로 초기화).
 
 ### Editor / Data
 
@@ -126,6 +130,10 @@ Game / TestArena
 | loadout 합산은 장착된 방어구·악세 `sets[0]` + 활성 세트 offhand만 포함하고 weapon은 제외한다. | weapon은 `InventoryCombatBridge`가 단일 `Gun`으로 처리한다. |
 | `*_mult` 스탯은 더하지 말고 곱한다. | 장비 배율이 선형 합산되어 과도하게 왜곡되는 것을 막는다. |
 | `power`는 source별로 따로 곱하지 않고, 장비·패시브·버프 합산값 기준으로 **1회** 점감(softcap) 적용한다. | source 분리 계산 시 배율이 과도하게 커지는 회귀를 방지한다. |
+| `revive_min`/`revive_max`는 `GearStatMerge`로 합산한 뒤 `(min+max)/2` 반올림 → 런 **최대** 차지. `heart`와 동일 평균 규칙. | 툴팁 `+1/1`과 전투 차지 수를 맞춘다. |
+| revive 차지는 **상한이 처음 오를 때만** 지급(`_revive_cap_granted`). 해제해도 소모분은 복구하지 않는다. | 해제·재착용 exploit 방지. |
+| 부활 사용 시 `get_revive_charges_max() > 0`이어야 한다. 장비를 모두 벗기면 잔여 차지로 부활 불가. | 가방·미착용 스탯 미적용 정책과 일치. |
+| 패배는 `health_depleted`만 트리거한다. 부활 성공 시 이 시그널을 emit하지 않는다. | `game.gd` 패배·스폰 타이머 중복 방지. |
 | `damage_element == "magic"`인 마법 무기는 `magic_damage_mult`를 타입·원소 중 한 번만 곱한다. | 마법 타입과 magic 원소의 중복 배율을 방지한다. |
 | 상자 지급은 슬롯 필터, 등급 필터, 중복 제외를 모두 통과해야 한다. | 부위 상자와 1~10웨이브 `Common`/`Uncommon` 제한을 지킨다. |
 | 상자 슬롯 필터는 `ItemRegistry.get_item_reward_slot()` 기준으로 판정한다. | 한손 weapon이 `offhand`에 착용 가능하더라도 보조손 상자 결과로 나오지 않게 한다. |
@@ -141,9 +149,11 @@ Game / TestArena
 | 장비 획득 배치 변경 | 활성/비활성 weapon·offhand 빈 슬롯 우선순위, 공유 방어구 빈 슬롯, 가방 가득 참, `EquipmentDrop` 상호작용 획득 처리 |
 | 인벤 UI 변경 | 4칸 weapon/offhand 동시 표시, 공유 방어구, RMB 해제와 닫힌 RMB 스왑 충돌 여부, 왼쪽 Shift+좌클릭 버리기와 월드 드롭 복원 |
 | 전투 적용 변경 | 장착 장비만 합산하는지, 가방/비활성 장비 제외, `apply_inventory_loadout_to_player()`, `refresh_stats_from_loadout()`, `clear_loadout_stats()`, `CharacterStats` source 갱신 순서, 런타임 버프와 중복 적용 여부 |
+| revive·사망 변경 | `LoadoutStatApply.compute_revive_charges`, `Player._sync_revive_charges_from_stats`, `_try_emit_health_depleted`, `game.gd` 패배 경로, F6(로브 착용 시 제자리 부활 vs 무로브 3초 리스폰) |
+| 무적 장비 키 | `invincibility_after_damage_sec`·`invincibility_after_dash_sec` — `GearStatMerge` max, `gear_stat_display`, `Architecture_Player.md`, `Player.is_damage_immune` 구현 |
 | F6 연동 변경 | `set_gear_modifier_resolver` 설정/해제 범위, `Docs/Architecture/Architecture_TestArena.md`의 보조 튜닝 스냅샷(`TestArenaGearSnapshot`) 및 상태이상 탭 진입/자동 선택 규칙과 일치 여부 |
 | `grant_on_hit` 태그 정책 변경 | `LoadoutGrantPassive.apply_on_hit`, `StatusEffectCatalog`, `Docs/Architecture/Architecture_StatusEffects.md`, F6 상태이상 탭(`TestArenaStatusEffectSnapshot`) 자동 적용/저장 의미 |
 | 상자 보상 변경 | 골드 차감/환불, 부위 필터, 등급 확률, 중복 제외, 가방 가득 참 처리 |
 | 런 초기화 변경 | 새 런, 클리어, 패배, 로비 복귀에서 장비 상태와 골드가 저장되지 않는지 확인 |
 
-최소 검증은 아레나에서 상자 구매, 장착·해제·세트 전환·양손/offhand·스탯 체감, 클리어/패배/로비 복귀 후 런 인벤토리 초기화를 확인하는 것이다.
+최소 검증은 아레나에서 상자 구매, 장착·해제·세트 전환·양손/offhand·스탯 체감, **성직자 로브(Cleric Robe) 1회 부활 후 재사망 시 패배**, 클리어/패배/로비 복귀 후 런 인벤토리 초기화를 확인하는 것이다.

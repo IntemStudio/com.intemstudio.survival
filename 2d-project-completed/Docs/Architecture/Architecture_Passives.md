@@ -1,6 +1,6 @@
 # Architecture — Passives (패시브)
 
-**진입:** [`AGENTS.md`](../../AGENTS.md) · 장비: [`Architecture_Inventory.md`](Architecture_Inventory.md) · 버프: [`Architecture_Buffs.md`](Architecture_Buffs.md) · 성장 기획: [`Wiki/Progression.md`](../Wiki/Progression.md) · 일정: [`Plan/Plan_Release_Roadmap.md`](../Plan/Plan_Release_Roadmap.md), [`BACKLOG.md`](../../BACKLOG.md)
+**진입:** [`AGENTS.md`](../../AGENTS.md) · 플레이어·대시: [`Architecture_Player.md`](Architecture_Player.md) · 장비: [`Architecture_Inventory.md`](Architecture_Inventory.md) · 버프: [`Architecture_Buffs.md`](Architecture_Buffs.md) · 성장 기획: [`Wiki/Progression.md`](../Wiki/Progression.md) · 일정: [`Plan/Plan_Release_Roadmap.md`](../Plan/Plan_Release_Roadmap.md), [`BACKLOG.md`](../../BACKLOG.md)
 
 패시브는 **단일 `PassiveSystem`이 아니라 역할별 4층**으로 나뉜다. LoadoutPassive·RunPassive·TimedBuff는 구현됨. WaveModifier는 3주차 Must(별 트랙). GDD의 Enabler/Blocker “Passive”(발견·발생)와 VS형 런 패시브를 문서에서 구분한다.
 
@@ -135,7 +135,7 @@ buff_modifiers      ← BuffController
 
 | 트리거 | 발화 | 연결 |
 |--------|------|------|
-| `on_dash` | `Player` 대시 | `PassiveResolver.on_dash` |
+| `on_dash` | `Player` 대시 **시작 성공 시** (`Architecture_Player.md`) | `PassiveResolver.on_dash` |
 | `on_wave_start` | 아레나 웨이브 | `PassiveResolver.on_wave_start` + `BuffTriggerRouter` |
 | `on_kill` | `Game.register_kill` | `PassiveResolver.on_kill` |
 | `on_hit` | 무기 적중 (`Mob.apply_weapon_damage`) | `PassiveResolver.on_hit` |

@@ -29,7 +29,7 @@ Out of Scope:
 | `game/input/action_manager.gd` | 초기화, 조회, 리맵, 기본값 복원, 충돌 검사 API |
 | `ui/settings/input_binding_settings_ui.gd` | 설정 화면의 액션 목록 생성, 입력 캡처, 충돌 표시, 리셋 버튼 |
 | `ui/settings/ui_locale.gd` | 액션/카테고리/상태 문구와 HUD·인벤토리 힌트 템플릿 |
-| `entities/player/player.gd` | 이동 벡터, 대시, 자동 타겟/공격 토글을 `ActionManager`로 조회 |
+| `entities/player/player.gd` | 이동 벡터, 대시 입력, 자동 타겟/공격 토글을 `ActionManager`로 조회 — 대시·스태미나 규칙은 [`Architecture_Player.md`](Architecture_Player.md) |
 | `weapons/core/gun.gd` | 수동 공격을 `ActionManager.ACTION_ATTACK`으로 조회 |
 | `game/interaction/interaction_input.gd` | 상호작용 입력과 표시 라벨을 `ActionManager`로 위임 |
 | `inventory/inventory_game_bridge.gd` | 인벤토리 열기와 전투 세트 전환 입력 처리 |
@@ -80,6 +80,7 @@ Out of Scope:
 |------|---------------|
 | 새 액션 추가 | `ActionBindingDefaults`, `project.godot`, `UiLocale`의 `input.*` 키, 관련 입력 호출부 |
 | 기본 키 변경 | `project.godot`, `ActionBindingDefaults`, HUD/힌트 문구, `Docs/Wiki/GameRules.md` |
+| 대시 동작·스태미나 변경 | `Architecture_Player.md`, `entities/player/player.gd` — 입력 문서만으로 규칙을 복제하지 않는다 |
 | 리맵 저장 형식 변경 | 기존 `user://input_bindings.cfg` 호환성 또는 마이그레이션 |
 | 조작 설정 UI 변경 | `input_binding_settings_ui.gd`, `pause_menu_overlay.tscn`, `pause_menu.gd`, `find_conflicts()` 정책, 기본값 복원, 입력 대기 중 Esc/마우스 처리 |
 | 인벤토리/메뉴 입력 변경 | `InventoryGameBridge`, `ui/inventory/inventory_menu.gd`, `ui/pause_menu.gd` |

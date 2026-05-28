@@ -39,7 +39,7 @@
 |-----------|------|
 | `game/test_arena.gd` | F6 오케스트레이션, GUI, 스폰, loadout 적용 |
 | `game/test_arena_weapon_snapshot.gd` | 무기 **공통·타입별** 튜닝 필드 def, movement, `user://` 스냅샷 |
-| `game/test_arena_gear_snapshot.gd` | 보조 `stat_modifiers` 튜닝 필드 def(막기·방어·무기피해·파워), `user://` 스냅샷 |
+| `game/test_arena_gear_snapshot.gd` | 장비 `stat_modifiers` 튜닝 필드 def(막기·방어·무기피해·파워·부활·스태미나·피격무적 등), `user://` 스냅샷 |
 | `game/test_arena_status_effect_snapshot.gd` | 상태이상 튜닝 필드 def(지속·틱·배율), `user://` 스냅샷 |
 | `game/test_arena_tuning_ui.gd` | 무기/보조 공통 SpinBox 행 생성, +/- 버튼, Enter/포커스 이탈 commit 유틸 |
 | `weapons/data/weapon_data.gd` | `melee_range_override` / `projectile_range_override`(F6), `build_test_arena_info_bbcode` omit |
@@ -101,6 +101,10 @@ override가 0이거나 세션에 없으면 `range_type` 표(`MELEE_RANGE_BY_TYPE
 | 방어 | `armor_min`, `armor_max` | 선택 보조 `stat_modifiers`에 armor 키가 있을 때 |
 | 무기 피해 | `weapon_damage_mult` | 선택 보조 `stat_modifiers`에 키가 있을 때 |
 | 파워 | `power` | 선택 보조 `stat_modifiers`에 키가 있을 때 (피해 + 범위, 합산 1회 softcap) |
+| 부활 | `revive_min`, `revive_max` | 선택 장비에 키가 있을 때 |
+| 스태미나 | `stamina` | flat 스태미나 키가 있을 때 |
+| 스태미나 회복 | `stamina_recovery_mult` | 배율 키가 있을 때 |
+| 피격 후 무적 | `invincibility_after_damage_sec` | 초 단위 키가 있을 때 |
 
 `grant_orbital` 같은 태그/문자열 키는 SpinBox 튜닝 대상이 아니다. **F5 메인 런은 이 스냅샷을 읽지 않는다.**
 

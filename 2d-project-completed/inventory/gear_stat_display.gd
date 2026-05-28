@@ -45,6 +45,7 @@ const _STAT_SKIP_KEYS: Array[String] = [
 	"companion_damage_mult",
 	"mana_recovery_mult",
 	"stamina_recovery_mult",
+	"dash_duration_mult",
 	"sword_crit_chance_bonus",
 	"weapon_upgrade_level",
 	"invincibility_after_damage_sec",
@@ -123,6 +124,7 @@ static func format_stat_lines(modifiers: Dictionary) -> PackedStringArray:
 	_append_mult_bonus_line(lines, stats, "energy_damage_mult", "Energy Damage", "에너지 피해")
 	_append_mult_bonus_line(lines, stats, "mana_recovery_mult", "Mana Recovery", "마나 회복")
 	_append_mult_bonus_line(lines, stats, "stamina_recovery_mult", "Stamina Recovery Speed", "스태미나 회복 속도")
+	_append_mult_bonus_line(lines, stats, "dash_duration_mult", "Dash Duration", "대시 지속 시간")
 	_append_mult_bonus_line(
 		lines, stats, "intelligence_stat_mult", "stats from Intelligence", "지능에서 오는 스탯"
 	)

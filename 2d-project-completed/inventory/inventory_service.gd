@@ -167,6 +167,29 @@ func try_force_equip_offhand_on_active_set(item_id: String) -> StringName:
 	return &""
 
 
+# 테스트 아레나 등 — 공유 방어구 슬롯(helmet~accessory)을 교체합니다. 기존 장비는 삭제합니다.
+func try_force_equip_shared_armor_slot(item_id: String, slot_key: StringName) -> StringName:
+	var key := item_id.strip_edges()
+	if key.is_empty() or not registry.has_item(key):
+		return ERROR_UNKNOWN_ITEM
+	if not _is_shared_armor_slot(slot_key):
+		return ERROR_INVALID_SLOT
+	if not registry.can_item_occupy_slot(key, slot_key):
+		return ERROR_INVALID_SLOT
+
+	var set_index := EquipSlots.SHARED_ARMOR_SET_INDEX
+	var current_id := loadout.get_set_item_id(set_index, slot_key)
+	if current_id == key:
+		return &""
+
+	if not current_id.is_empty():
+		loadout.set_set_item_id(set_index, slot_key, "")
+
+	_remove_item_id_from_loadout(key)
+	loadout.set_set_item_id(set_index, slot_key, key)
+	return &""
+
+
 # 획득 아이템을 규칙에 따라 장착 슬롯 또는 가방에 자동 배치합니다.
 func acquire_item(item_id: String) -> StringName:
 	var key := item_id.strip_edges()
