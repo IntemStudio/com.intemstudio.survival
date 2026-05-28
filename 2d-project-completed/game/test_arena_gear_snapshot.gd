@@ -52,6 +52,44 @@ const POWER_DEF := {
 	"step": 1.0,
 	"integer": true,
 }
+const REVIVE_MIN_DEF := {
+	"property": "revive_min",
+	"label": "부활 최소",
+	"min": 0.0,
+	"max": 99.0,
+	"step": 1.0,
+	"integer": true,
+}
+const REVIVE_MAX_DEF := {
+	"property": "revive_max",
+	"label": "부활 최대",
+	"min": 0.0,
+	"max": 99.0,
+	"step": 1.0,
+	"integer": true,
+}
+const STAMINA_DEF := {
+	"property": "stamina",
+	"label": "스태미나",
+	"min": 0.0,
+	"max": 999.0,
+	"step": 1.0,
+	"integer": true,
+}
+const STAMINA_RECOVERY_MULT_DEF := {
+	"property": "stamina_recovery_mult",
+	"label": "스태미나 회복 배율",
+	"min": 0.05,
+	"max": 10.0,
+	"step": 0.05,
+}
+const INVINCIBILITY_AFTER_DAMAGE_DEF := {
+	"property": "invincibility_after_damage_sec",
+	"label": "피격 후 무적(초)",
+	"min": 0.0,
+	"max": 30.0,
+	"step": 0.05,
+}
 
 var _baselines: Dictionary = {}
 var _saved: Dictionary = {}
@@ -110,6 +148,15 @@ func get_field_defs(gear: GearData) -> Array:
 		result.append(WEAPON_DAMAGE_MULT_DEF.duplicate(true))
 	if stats.has("power"):
 		result.append(POWER_DEF.duplicate(true))
+	if stats.has("revive_min") or stats.has("revive_max"):
+		result.append(REVIVE_MIN_DEF.duplicate(true))
+		result.append(REVIVE_MAX_DEF.duplicate(true))
+	if stats.has("stamina"):
+		result.append(STAMINA_DEF.duplicate(true))
+	if stats.has("stamina_recovery_mult"):
+		result.append(STAMINA_RECOVERY_MULT_DEF.duplicate(true))
+	if stats.has("invincibility_after_damage_sec"):
+		result.append(INVINCIBILITY_AFTER_DAMAGE_DEF.duplicate(true))
 	return result
 
 

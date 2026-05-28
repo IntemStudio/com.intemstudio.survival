@@ -4,7 +4,7 @@
 
 ## Overview
 
-`test_arena.tscn`(F6, 현재 씬 실행)은 메인 런(F5)과 분리된 **무기·몹 전투 검증** 공간이다. `game/test_arena.gd`가 UI, 스폰, 튜닝 스냅샷, 인벤 연동을 오케스트레이션한다. 씬 루트는 F5와 동일하게 `Game`이며 `%Player`, `%ObjectPools`, `%AttackServices`, `InventoryMenu` 계약을 유지한다.
+`test_arena.tscn`(F6, 현재 씬 실행)은 메인 런(F5)과 분리된 **무기·몹 전투 검증** 공간이다. `game/test_arena.gd`는 코디네이터로서 씬 부트스트랩·런타임(스폰/리스폰/킬)·브리지 API만 유지하고, 탭별 UI/튜닝 로직은 패널 컨트롤러(`StatusEffect`, `Weapon`, `Gear`, `Mob`)로 분리되어 동작한다. 씬 루트는 F5와 동일하게 `Game`이며 `%Player`, `%ObjectPools`, `%AttackServices`, `InventoryMenu` 계약을 유지한다.
 
 `use_inventory_loadout`(기본 true)일 때 무기/보조 GUI 착용은 인벤 **활성 세트 weapon/offhand 슬롯**에 반영된다. 플레이어 반영은 `apply_inventory_loadout_to_player()`가 `TestArenaWeaponSnapshot`(무기)과 `TestArenaGearSnapshot`(보조 `stat_modifiers`)을 적용한 뒤 `Gun`·loadout 스탯을 갱신한다.
 인벤토리 정책(세트 구조·합산 규칙·획득/장착 경계)은 [`Architecture_Inventory.md`](Architecture_Inventory.md)를 단일 기준으로 따른다.
@@ -37,7 +37,11 @@
 
 | 타입/파일 | 역할 |
 |-----------|------|
-| `game/test_arena.gd` | F6 오케스트레이션, GUI, 스폰, loadout 적용 |
+| `game/test_arena.gd` | F6 코디네이터(부트스트랩, 컨트롤러 의존성 주입, 스폰/리스폰, pause·inventory bridge) |
+| `game/test_arena_status_effect_controller.gd` | 상태이상 탭 옵션/잠금 규칙(poison)·튜닝 UI·적용/저장/초기화 |
+| `game/test_arena_weapon_panel_controller.gd` | 무기 필터/옵션/설명, GUI 장착, 무기 튜닝 UI, 즉시 적용 |
+| `game/test_arena_gear_panel_controller.gd` | 보조손/방어구 옵션·장착·설명·튜닝 UI, 상태이상 탭 연계 |
+| `game/test_arena_mob_panel_controller.gd` | 몹 옵션/설명, 전투 튜닝 UI(기본/사망 폭발/돌진), 적용/저장/초기화 |
 | `game/test_arena_weapon_snapshot.gd` | 무기 **공통·타입별** 튜닝 필드 def, movement, `user://` 스냅샷 |
 | `game/test_arena_gear_snapshot.gd` | 장비 `stat_modifiers` 튜닝 필드 def(막기·방어·무기피해·파워·부활·스태미나·피격무적 등), `user://` 스냅샷 |
 | `game/test_arena_status_effect_snapshot.gd` | 상태이상 튜닝 필드 def(지속·틱·배율), `user://` 스냅샷 |
@@ -54,13 +58,16 @@
 | `game/attack/attack_factory.gd` | `schedule_mob_death_burst` — 지연 후 `spawn_mob_death_burst`(연출 ×1.35) |
 
 ```text
-test_arena.gd
-  -> TestPanelsWrap / TabBarHost / TestPanelsTab
+test_arena.gd (Coordinator)
+  -> TestArenaStatusEffectController
+  -> TestArenaWeaponPanelController
+  -> TestArenaGearPanelController
+  -> TestArenaMobPanelController
   -> TestArenaMobSnapshot / TestArenaWeaponSnapshot / TestArenaGearSnapshot / TestArenaStatusEffectSnapshot
   -> InventoryService.try_force_equip_weapon_on_active_set / try_force_equip_offhand_on_active_set
   -> ItemRegistry.set_gear_modifier_resolver(Callable(TestArenaGearSnapshot, "resolve_modifiers"))
   -> StatusEffectCatalog + TestArenaStatusEffectSnapshot.apply_saved_to_catalog()
-  -> apply_inventory_loadout_to_player -> _apply_tuning_live
+  -> apply_inventory_loadout_to_player
   -> spawn_test_mob -> Mob + snapshot apply
 ```
 
@@ -68,14 +75,14 @@ test_arena.gd
 
 ### Runtime
 
-1. `_ready`: 스냅샷 로드, 상태이상 저장 스냅샷을 카탈로그에 자동 반영, 무기/몹 UI 구성, `use_inventory_loadout`이면 `apply_inventory_loadout_to_player()` 지연 호출.
-2. **몹 탭:** 타입 선택 → 설명 BBCode → 전투 튜닝 스핀(색: 기본/저장/세션) → **적용** 또는 **저장** → 스폰. 스폰·활성 몹에 스냅샷 즉시 반영 가능. **특수 A** — 사망 폭발(범위·피해·지연). **특수 B** — 돌진 거리(사망 폭발 스핀은 숨김, `charge_attack_enabled` 우선).
-3. **무기 탭(무기 섹션):** 필터·선택 → 설명 BBCode(`omit`으로 튜닝 중 필드 숨김) → Equip → 인벤 활성 weapon 슬롯 교체 → `build_tuned_weapon()` 적용 후 `Gun` 갱신.
-4. **무기 탭(보조 섹션):** 선택 → Equip → 인벤 활성 offhand 슬롯 교체 → loadout 재적용. 양손 무기면 `inventory.error.offhand_blocked`로 거절.
-5. **보조손 상태이상 진입**(`%OffhandStatusOption`, `%EditOffhandStatusButton`): 장비 탭에서 `grant_on_hit`를 읽기 전용으로 고르고, 버튼으로 상태이상 탭으로 이동해 자동 선택한다(장비 탭에서 상태이상 수치 직접 수정은 금지).
-6. **보조손 튜닝**(`%OffhandTuningFields`, UI 라벨 「보조손 튜닝」): 선택 보조의 `stat_modifiers` 중 `block_min/max`, `armor_min/max`, `weapon_damage_mult`, `power`가 있을 때만 SpinBox 표시. **적용**·**저장**·**초기화** → `user://test_arena_gear_snapshots.cfg`. 변경 즉시 `apply_inventory_loadout_to_player()`로 반영되며, `power`는 장비·패시브·버프 합산값으로 1회 softcap 적용된다.
-7. **무기 튜닝**(`%ProjectileTuningFields`, UI 라벨 「무기 튜닝」): `CORE_FIELD_DEFS` + 유형별 사거리·발사체 수 + `FIELD_DEFS_*` SpinBox. 스핀 변경 시 세션 반영(±·Enter). **적용**·**저장**·**초기화** → `user://test_arena_weapon_snapshots.cfg`. 장착 중이면 `_apply_tuning_live` 즉시 반영.
-8. **상태이상 튜닝**(`%StatusEffectTuningFields`): `duration_seconds`, `max_stacks`, `damage_taken_mult`, `move_speed_mult`, DoT 계열은 `tick_damage_min/max`, `tick_interval`까지 제공. **적용**·**저장**·**초기화** → `user://test_arena_status_effect_snapshots.cfg`. 적용 시 활성 몹의 동일 상태이상 tick profile을 즉시 재계산하되, **남은 지속시간은 리셋하지 않고 유지**한다.
+1. `_ready`: 스냅샷 로드 → 패널 컨트롤러 `configure()` 의존성 주입 → 옵션 빌드/탭 세팅/튜닝 UI 세팅 → signal connect 순서로 부트스트랩한다. 상태이상 저장 스냅샷은 카탈로그에 자동 반영하고, `use_inventory_loadout`이면 `apply_inventory_loadout_to_player()`를 지연 호출한다.
+2. **몹 탭(`TestArenaMobPanelController`):** 타입 선택 → 설명 BBCode → 전투 튜닝 스핀(색: 기본/저장/세션) → **적용** 또는 **저장**. `spawn_test_mob()`는 코디네이터에 남아 씬 계약을 유지한다. **특수 A** — 사망 폭발(범위·피해·지연). **특수 B** — 돌진 거리(사망 폭발 스핀 숨김, `charge_attack_enabled` 우선).
+3. **무기 탭(`TestArenaWeaponPanelController`):** 필터·선택 → 설명 BBCode(`omit`으로 튜닝 중 필드 숨김) → Equip → 인벤 활성 weapon 슬롯 교체 → `build_tuned_weapon()` 적용 후 `Gun` 갱신.
+4. **장비 탭(`TestArenaGearPanelController`):** 보조손/방어구 선택 → Equip → 인벤 활성 슬롯 교체 → loadout 재적용. 양손 무기면 `inventory.error.offhand_blocked`로 거절.
+5. **보조손 상태이상 진입**(`%OffhandStatusOption`, `%EditOffhandStatusButton`): 장비 탭에서 `grant_on_hit`를 읽기 전용으로 고르고, 버튼으로 상태이상 탭으로 이동해 자동 선택한다(장비 탭에서 상태이상 수치 직접 수정 금지).
+6. **보조손/방어구 튜닝(`TestArenaGearPanelController`)**: 선택 장비 `stat_modifiers` 중 지원 필드만 SpinBox 표시. **적용**·**저장**·**초기화** → `user://test_arena_gear_snapshots.cfg`. 변경 즉시 `apply_inventory_loadout_to_player()` 반영, `power`는 합산 1회 softcap.
+7. **무기 튜닝(`TestArenaWeaponPanelController`)**: `CORE_FIELD_DEFS` + 유형별 사거리/발사체 수 + `FIELD_DEFS_*` SpinBox. 스핀 변경 시 세션 반영(±·Enter). **적용**·**저장**·**초기화** → `user://test_arena_weapon_snapshots.cfg`. 장착 중이면 즉시 반영.
+8. **상태이상 튜닝(`TestArenaStatusEffectController`)**: `duration_seconds`, `max_stacks`, `damage_taken_mult`, `move_speed_mult`, DoT(`tick_damage_min/max`, `tick_interval`). **적용**·**저장**·**초기화** → `user://test_arena_status_effect_snapshots.cfg`. 적용 시 활성 몹 동일 상태이상 tick profile을 재계산하되, **남은 지속시간은 유지**한다.
 9. movement: `ProjectileMovementOption` — 옵션이 2개 이상일 때만 행 표시.
 10. 인벤(I)·전투 세트 Tab은 `InventoryGameBridge`와 동일 계약.
 
@@ -151,6 +158,8 @@ override가 0이거나 세션에 없으면 `range_type` 표(`MELEE_RANGE_BY_TYPE
 
 | 변경 | 확인할 것 |
 |------|-----------|
+| 컨트롤러 의존성 주입 | `test_arena.gd` `_configure_*_controller`, `_ready` 호출 순서(로드→옵션→탭→UI→signal) 유지 |
+| 코디네이터 경계 | `spawn_test_mob`, `register_kill`, player death/respawn, pause/inventory bridge API가 `test_arena.gd`에 유지되는지 확인 |
 | 새 몹 F6 옵션 | `MOB_OPTIONS`, `TestArenaMobSnapshot.register_scene`, 필드 def, 설명 BBCode |
 | 몹 튜닝 필드 | `COMBAT_*` / `DEATH_BURST_*`(특수 A) / `CHARGE_*`(특수 B, `charge_travel_distance`→`charge_duration`), `supports_*_tuning` 우선 규칙, `%MobBurst*`·`%MobCharge*` 고유 이름 |
 | SpinBox·적용 버튼 | `_commit_spin_box_pending`, `%ApplyMobCombatTuningButton` / `%ApplyProjectileTuningButton` |
@@ -164,3 +173,8 @@ override가 0이거나 세션에 없으면 `range_type` 표(`MELEE_RANGE_BY_TYPE
 | 공격 예고·돌진 레인 | `mob.gd` windup(`_charge_windup_remaining`) → 이동, `ScenePool` prewarm, `pool_reset` |
 
 **최소 검증 (F6):** Special A — 처치 후 **지연 링 예고** → burst·피해·범위(튜닝 반영). Special B — GUI **돌진 거리** 튜닝, 트리거 거리 내 **레인 예고 → 대기 후 돌진** → 종료 범위 피해·저체력 자폭. 무기 Equip → 인벤 weapon, **피해·APS·사거리·발사체 수** 스핀 즉시 반영·**적용/저장**(직접 입력 포함), movement·타입별 스핀, 몹 튜닝 **적용/저장**, 탭 4등분 레이아웃.
+
+## Verification Note (Step6)
+
+- 이번 단계 문서 갱신은 컨트롤러 분리 반영(`test_arena.gd` + `test_arena_*_controller.gd`) 기준으로 수행했다.
+- F6 플레이 수동 검증은 Godot 에디터 실행 환경에서 아래 항목을 체크한다: Mob/Weapon/Gear/StatusEffect 탭의 적용·저장·초기화, player death/respawn, spawn/respawn 루프, 탭 레이아웃.
