@@ -525,6 +525,29 @@ custom_minimum_size = Vector2(120, 36)
 layout_mode = 2
 text = "Equip"
 
+[node name="OffhandSectionLabel" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "보조손 · 활성 세트"
+
+[node name="OffhandRow" type="HBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="OffhandOption" type="OptionButton" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox/OffhandRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="EquipOffhandButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox/OffhandRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 36)
+layout_mode = 2
+text = "Equip"
+
 [node name="WeaponDescLabel" type="RichTextLabel" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox" unique_id=2847193056]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 100)
@@ -535,6 +558,57 @@ bbcode_enabled = true
 fit_content = true
 scroll_active = true
 autowrap_mode = 3
+
+[node name="OffhandDescLabel" type="RichTextLabel" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 72)
+layout_mode = 2
+theme_override_colors/default_color = Color(0.88, 0.88, 0.92, 1)
+theme_override_font_sizes/normal_font_size = 14
+bbcode_enabled = true
+fit_content = true
+scroll_active = true
+autowrap_mode = 3
+
+[node name="OffhandTuningLabel" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "보조손 튜닝"
+
+[node name="OffhandTuningStatusLabel" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.75, 0.95, 1)
+theme_override_font_sizes/font_size = 13
+text = "보조손을 선택하세요."
+
+[node name="OffhandTuningFields" type="VBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="OffhandTuningButtons" type="HBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ApplyOffhandTuningButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox/OffhandTuningButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 32)
+layout_mode = 2
+text = "적용"
+
+[node name="SaveOffhandTuningButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox/OffhandTuningButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 32)
+layout_mode = 2
+text = "저장"
+
+[node name="ResetOffhandTuningButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox/OffhandTuningButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 32)
+layout_mode = 2
+text = "초기화"
 
 [node name="ProjectileTuningLabel" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox"]
 layout_mode = 2

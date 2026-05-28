@@ -5,6 +5,8 @@ extends Node2D
 const RangedWeaponCatalog = preload("res://weapons/catalogs/ranged_weapon_catalog.gd")
 const MeleeWeaponCatalog = preload("res://weapons/catalogs/melee_weapon_catalog.gd")
 const MagicWeaponCatalog = preload("res://weapons/catalogs/magic_weapon_catalog.gd")
+const GearCatalog = preload("res://inventory/gear_catalog.gd")
+const GearStatDisplay = preload("res://inventory/gear_stat_display.gd")
 const EQUIPMENT_DROP_SCENE := preload("res://effects/equipment_drop/equipment_drop.tscn")
 
 const START_WEAPON := preload("res://weapons/data/revolver.tres")
@@ -75,6 +77,7 @@ const MOB_ROLE_HINTS_KO := {
 @export var use_inventory_loadout := true
 
 var _all_weapon_options: Array[WeaponData] = []
+var _all_offhand_options: Array[GearData] = []
 var _available_rarities: Array[String] = []
 var _filtered_weapon_options: Array[WeaponData] = []
 var _active_mob: Mob = null
@@ -86,13 +89,17 @@ var _saved_auto_attack_enabled := true
 var _mob_respawn_token := 0
 var _weapon_damage := WeaponDamageTracker.new()
 var _weapon_snapshots := TestArenaWeaponSnapshot.new()
+var _gear_snapshots := TestArenaGearSnapshot.new()
 var _mob_snapshots := TestArenaMobSnapshot.new()
 var _equipped_weapon_id := ""
+var _equipped_offhand_id := ""
 var _tuning_spin_rows: Array[Dictionary] = []
+var _offhand_tuning_spin_rows: Array[Dictionary] = []
 var _mob_combat_field_defs: Array = []
 var _mob_death_burst_field_defs: Array = []
 var _mob_charge_field_defs: Array = []
 var _tuning_ui_refreshing := false
+var _offhand_tuning_ui_refreshing := false
 var _mob_tuning_ui_refreshing := false
 
 var _pause_menu: CanvasLayer
@@ -114,12 +121,18 @@ func _ready() -> void:
 	_place_player_at_spawn()
 	%Player.set_contact_damage_enabled(true)
 	_weapon_snapshots.load_from_disk()
+	_gear_snapshots.load_from_disk()
 	_mob_snapshots.load_from_disk()
 	_build_weapon_options()
+	_build_offhand_options()
 	_register_mob_scenes()
 	_setup_test_panels_tab()
 	_setup_mob_type_option()
 	_setup_weapon_filters()
+	_setup_offhand_picker()
+	_setup_offhand_section_visibility()
+	_setup_offhand_gear_tuning_ui()
+	call_deferred("_wire_gear_snapshot_to_registry")
 	_setup_projectile_tuning_ui()
 	_setup_mob_combat_tuning_ui()
 	if not use_inventory_loadout:
@@ -129,7 +142,12 @@ func _ready() -> void:
 	%SpawnMobButton.pressed.connect(_on_spawn_mob_button_pressed)
 	%MobTypeOption.item_selected.connect(_on_mob_type_option_selected)
 	%EquipWeaponButton.pressed.connect(_on_equip_weapon_button_pressed)
+	%EquipOffhandButton.pressed.connect(_on_equip_offhand_button_pressed)
 	%WeaponOption.item_selected.connect(_on_weapon_option_selected)
+	%OffhandOption.item_selected.connect(_on_offhand_option_selected)
+	%ApplyOffhandTuningButton.pressed.connect(_on_apply_offhand_tuning_pressed)
+	%SaveOffhandTuningButton.pressed.connect(_on_save_offhand_tuning_pressed)
+	%ResetOffhandTuningButton.pressed.connect(_on_reset_offhand_tuning_pressed)
 	%ApplyProjectileTuningButton.pressed.connect(_on_apply_projectile_tuning_pressed)
 	%SaveProjectileTuningButton.pressed.connect(_on_save_projectile_tuning_pressed)
 	%ResetProjectileTuningButton.pressed.connect(_on_reset_projectile_tuning_pressed)
@@ -262,6 +280,10 @@ func apply_inventory_loadout_to_player() -> void:
 		var weapon := menu_service.registry.resolve_weapon(weapon_id)
 		if weapon:
 			_equip_weapon(weapon)
+	_equipped_offhand_id = menu_service.loadout.get_set_item_id(
+		menu_service.loadout.active_set_index,
+		EquipSlots.OFFHAND
+	)
 	if %Player.has_method(&"refresh_stats_from_loadout"):
 		%Player.refresh_stats_from_loadout(menu_service.registry, menu_service.loadout)
 	InventoryGameBridge.refresh_combat_set_hud(self, _inventory_menu)
@@ -298,6 +320,19 @@ func _build_weapon_options() -> void:
 		_weapon_snapshots.register_catalog_weapon(weapon)
 	_all_weapon_options.sort_custom(_sort_weapons_for_picker)
 	_collect_available_rarities()
+
+
+func _build_offhand_options() -> void:
+	_all_offhand_options.clear()
+	for gear in GearCatalog.get_all():
+		if gear.fits_slot(EquipSlots.OFFHAND):
+			_all_offhand_options.append(gear)
+			_gear_snapshots.register_catalog_gear(gear)
+	_all_offhand_options.sort_custom(_sort_gear_for_picker)
+
+
+func _sort_gear_for_picker(a: GearData, b: GearData) -> bool:
+	return a.get_display_name_localized() < b.get_display_name_localized()
 
 
 func _collect_available_rarities() -> void:
@@ -378,6 +413,36 @@ func _setup_weapon_filters() -> void:
 		rarity_filter.select(0)
 
 	_refresh_weapon_option_list(START_WEAPON.get_unique_key())
+
+
+func _setup_offhand_picker() -> void:
+	_refresh_offhand_option_list()
+
+
+func _setup_offhand_section_visibility() -> void:
+	var enabled := use_inventory_loadout and _inventory_menu != null
+	%OffhandSectionLabel.visible = enabled
+	%OffhandRow.visible = enabled
+	%OffhandDescLabel.visible = enabled
+	%OffhandTuningLabel.visible = enabled
+	%OffhandTuningStatusLabel.visible = enabled
+	%OffhandTuningFields.visible = enabled
+	%OffhandTuningButtons.visible = enabled
+	if not enabled:
+		return
+	_update_offhand_description()
+	_refresh_offhand_tuning_ui()
+
+
+func _wire_gear_snapshot_to_registry() -> void:
+	if not use_inventory_loadout or _inventory_menu == null:
+		return
+	var menu_service: InventoryService = _inventory_menu.get_service()
+	if menu_service == null:
+		return
+	menu_service.registry.set_gear_modifier_resolver(
+		Callable(_gear_snapshots, "resolve_modifiers")
+	)
 
 
 func _on_weapon_filters_changed(_index: int = -1) -> void:
@@ -461,6 +526,18 @@ func _on_equip_weapon_button_pressed() -> void:
 	_equip_weapon_from_gui(weapon)
 
 
+func _on_equip_offhand_button_pressed() -> void:
+	var gear := _get_selected_offhand()
+	if gear == null:
+		return
+	_equip_offhand_from_gui(gear)
+
+
+func _on_offhand_option_selected(_index: int) -> void:
+	_update_offhand_description()
+	_refresh_offhand_tuning_ui()
+
+
 func _get_selected_mob_scene() -> PackedScene:
 	var index: int = %MobTypeOption.selected
 	if index < 0 or index >= MOB_OPTIONS.size():
@@ -473,6 +550,30 @@ func _get_selected_weapon() -> WeaponData:
 	if index < 0 or index >= _filtered_weapon_options.size():
 		return null
 	return _filtered_weapon_options[index]
+
+
+func _get_selected_offhand() -> GearData:
+	var index: int = %OffhandOption.selected
+	if index < 0 or index >= _all_offhand_options.size():
+		return null
+	return _all_offhand_options[index]
+
+
+func _refresh_offhand_option_list(preserve_key: String = "") -> void:
+	var option: OptionButton = %OffhandOption
+	option.clear()
+	if _all_offhand_options.is_empty():
+		_update_offhand_description()
+		return
+
+	var select_index := 0
+	for i in _all_offhand_options.size():
+		var gear: GearData = _all_offhand_options[i]
+		option.add_item(gear.get_display_name_localized())
+		if not preserve_key.is_empty() and gear.get_unique_key() == preserve_key:
+			select_index = i
+	option.select(select_index)
+	_update_offhand_description()
 
 
 # 무기 GUI 착용 — 인벤 활성 세트에 반영한 뒤 플레이어에 튜닝 무기를 적용합니다.
@@ -495,6 +596,36 @@ func _equip_weapon_from_gui(catalog_weapon: WeaponData) -> void:
 			apply_inventory_loadout_to_player()
 			return
 	_equip_weapon(catalog_weapon)
+
+
+# 보조손 GUI 착용 — 인벤 활성 세트 offhand에 반영한 뒤 로드아웃을 재적용합니다.
+func _equip_offhand_from_gui(gear: GearData) -> void:
+	if gear == null:
+		return
+	if not use_inventory_loadout or _inventory_menu == null:
+		if has_node("%StatusLabel"):
+			%StatusLabel.text = "보조손 장착은 인벤 로드아웃(use_inventory_loadout)이 필요합니다."
+		return
+	var menu_service: InventoryService = _inventory_menu.get_service()
+	if menu_service == null:
+		return
+	var gear_id := gear.get_unique_key()
+	var err := menu_service.try_force_equip_offhand_on_active_set(gear_id)
+	if not err.is_empty():
+		if has_node("%StatusLabel"):
+			%StatusLabel.text = UiLocale.t(err)
+		return
+	if _inventory_menu.has_method("refresh_all_slots"):
+		_inventory_menu.refresh_all_slots()
+	if _inventory_menu.has_method("persist_loadout_if_enabled"):
+		_inventory_menu.persist_loadout_if_enabled()
+	apply_inventory_loadout_to_player()
+	var preserve_key := gear_id
+	_refresh_offhand_option_list(preserve_key)
+	if has_node("%StatusLabel"):
+		%StatusLabel.text = "보조손 장착: %s" % gear.get_display_name_localized()
+	_equipped_offhand_id = gear_id
+	_refresh_offhand_tuning_ui()
 
 
 # 플레이어에 튜닝된 무기를 장착하고 발사체 튜닝 UI를 갱신합니다.
@@ -844,6 +975,248 @@ func _on_reset_projectile_tuning_pressed() -> void:
 	_update_status("무기 스냅샷 초기화: %s" % catalog_weapon.get_display_name_localized())
 	_apply_tuning_live(catalog_weapon)
 	_refresh_projectile_tuning_ui()
+
+
+func _setup_offhand_gear_tuning_ui() -> void:
+	_clear_offhand_tuning_fields()
+	%SaveOffhandTuningButton.disabled = true
+	%ResetOffhandTuningButton.disabled = true
+
+
+func _clear_offhand_tuning_fields() -> void:
+	var fields := %OffhandTuningFields
+	for child in fields.get_children():
+		fields.remove_child(child)
+		child.free()
+	_offhand_tuning_spin_rows.clear()
+
+
+func _refresh_offhand_tuning_ui() -> void:
+	_clear_offhand_tuning_fields()
+	var catalog_gear := _get_selected_offhand()
+	if catalog_gear == null:
+		%OffhandTuningStatusLabel.text = "보조손 목록이 비어 있습니다."
+		%SaveOffhandTuningButton.disabled = true
+		%ResetOffhandTuningButton.disabled = true
+		return
+
+	if not _gear_snapshots.supports_gear_tuning(catalog_gear):
+		%OffhandTuningStatusLabel.text = "이 보조손은 수치 튜닝(막기·방어·무기 피해·파워)이 없습니다."
+		%SaveOffhandTuningButton.disabled = true
+		%ResetOffhandTuningButton.disabled = true
+		return
+
+	var gear_id := catalog_gear.get_unique_key()
+	var tuned_mods := _gear_snapshots.build_tuned_stat_modifiers(gear_id)
+	var field_defs: Array = _gear_snapshots.get_field_defs(catalog_gear)
+	_offhand_tuning_ui_refreshing = true
+	for field_def in field_defs:
+		_add_offhand_tuning_row(catalog_gear, field_def, tuned_mods)
+	_offhand_tuning_ui_refreshing = false
+
+	var status_parts: PackedStringArray = []
+	if _gear_snapshots.has_saved_snapshot(gear_id):
+		status_parts.append("저장된 스냅샷 적용 중")
+	if not _gear_snapshots.get_session_overrides(gear_id).is_empty():
+		status_parts.append("미저장 변경 있음")
+	if _equipped_offhand_id == gear_id:
+		status_parts.append("장착 중 — 값 변경 시 즉시 반영")
+	if status_parts.is_empty():
+		%OffhandTuningStatusLabel.text = "카탈로그 기본값"
+	else:
+		%OffhandTuningStatusLabel.text = " · ".join(status_parts)
+	%SaveOffhandTuningButton.disabled = false
+	%ResetOffhandTuningButton.disabled = false
+
+
+func _add_offhand_tuning_row(
+	catalog_gear: GearData,
+	field_def: Dictionary,
+	tuned_modifiers: Dictionary
+) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	%OffhandTuningFields.add_child(row)
+
+	var label := Label.new()
+	label.text = str(field_def.get("label", field_def["property"]))
+	label.custom_minimum_size = Vector2(120, 0)
+	label.add_theme_font_size_override("font_size", 13)
+	row.add_child(label)
+
+	var property: String = field_def["property"]
+	var value_row := HBoxContainer.new()
+	value_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	value_row.add_theme_constant_override("separation", 6)
+	row.add_child(value_row)
+
+	var dec_button := _create_tuning_step_button("−")
+	value_row.add_child(dec_button)
+
+	var spin := SpinBox.new()
+	spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spin.custom_minimum_size.y = TUNING_SPIN_MIN_HEIGHT
+	spin.add_theme_constant_override("updown_width", 0)
+	spin.min_value = float(field_def.get("min", 0.0))
+	spin.max_value = float(field_def.get("max", 9999.0))
+	spin.step = float(field_def.get("step", 1.0))
+	spin.allow_greater = false
+	spin.allow_lesser = false
+	spin.rounded = bool(field_def.get("integer", false))
+	spin.value = _gear_snapshots.get_tuning_spin_display_value(tuned_modifiers, property)
+	spin.value_changed.connect(_on_offhand_tuning_value_changed.bind(catalog_gear, property))
+	value_row.add_child(spin)
+	spin.tree_entered.connect(
+		_on_offhand_tuning_spin_tree_entered.bind(spin, catalog_gear, property),
+		CONNECT_ONE_SHOT
+	)
+
+	var inc_button := _create_tuning_step_button("+")
+	value_row.add_child(inc_button)
+
+	dec_button.pressed.connect(_on_offhand_tuning_spin_step_pressed.bind(spin, catalog_gear, property, -1))
+	inc_button.pressed.connect(_on_offhand_tuning_spin_step_pressed.bind(spin, catalog_gear, property, 1))
+
+	_offhand_tuning_spin_rows.append({"property": property, "spin": spin, "row": row})
+
+
+func _on_offhand_tuning_spin_tree_entered(
+	spin: SpinBox,
+	catalog_gear: GearData,
+	property: String
+) -> void:
+	_on_tuning_spin_tree_entered(spin)
+	_wire_spin_box_text_commit(
+		spin,
+		func(new_value: float) -> void:
+			_on_offhand_tuning_value_changed(new_value, catalog_gear, property)
+	)
+
+
+func _on_offhand_tuning_spin_step_pressed(
+	spin: SpinBox,
+	catalog_gear: GearData,
+	property: String,
+	direction: int
+) -> void:
+	_on_offhand_tuning_value_changed(
+		spin.value + spin.step * float(direction),
+		catalog_gear,
+		property
+	)
+	_sync_offhand_tuning_spin_display(property, catalog_gear)
+
+
+func _on_offhand_tuning_value_changed(
+	new_value: float,
+	catalog_gear: GearData,
+	property: String
+) -> void:
+	if _offhand_tuning_ui_refreshing or catalog_gear == null:
+		return
+	_store_offhand_tuning_value(catalog_gear, property, new_value)
+	_apply_offhand_tuning_live(catalog_gear)
+	_sync_offhand_tuning_spin_display(property, catalog_gear)
+	_refresh_offhand_tuning_status_only(catalog_gear)
+
+
+func _apply_offhand_tuning_live(catalog_gear: GearData) -> void:
+	if not use_inventory_loadout:
+		return
+	apply_inventory_loadout_to_player()
+
+
+func _sync_offhand_tuning_spin_display(property: String, catalog_gear: GearData) -> void:
+	var gear_id := catalog_gear.get_unique_key()
+	var tuned_mods := _gear_snapshots.build_tuned_stat_modifiers(gear_id)
+	for row in _offhand_tuning_spin_rows:
+		if row.get("property") != property:
+			continue
+		var spin: SpinBox = row.get("spin")
+		if not is_instance_valid(spin):
+			return
+		_offhand_tuning_ui_refreshing = true
+		spin.value = _gear_snapshots.get_tuning_spin_display_value(tuned_mods, property)
+		_offhand_tuning_ui_refreshing = false
+		return
+
+
+func _refresh_offhand_tuning_status_only(catalog_gear: GearData) -> void:
+	var gear_id := catalog_gear.get_unique_key()
+	var status_parts: PackedStringArray = []
+	if _gear_snapshots.has_saved_snapshot(gear_id):
+		status_parts.append("저장된 스냅샷 적용 중")
+	if not _gear_snapshots.get_session_overrides(gear_id).is_empty():
+		status_parts.append("미저장 변경 있음")
+	if _equipped_offhand_id == gear_id:
+		status_parts.append("장착 중 — 값 변경 시 즉시 반영")
+	%OffhandTuningStatusLabel.text = " · ".join(status_parts) if not status_parts.is_empty() else "카탈로그 기본값"
+
+
+func _store_offhand_tuning_value(
+	catalog_gear: GearData,
+	property: String,
+	new_value: float
+) -> void:
+	var gear_id := catalog_gear.get_unique_key()
+	var stored: Variant = new_value
+	for field_def in _gear_snapshots.get_field_defs(catalog_gear):
+		if field_def["property"] != property:
+			continue
+		if field_def.get("integer", false):
+			stored = int(roundf(new_value))
+		break
+	_gear_snapshots.set_session_value(gear_id, property, stored)
+
+
+func _commit_and_apply_offhand_tuning_from_spins() -> void:
+	var catalog_gear := _get_selected_offhand()
+	if catalog_gear == null:
+		return
+	for row in _offhand_tuning_spin_rows:
+		var spin: SpinBox = row.get("spin")
+		if not is_instance_valid(spin):
+			continue
+		_commit_spin_box_pending(spin)
+		var property: String = row.get("property", "")
+		if property.is_empty():
+			continue
+		_store_offhand_tuning_value(catalog_gear, property, spin.value)
+	_apply_offhand_tuning_live(catalog_gear)
+
+
+func _on_apply_offhand_tuning_pressed() -> void:
+	var catalog_gear := _get_selected_offhand()
+	if catalog_gear == null:
+		return
+	_commit_and_apply_offhand_tuning_from_spins()
+	_refresh_offhand_tuning_ui()
+	_update_status("보조손 튜닝 적용: %s" % catalog_gear.get_display_name_localized())
+
+
+func _on_save_offhand_tuning_pressed() -> void:
+	var catalog_gear := _get_selected_offhand()
+	if catalog_gear == null:
+		return
+	_commit_and_apply_offhand_tuning_from_spins()
+	var gear_id := catalog_gear.get_unique_key()
+	_gear_snapshots.save_gear(gear_id)
+	_update_status("보조손 스냅샷 저장: %s" % catalog_gear.get_display_name_localized())
+	_apply_offhand_tuning_live(catalog_gear)
+	_refresh_offhand_tuning_ui()
+	_update_offhand_description()
+
+
+func _on_reset_offhand_tuning_pressed() -> void:
+	var catalog_gear := _get_selected_offhand()
+	if catalog_gear == null:
+		return
+	var gear_id := catalog_gear.get_unique_key()
+	_gear_snapshots.reset_gear(gear_id)
+	_update_status("보조손 스냅샷 초기화: %s" % catalog_gear.get_display_name_localized())
+	_apply_offhand_tuning_live(catalog_gear)
+	_refresh_offhand_tuning_ui()
+	_update_offhand_description()
 
 
 func _get_mob_combat_field_labels() -> Array[Label]:
@@ -1424,6 +1797,19 @@ func _update_weapon_description() -> void:
 		%WeaponDescLabel.text = tuned.build_test_arena_info_bbcode(_get_weapon_omit_properties(weapon))
 	else:
 		%WeaponDescLabel.text = "조건에 맞는 무기가 없습니다."
+
+
+# 드롭다운에서 선택 중인 보조손 설명을 표시합니다.
+func _update_offhand_description() -> void:
+	if not %OffhandDescLabel.visible:
+		return
+	var gear := _get_selected_offhand()
+	if gear:
+		var tuned := _gear_snapshots.build_tuned_gear(gear)
+		var slot_label := UiLocale.t(&"slot.offhand")
+		%OffhandDescLabel.text = GearStatDisplay.build_gear_tooltip(tuned, slot_label)
+	else:
+		%OffhandDescLabel.text = "보조손 목록이 비어 있습니다."
 
 
 # 드롭다운에서 선택 중인 몹 스탯·역할을 표시합니다.

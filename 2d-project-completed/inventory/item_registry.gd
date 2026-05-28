@@ -10,6 +10,8 @@ const _GearCatalog := preload("res://inventory/gear_catalog.gd")
 
 var _weapons: Dictionary = {}
 var _gear: Dictionary = {}
+## F6 테스트 아레나 — (item_id, base stat_modifiers) → 적용할 Dictionary. 비어 있으면 카탈로그 값.
+var _gear_modifier_resolver: Callable = Callable()
 
 
 func clear() -> void:
@@ -54,6 +56,15 @@ func register_gear_from_catalog() -> void:
 func register_all_catalogs() -> void:
 	register_weapons_from_catalogs()
 	register_gear_from_catalog()
+
+
+# F6 장비 튜닝 스냅샷 — 합산 시 stat_modifiers 대체(메인 런은 설정하지 않음).
+func set_gear_modifier_resolver(resolver: Callable) -> void:
+	_gear_modifier_resolver = resolver
+
+
+func clear_gear_modifier_resolver() -> void:
+	_gear_modifier_resolver = Callable()
 
 
 func has_item(item_id: String) -> bool:
@@ -192,7 +203,10 @@ func _merge_gear_stat_for_item(totals: Dictionary, item_id: String) -> void:
 	var gear := resolve_gear(item_id)
 	if gear == null:
 		return
-	GearStatMerge.merge_into(totals, gear.stat_modifiers)
+	var modifiers: Dictionary = gear.stat_modifiers
+	if _gear_modifier_resolver.is_valid():
+		modifiers = _gear_modifier_resolver.call(item_id, gear.stat_modifiers)
+	GearStatMerge.merge_into(totals, modifiers)
 
 
 static func _normalize_rarity(rarity: String) -> String:
