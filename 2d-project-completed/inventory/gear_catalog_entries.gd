@@ -9,7 +9,7 @@ static func append_all(target: Array, create_gear: Callable) -> void:
 	_append(target, create_gear, "leather_tunic", "Leather Tunic", "가죽 튜닉", EquipSlots.ARMOR, {"armor_min": 12, "armor_max": 12})
 	_append(target, create_gear, "traveler_boots", "Traveler Boots", "여행자 부츠", EquipSlots.BOOTS, {"move_speed_mult": 1.05})
 	_append(target, create_gear, "buckler", "Buckler", "버클러", EquipSlots.OFFHAND, {"block_min": 1, "block_max": 1})
-	_append(target, create_gear, "slime_orb", "Slime Orb", "슬라임 오브", EquipSlots.OFFHAND, {"power": 10, "grant_orbital": "sticky_orbital"}, "Grants a Sticky Orbital that deals 65 to 135 Striking Damage and inflicts Sticky Goo.", "끈적 궤도를 부여합니다. 타격 65~135 피해, 끈적이(Goo) 부여.", 1)
+	_append(target, create_gear, "slime_orb", "Slime Orb", "슬라임 오브", EquipSlots.OFFHAND, {"power": 10, "grant_orbital": "sticky_orbital", "grant_on_hit": "sticky_goo"}, "Grants a Sticky Orbital that deals 65 to 135 Striking Damage and inflicts Sticky Goo.", "끈적 궤도를 부여합니다. 타격 65~135 피해, 끈적이(Goo) 부여.", 1)
 	_append(target, create_gear, "round_shield", "Round Shield", "라운드 실드", EquipSlots.OFFHAND, {"block_min": 1, "block_max": 1, "armor_min": 1, "armor_max": 1})
 	_append(target, create_gear, "quiver", "Quiver", "화살통", EquipSlots.OFFHAND, {"weapon_damage_mult": 1.2})
 	_append(target, create_gear, "pyromancy_orb", "Pyromancy Orb", "화염술 오브", EquipSlots.OFFHAND, {"power": 10, "grant_orbital": "pyromancy_orbital"}, "Grants a Pyromancy Orbital that deals 80 to 120 Fire Damage and inflicts Burn.", "화염술 궤도를 부여합니다. 화염 80~120 피해, 화상 부여.", 1)

@@ -97,6 +97,17 @@ static func append_all(target: Array, create_passive: Callable) -> void:
 		{},
 		"피해 소폭 증가"
 	)
+	_append(
+		target,
+		create_passive,
+		"slime_touch",
+		"Slime Touch",
+		"슬라임 손길",
+		1,
+		[{}],
+		{"1": {"grant_on_hit": "sticky_goo"}},
+		"적중 시 끈적이 부여"
+	)
 	# Lv3 누적(1.05³≈1.16) 이상 — 진화 하향 방지
 	_append(
 		target,

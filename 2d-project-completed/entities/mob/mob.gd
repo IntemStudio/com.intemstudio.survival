@@ -721,6 +721,11 @@ func apply_status(status_id: StringName, weapon: WeaponData = null) -> void:
 		FloatingStatusEffectText.spawn_status_applied(global_position, active.data)
 
 
+# 활성 상태이상 틱 프로필을 최신 카탈로그 값으로 다시 계산합니다.
+func refresh_status_effect_profiles(status_id: StringName = &"", reset_duration: bool = false) -> void:
+	_status_effects.refresh_active_status_profiles(status_id, reset_duration)
+
+
 func apply_status_tick_damage(
 	amount: int,
 	damage_element: StringName,
@@ -778,6 +783,8 @@ func apply_weapon_damage(amount: int, weapon: WeaponData) -> void:
 	if weapon.applies_nettles:
 		apply_nettles(weapon.nettles_duration)
 	_apply_weapon_status_effects(weapon)
+	if is_instance_valid(player) and player.has_method(&"apply_loadout_on_hit"):
+		player.call(&"apply_loadout_on_hit", self, weapon)
 
 	if health <= 0:
 		_request_die()

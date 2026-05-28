@@ -1,6 +1,6 @@
 # Architecture — Weapons (무기)
 
-**진입:** [`AGENTS.md`](../../AGENTS.md) · 공격 시스템 목표: [`Architecture_AttackSystem.md`](Architecture_AttackSystem.md) · 플레이 규칙: [`Wiki/Weapons.md`](../Wiki/Weapons.md), [`Wiki/Projectiles.md`](../Wiki/Projectiles.md), [`Wiki/Combat.md`](../Wiki/Combat.md) · 발사체 구조: [`Architecture_Projectiles.md`](Architecture_Projectiles.md) · 버프 구조: [`Architecture_Buffs.md`](Architecture_Buffs.md) · 인벤 연동: [`Architecture_Inventory.md`](Architecture_Inventory.md)
+**진입:** [`AGENTS.md`](../../AGENTS.md) · 공격 시스템 목표: [`Architecture_AttackSystem.md`](Architecture_AttackSystem.md) · 플레이 규칙: [`Wiki/Weapons.md`](../Wiki/Weapons.md), [`Wiki/Projectiles.md`](../Wiki/Projectiles.md), [`Wiki/Combat.md`](../Wiki/Combat.md) · 발사체 구조: [`Architecture_Projectiles.md`](Architecture_Projectiles.md) · 상태이상 구조: [`Architecture_StatusEffects.md`](Architecture_StatusEffects.md) · 버프 구조: [`Architecture_Buffs.md`](Architecture_Buffs.md) · 인벤 연동: [`Architecture_Inventory.md`](Architecture_Inventory.md)
 
 무기 시스템의 데이터, 장착, 발사 트리거, 피해 기록 흐름을 정리한다. `Gun.shoot()` 이후의 발사체 이동·충돌·풀링 세부 구조는 `Architecture_Projectiles.md`에서 관리한다. 무기별 데모 선정, 성장 기획, 아이콘 정책은 `Docs/Wiki/Weapons.md`와 `BACKLOG.md`에서 관리한다.
 
@@ -22,7 +22,7 @@
 | 조준·발사 | `Gun`이 최근접 몹 조준, 자동 공격/수동 공격, burst, delivery 분기 처리 |
 | 피해 전달 | 발사체·장판·궤도 스크립트가 weapon 귀속 피해를 적용하도록 연결 |
 | 피해 통계 | `WeaponDamageTracker`가 `WeaponData.get_unique_key()` 기준으로 누적 피해 표시 |
-| 상태이상 부여 | `WeaponData.status_effects`를 `Mob`의 `StatusEffectController`에 전달 |
+| 상태이상 부여 | `WeaponData.status_effects`와 `grant_on_hit` 태그를 `Mob`의 `StatusEffectController`에 전달 |
 | 장비 스탯 연동 | 장착된 loadout 장비의 피해·APS 배율만 `Player` 계산 경로에서 반영 |
 | 무기 조건부 버프 | wave start 같은 런 이벤트에서 `BuffTriggerRouter`가 weapon id를 보고 런타임 버프 부여 |
 
@@ -59,6 +59,7 @@
 | `status/status_effect_catalog.gd` | 무기가 부여하는 상태이상 id의 런타임 정의 |
 | `game/weapon_damage_tracker.gd` | weapon key별 누적 피해와 표시 행 생성 |
 | `game/test_arena_weapon_snapshot.gd` | F6 무기 튜닝 세션·`user://` 저장 (`Architecture_TestArena.md`) |
+| `game/test_arena_status_effect_snapshot.gd` | F6 상태이상 튜닝 세션·`user://` 저장, F6 시작 시 저장값 자동 반영 (`Architecture_TestArena.md`) |
 | `buff/buff_trigger_router.gd` | `rapier`의 wave start `en_garde` 같은 무기 조건부 버프 연결 |
 
 관계는 아래처럼 유지한다.
@@ -90,7 +91,7 @@ WeaponSelectMenu
 9. `Gun.shoot()`는 `weapon_type`과 delivery helper에 따라 탄환, 근접 발사체, 마법 탄, 투척체, 장판을 스폰한다. 카탈로그 Melee는 대부분 판정상 발사체지만 `melee_projectile.tscn`의 검기형 폴리곤 비주얼로 총알과 구분한다. 근접 movement는 직선 관통(`StraightPierce`), 직선 왕복(`Return`), 타원형 곡선 왕복(`CurvedReturn`), 감속 직선(`Decelerate`), 궤도(`Orbit`)로 나뉜다.
 10. 각 피해 오브젝트는 `LoadoutStatApply.roll_combat_damage()` 또는 플레이어의 `roll_weapon_damage()`를 통해 장착 장비 배율을 반영한 피해를 굴린다.
 11. 플레이어 발사체가 환경 레이어 장애물에 닿으면 막힌 것으로 처리한다. 일반/관통/투척/부메랑은 풀로 반환하고, 폭발형 탄·마법과 연금 투척체는 충돌 지점에서 폭발 또는 장판을 만든 뒤 반환한다.
-12. 몹에 닿으면 `Mob.apply_weapon_damage()`가 상태이상 피해 증폭, HP 감소, 피격 연출, `status_effects` 적용, 피해 통계 등록을 처리한다.
+12. 몹에 닿으면 `Mob.apply_weapon_damage()`가 상태이상 피해 증폭, HP 감소, 피격 연출, `status_effects` 적용, `grant_on_hit` 상태이상 적용, 피해 통계 등록을 처리한다.
 13. 상태이상 DoT는 `Mob.apply_status_tick_damage()`로 들어가 source weapon 기준 피해 통계를 유지한다.
 14. 게임오버·일시정지 UI는 `WeaponDamageTracker.build_display_rows()`로 활성화되어 피해를 낸 무기와 누적 피해를 표시한다.
 
@@ -130,7 +131,7 @@ WeaponSelectMenu
 | 새 projectile movement 추가 | 이동 스크립트, 사거리 종료, 관통/왕복/유도 규칙, 환경 충돌, F6 movement·`get_field_defs` |
 | F6 무기 튜닝 필드 | `TestArenaWeaponSnapshot` core/타입 def, `build_test_arena_info_bbcode` omit |
 | 피해 공식 변경 | `Player.roll_weapon_damage()`, `LoadoutStatApply`, 독/장판/궤도 피해가 장착 장비만 같은 규칙으로 쓰는지 |
-| 상태이상 변경 | `WeaponData.status_effects`, `StatusEffectCatalog`, `Mob.apply_weapon_damage()`, DoT 피해 통계 |
+| 상태이상 변경 | `WeaponData.status_effects`, `StatusEffectCatalog`, `Mob.apply_weapon_damage()`, DoT 피해 통계, F6 상태이상 탭(`TestArenaStatusEffectSnapshot`) 저장/자동 적용·poison 잠금 정책 |
 | 자동 공격 변경 | `Gun.refresh_auto_attack()`, `_has_enemy_in_attack_range()`, 궤도 무기, HUD 라벨, 수동 `attack`과 timer·버스트 충돌, 사거리 밖 무발사 |
 | 무기 조건부 버프 변경 | `WeaponData.effect` 표시 문구, `BuffTriggerRouter`, `BuffCatalog`, APS 타이머 갱신 |
 | 무기 획득 변경 | 인벤 자동 배치, 활성/비활성 weapon 슬롯, 가방 가득 참, `Player.add_weapon()` 직접 호출 제거 |

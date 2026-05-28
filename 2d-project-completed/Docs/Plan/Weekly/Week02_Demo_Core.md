@@ -34,6 +34,7 @@
 - `special_a`/`special_b` F6·F5 검증 및 마무리.
 - 게임오버·클리어 통계 UI.
 - 데모 무기 풀 F6 검증.
+- F6 보조손(offhand) GUI·스냅샷 튜닝 1차(막기/방어/무기피해/파워).
 - 골드 상자 가격·확률·실패 UX 1차 튜닝.
 - 아레나 인벤토리 판단(버리기·스왑·가방 가득 참) F5 체감 확인.
 - 공격 시스템 1차 인프라 유지·확장(범위 내).
@@ -55,7 +56,7 @@
 | ID | 작업 | 상태 | 완료 기준 | 관련 |
 |----|------|------|-----------|------|
 | W02-01 | 무기 성장 대체안 | Carryover | D01: 신규 무기+풀 축소 — 강화 구현은 EA. 풀·툴팁은 W02-02 | `Weapons.md` |
-| W02-02 | 데모 무기 풀 1차 검증 | Todo | 10~15종 F6 movement·피해·자동 공격 | `Weapons.md`, `Projectiles.md` |
+| W02-02 | 데모 무기 풀 1차 검증 | In progress | 10~15종 F6 movement·피해·자동 공격 + 보조손 튜닝 체감 확인 | `Weapons.md`, `Projectiles.md`, `Architecture_TestArena.md` |
 | W02-03 | 특수몹 고유 체감 | In progress | `special_a` burst, `special_b` 돌진·자폭 구현 — **F6 수동 QA 남음** | `Mobs.md`, `Architecture_AttackSystem.md` |
 | W02-04 | 게임오버·클리어 통계 | Done | `RunStatsLabel` — 생존/웨이브·시간·Lv·처치 | `GameRules.md`, `game.gd` |
 | W02-05 | 기본 사운드 연결 지점 | Todo | BGM·피격·레벨업·보스·클리어 후보 위치 기록 | `Plan_Release_Roadmap.md` |
@@ -97,6 +98,7 @@
 | F5 10분 / 아레나 1~10 | 로비→무기→텔레포터→웨이브→보상→클리어/패배 | 미확인 |
 | F5 인벤·상자 | 무기 3택1→상자→가방/장착→다음 텔레포터 | 미확인 |
 | F6 무기 | 데모 후보 발사·피해·movement·자동 공격 | 미확인 |
+| F6 보조손 튜닝 | offhand Equip + `block/armor/weapon_damage_mult/power` 적용·저장·초기화·재실행 유지 | 미확인 |
 | F6 특수몹 | Special A burst, Special B 돌진·자폭 | 미확인 |
 | 통계 UI | 패배/클리어 2개+ 지표 | 미확인 |
 | 문서 | GDD·Week01 Result·Current 정합 | 진행 중 |

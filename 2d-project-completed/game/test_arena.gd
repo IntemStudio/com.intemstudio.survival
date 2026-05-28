@@ -7,6 +7,8 @@ const MeleeWeaponCatalog = preload("res://weapons/catalogs/melee_weapon_catalog.
 const MagicWeaponCatalog = preload("res://weapons/catalogs/magic_weapon_catalog.gd")
 const GearCatalog = preload("res://inventory/gear_catalog.gd")
 const GearStatDisplay = preload("res://inventory/gear_stat_display.gd")
+const TestArenaTuningUiUtil = preload("res://game/test_arena_tuning_ui.gd")
+const TestArenaStatusEffectSnapshot = preload("res://game/test_arena_status_effect_snapshot.gd")
 const EQUIPMENT_DROP_SCENE := preload("res://effects/equipment_drop/equipment_drop.tscn")
 
 const START_WEAPON := preload("res://weapons/data/revolver.tres")
@@ -15,6 +17,16 @@ const TUNING_SPIN_BUTTON_SIZE := Vector2(52, 52)
 const TUNING_SPIN_MIN_HEIGHT := 48
 const TUNING_SPIN_BUTTON_FONT_SIZE := 24
 const TUNING_SPIN_VALUE_FONT_SIZE := 17
+const TEST_TAB_INDEX_MOB := 0
+const TEST_TAB_INDEX_WEAPON := 1
+const TEST_TAB_INDEX_STATUS_EFFECT := 2
+const POISON_STATUS_ID := &"poison"
+const STATUS_POISON_LOCKED_PROPERTIES := {
+	"duration_seconds": true,
+	"tick_damage_min": true,
+	"tick_damage_max": true,
+	"tick_interval": true,
+}
 const DUMMY_BASE_MAX_HEALTH := 500
 const NON_DUMMY_HP_VS_DUMMY_MULTIPLIER := 10.0
 const MOB_TUNING_COLOR_DEFAULT := Color(0.78, 0.78, 0.82, 1.0)
@@ -91,15 +103,18 @@ var _weapon_damage := WeaponDamageTracker.new()
 var _weapon_snapshots := TestArenaWeaponSnapshot.new()
 var _gear_snapshots := TestArenaGearSnapshot.new()
 var _mob_snapshots := TestArenaMobSnapshot.new()
+var _status_effect_snapshots := TestArenaStatusEffectSnapshot.new()
 var _equipped_weapon_id := ""
 var _equipped_offhand_id := ""
 var _tuning_spin_rows: Array[Dictionary] = []
 var _offhand_tuning_spin_rows: Array[Dictionary] = []
+var _status_effect_tuning_spin_rows: Array[Dictionary] = []
 var _mob_combat_field_defs: Array = []
 var _mob_death_burst_field_defs: Array = []
 var _mob_charge_field_defs: Array = []
 var _tuning_ui_refreshing := false
 var _offhand_tuning_ui_refreshing := false
+var _status_effect_tuning_ui_refreshing := false
 var _mob_tuning_ui_refreshing := false
 
 var _pause_menu: CanvasLayer
@@ -123,8 +138,11 @@ func _ready() -> void:
 	_weapon_snapshots.load_from_disk()
 	_gear_snapshots.load_from_disk()
 	_mob_snapshots.load_from_disk()
+	_status_effect_snapshots.load_from_disk()
 	_build_weapon_options()
 	_build_offhand_options()
+	_status_effect_snapshots.register_all_catalog_statuses()
+	_status_effect_snapshots.apply_saved_to_catalog()
 	_register_mob_scenes()
 	_setup_test_panels_tab()
 	_setup_mob_type_option()
@@ -132,6 +150,7 @@ func _ready() -> void:
 	_setup_offhand_picker()
 	_setup_offhand_section_visibility()
 	_setup_offhand_gear_tuning_ui()
+	_setup_status_effect_tuning_ui()
 	call_deferred("_wire_gear_snapshot_to_registry")
 	_setup_projectile_tuning_ui()
 	_setup_mob_combat_tuning_ui()
@@ -157,8 +176,13 @@ func _ready() -> void:
 	%ProjectileMovementOption.item_selected.connect(_on_projectile_movement_selected)
 	%WeaponTypeFilter.item_selected.connect(_on_weapon_filters_changed)
 	%WeaponRarityFilter.item_selected.connect(_on_weapon_filters_changed)
+	%StatusEffectOption.item_selected.connect(_on_status_effect_option_selected)
+	%ApplyStatusEffectTuningButton.pressed.connect(_on_apply_status_effect_tuning_pressed)
+	%SaveStatusEffectTuningButton.pressed.connect(_on_save_status_effect_tuning_pressed)
+	%ResetStatusEffectTuningButton.pressed.connect(_on_reset_status_effect_tuning_pressed)
 	%Player.health_depleted.connect(_on_player_health_depleted)
 	%MobRespawnCheck.toggled.connect(_on_mob_respawn_toggled)
+	%EditOffhandStatusButton.pressed.connect(_on_edit_offhand_status_button_pressed)
 	_on_mob_respawn_toggled(%MobRespawnCheck.button_pressed)
 
 
@@ -365,8 +389,9 @@ func _sort_weapons_for_picker(a: WeaponData, b: WeaponData) -> bool:
 # 몹·무기 패널 탭 제목을 한국어로 맞추고, 고정 너비 탭 바를 갱신합니다.
 func _setup_test_panels_tab() -> void:
 	var tabs: TabContainer = %TestPanelsTab
-	tabs.set_tab_title(0, "몹")
-	tabs.set_tab_title(1, "무기")
+	tabs.set_tab_title(TEST_TAB_INDEX_MOB, "몹")
+	tabs.set_tab_title(TEST_TAB_INDEX_WEAPON, "무기")
+	tabs.set_tab_title(TEST_TAB_INDEX_STATUS_EFFECT, "상태이상")
 	var tab_bar: VBoxContainer = %TabBarHost
 	if tab_bar.has_method("rebuild_tabs"):
 		tab_bar.rebuild_tabs()
@@ -424,13 +449,18 @@ func _setup_offhand_section_visibility() -> void:
 	%OffhandSectionLabel.visible = enabled
 	%OffhandRow.visible = enabled
 	%OffhandDescLabel.visible = enabled
+	%OffhandStatusRow.visible = enabled
+	%OffhandStatusOption.visible = enabled
 	%OffhandTuningLabel.visible = enabled
 	%OffhandTuningStatusLabel.visible = enabled
 	%OffhandTuningFields.visible = enabled
 	%OffhandTuningButtons.visible = enabled
+	%StatusEffectNavLabel.visible = enabled
+	%StatusEffectOption.visible = enabled
 	if not enabled:
 		return
 	_update_offhand_description()
+	_refresh_offhand_status_hint()
 	_refresh_offhand_tuning_ui()
 
 
@@ -535,6 +565,7 @@ func _on_equip_offhand_button_pressed() -> void:
 
 func _on_offhand_option_selected(_index: int) -> void:
 	_update_offhand_description()
+	_refresh_offhand_status_hint()
 	_refresh_offhand_tuning_ui()
 
 
@@ -712,70 +743,29 @@ func _add_projectile_tuning_row(
 	field_def: Dictionary,
 	tuned: WeaponData
 ) -> void:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-	%ProjectileTuningFields.add_child(row)
-
-	var label := Label.new()
-	label.text = str(field_def.get("label", field_def["property"]))
-	label.custom_minimum_size = Vector2(120, 0)
-	label.add_theme_font_size_override("font_size", 13)
-	row.add_child(label)
-
 	var property: String = field_def["property"]
-	var value_row := HBoxContainer.new()
-	value_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	value_row.add_theme_constant_override("separation", 6)
-	row.add_child(value_row)
-
-	var dec_button := _create_tuning_step_button("−")
-	value_row.add_child(dec_button)
-
-	var spin := SpinBox.new()
-	spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	spin.custom_minimum_size.y = TUNING_SPIN_MIN_HEIGHT
-	spin.add_theme_constant_override("updown_width", 0)
-	spin.min_value = float(field_def.get("min", 0.0))
-	spin.max_value = float(field_def.get("max", 9999.0))
-	spin.step = float(field_def.get("step", 1.0))
-	spin.allow_greater = false
-	spin.allow_lesser = false
-	spin.rounded = spin.step >= 1.0
+	var initial_value := 0.0
 	if field_def.get("bool", false):
-		spin.value = 1.0 if bool(tuned.get(property)) else 0.0
+		initial_value = 1.0 if bool(tuned.get(property)) else 0.0
 	else:
-		spin.value = _weapon_snapshots.get_tuning_spin_display_value(tuned, property)
-	spin.value_changed.connect(_on_projectile_tuning_value_changed.bind(catalog_weapon, property))
-	value_row.add_child(spin)
-	spin.tree_entered.connect(
-		_on_projectile_tuning_spin_tree_entered.bind(spin, catalog_weapon, property),
-		CONNECT_ONE_SHOT
+		initial_value = _weapon_snapshots.get_tuning_spin_display_value(tuned, property)
+	var row := TestArenaTuningUiUtil.create_tuning_row(
+		%ProjectileTuningFields,
+		field_def,
+		initial_value,
+		_on_projectile_tuning_value_changed.bind(catalog_weapon, property),
+		_on_projectile_tuning_spin_tree_entered.bind(catalog_weapon, property),
+		func(spin: SpinBox, direction: int) -> void:
+			_on_tuning_spin_step_pressed(spin, catalog_weapon, property, direction),
+		TUNING_SPIN_BUTTON_SIZE,
+		TUNING_SPIN_BUTTON_FONT_SIZE,
+		TUNING_SPIN_MIN_HEIGHT
 	)
-
-	var inc_button := _create_tuning_step_button("+")
-	value_row.add_child(inc_button)
-
-	dec_button.pressed.connect(_on_tuning_spin_step_pressed.bind(spin, catalog_weapon, property, -1))
-	inc_button.pressed.connect(_on_tuning_spin_step_pressed.bind(spin, catalog_weapon, property, 1))
-
-	_tuning_spin_rows.append({"property": property, "spin": spin, "row": row})
-
-
-func _create_tuning_step_button(text: String) -> Button:
-	var button := Button.new()
-	button.text = text
-	button.custom_minimum_size = TUNING_SPIN_BUTTON_SIZE
-	button.add_theme_font_size_override("font_size", TUNING_SPIN_BUTTON_FONT_SIZE)
-	return button
+	_tuning_spin_rows.append(row)
 
 
 func _on_tuning_spin_tree_entered(spin: SpinBox) -> void:
-	var line_edit := spin.get_line_edit()
-	if line_edit == null:
-		return
-	line_edit.custom_minimum_size.y = TUNING_SPIN_MIN_HEIGHT
-	line_edit.add_theme_font_size_override("font_size", TUNING_SPIN_VALUE_FONT_SIZE)
-	line_edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	TestArenaTuningUiUtil.style_spin_line_edit(spin, TUNING_SPIN_MIN_HEIGHT, TUNING_SPIN_VALUE_FONT_SIZE)
 
 
 func _on_projectile_tuning_spin_tree_entered(
@@ -793,29 +783,12 @@ func _on_projectile_tuning_spin_tree_entered(
 
 # SpinBox LineEdit 직접 입력을 확정합니다(Godot 4 apply).
 func _commit_spin_box_pending(spin: SpinBox) -> void:
-	if spin == null or not is_instance_valid(spin):
-		return
-	spin.apply()
+	TestArenaTuningUiUtil.commit_spin_box_pending(spin)
 
 
 # LineEdit에서 Enter·포커스 이탈 시 값을 세션에 반영합니다.
 func _wire_spin_box_text_commit(spin: SpinBox, on_committed: Callable) -> void:
-	var line_edit := spin.get_line_edit()
-	if line_edit == null:
-		return
-	if line_edit.has_meta(&"tuning_commit_wired"):
-		return
-	line_edit.set_meta(&"tuning_commit_wired", true)
-	line_edit.text_submitted.connect(
-		func(_text: String) -> void:
-			_commit_spin_box_pending(spin)
-			on_committed.call(spin.value)
-	)
-	line_edit.focus_exited.connect(
-		func() -> void:
-			_commit_spin_box_pending(spin)
-			on_committed.call(spin.value)
-	)
+	TestArenaTuningUiUtil.wire_spin_box_text_commit(spin, on_committed)
 
 
 func _on_tuning_spin_step_pressed(
@@ -1034,50 +1007,21 @@ func _add_offhand_tuning_row(
 	field_def: Dictionary,
 	tuned_modifiers: Dictionary
 ) -> void:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-	%OffhandTuningFields.add_child(row)
-
-	var label := Label.new()
-	label.text = str(field_def.get("label", field_def["property"]))
-	label.custom_minimum_size = Vector2(120, 0)
-	label.add_theme_font_size_override("font_size", 13)
-	row.add_child(label)
-
 	var property: String = field_def["property"]
-	var value_row := HBoxContainer.new()
-	value_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	value_row.add_theme_constant_override("separation", 6)
-	row.add_child(value_row)
-
-	var dec_button := _create_tuning_step_button("−")
-	value_row.add_child(dec_button)
-
-	var spin := SpinBox.new()
-	spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	spin.custom_minimum_size.y = TUNING_SPIN_MIN_HEIGHT
-	spin.add_theme_constant_override("updown_width", 0)
-	spin.min_value = float(field_def.get("min", 0.0))
-	spin.max_value = float(field_def.get("max", 9999.0))
-	spin.step = float(field_def.get("step", 1.0))
-	spin.allow_greater = false
-	spin.allow_lesser = false
-	spin.rounded = bool(field_def.get("integer", false))
-	spin.value = _gear_snapshots.get_tuning_spin_display_value(tuned_modifiers, property)
-	spin.value_changed.connect(_on_offhand_tuning_value_changed.bind(catalog_gear, property))
-	value_row.add_child(spin)
-	spin.tree_entered.connect(
-		_on_offhand_tuning_spin_tree_entered.bind(spin, catalog_gear, property),
-		CONNECT_ONE_SHOT
+	var initial_value := _gear_snapshots.get_tuning_spin_display_value(tuned_modifiers, property)
+	var row := TestArenaTuningUiUtil.create_tuning_row(
+		%OffhandTuningFields,
+		field_def,
+		initial_value,
+		_on_offhand_tuning_value_changed.bind(catalog_gear, property),
+		_on_offhand_tuning_spin_tree_entered.bind(catalog_gear, property),
+		func(spin: SpinBox, direction: int) -> void:
+			_on_offhand_tuning_spin_step_pressed(spin, catalog_gear, property, direction),
+		TUNING_SPIN_BUTTON_SIZE,
+		TUNING_SPIN_BUTTON_FONT_SIZE,
+		TUNING_SPIN_MIN_HEIGHT
 	)
-
-	var inc_button := _create_tuning_step_button("+")
-	value_row.add_child(inc_button)
-
-	dec_button.pressed.connect(_on_offhand_tuning_spin_step_pressed.bind(spin, catalog_gear, property, -1))
-	inc_button.pressed.connect(_on_offhand_tuning_spin_step_pressed.bind(spin, catalog_gear, property, 1))
-
-	_offhand_tuning_spin_rows.append({"property": property, "spin": spin, "row": row})
+	_offhand_tuning_spin_rows.append(row)
 
 
 func _on_offhand_tuning_spin_tree_entered(
@@ -1159,6 +1103,7 @@ func _store_offhand_tuning_value(
 	new_value: float
 ) -> void:
 	var gear_id := catalog_gear.get_unique_key()
+	var tuned_mods := _gear_snapshots.build_tuned_stat_modifiers(gear_id)
 	var stored: Variant = new_value
 	for field_def in _gear_snapshots.get_field_defs(catalog_gear):
 		if field_def["property"] != property:
@@ -1166,6 +1111,20 @@ func _store_offhand_tuning_value(
 		if field_def.get("integer", false):
 			stored = int(roundf(new_value))
 		break
+
+	if property == "block_min":
+		var block_max := int(tuned_mods.get("block_max", int(stored)))
+		stored = mini(int(stored), block_max)
+	elif property == "block_max":
+		var block_min := int(tuned_mods.get("block_min", int(stored)))
+		stored = maxi(int(stored), block_min)
+	elif property == "armor_min":
+		var armor_max := int(tuned_mods.get("armor_max", int(stored)))
+		stored = mini(int(stored), armor_max)
+	elif property == "armor_max":
+		var armor_min := int(tuned_mods.get("armor_min", int(stored)))
+		stored = maxi(int(stored), armor_min)
+
 	_gear_snapshots.set_session_value(gear_id, property, stored)
 
 
@@ -1810,6 +1769,345 @@ func _update_offhand_description() -> void:
 		%OffhandDescLabel.text = GearStatDisplay.build_gear_tooltip(tuned, slot_label)
 	else:
 		%OffhandDescLabel.text = "보조손 목록이 비어 있습니다."
+
+
+# 보조손 grant_on_hit 상태이상 정보를 장비 탭에 읽기 전용으로 표시합니다.
+func _refresh_offhand_status_hint() -> void:
+	if not %OffhandStatusRow.visible:
+		return
+	var status_ids := _get_selected_offhand_status_ids()
+	if status_ids.is_empty():
+		%OffhandStatusHintLabel.text = "적중 상태이상: 없음"
+		%OffhandStatusOption.clear()
+		%EditOffhandStatusButton.disabled = true
+		var empty_status_ids: Array[StringName] = []
+		_refresh_status_tab_options(empty_status_ids, &"")
+		return
+	%OffhandStatusHintLabel.text = "적중 상태이상:"
+	%OffhandStatusOption.clear()
+	for status_id in status_ids:
+		%OffhandStatusOption.add_item(StatusEffectCatalog.get_display_name(status_id))
+		%OffhandStatusOption.set_item_metadata(%OffhandStatusOption.get_item_count() - 1, status_id)
+	%EditOffhandStatusButton.disabled = false
+	var selected_id := status_ids[0]
+	if %StatusEffectOption.get_item_count() > 0 and %StatusEffectOption.selected >= 0:
+		var current_id := StringName(%StatusEffectOption.get_item_metadata(%StatusEffectOption.selected))
+		if current_id != &"":
+			selected_id = current_id
+	var selected_index := 0
+	for i in status_ids.size():
+		if status_ids[i] == selected_id:
+			selected_index = i
+			break
+	%OffhandStatusOption.select(selected_index)
+	_refresh_status_tab_options(status_ids, selected_id)
+
+
+# 장비 탭의 상태이상 수정 버튼으로 상태이상 탭을 열고 대상을 자동 선택합니다.
+func _on_edit_offhand_status_button_pressed() -> void:
+	var status_ids := _get_selected_offhand_status_ids()
+	if status_ids.is_empty():
+		_update_status("수정할 상태이상이 없습니다.")
+		return
+	var selected_id := status_ids[0]
+	if %OffhandStatusOption.get_item_count() > 0 and %OffhandStatusOption.selected >= 0:
+		selected_id = StringName(%OffhandStatusOption.get_item_metadata(%OffhandStatusOption.selected))
+	_open_status_tab_with_status(selected_id)
+
+
+func _open_status_tab_with_status(status_id: StringName) -> void:
+	var status_ids := _get_selected_offhand_status_ids()
+	_refresh_status_tab_options(status_ids, status_id)
+	var tabs: TabContainer = %TestPanelsTab
+	tabs.current_tab = TEST_TAB_INDEX_STATUS_EFFECT
+	var selected_label := StatusEffectCatalog.get_display_name(status_id)
+	%StatusEffectNavLabel.text = "선택됨: %s" % selected_label
+
+
+func _refresh_status_tab_options(status_ids: Array[StringName], preferred_status_id: StringName) -> void:
+	var option: OptionButton = %StatusEffectOption
+	_status_effect_tuning_ui_refreshing = true
+	option.clear()
+	if status_ids.is_empty():
+		%StatusEffectNavLabel.text = "장비 탭에서 상태이상 수정을 선택하세요."
+		%StatusEffectRuleHintLabel.text = ""
+		_status_effect_tuning_ui_refreshing = false
+		_refresh_status_effect_tuning_ui()
+		return
+	var selected_index := 0
+	for i in status_ids.size():
+		var status_id := status_ids[i]
+		option.add_item(StatusEffectCatalog.get_display_name(status_id))
+		option.set_item_metadata(i, status_id)
+		if preferred_status_id != &"" and status_id == preferred_status_id:
+			selected_index = i
+	option.select(selected_index)
+	var selected_id := StringName(option.get_item_metadata(selected_index))
+	%StatusEffectNavLabel.text = "선택됨: %s" % StatusEffectCatalog.get_display_name(selected_id)
+	%StatusEffectRuleHintLabel.text = _build_status_rule_hint(selected_id)
+	_status_effect_tuning_ui_refreshing = false
+	_refresh_status_effect_tuning_ui()
+
+
+func _get_selected_offhand_status_ids() -> Array[StringName]:
+	var result: Array[StringName] = []
+	var gear := _get_selected_offhand()
+	if gear == null:
+		return result
+	var stats := GearStatMerge.normalize_modifiers(gear.stat_modifiers)
+	if not stats.has("grant_on_hit"):
+		return result
+	var raw_tags: Variant = stats["grant_on_hit"]
+	if raw_tags is Array:
+		for raw_tag in raw_tags:
+			var status_id := StringName(String(raw_tag).strip_edges())
+			if status_id == &"" or status_id in result:
+				continue
+			if not StatusEffectCatalog.has_status(status_id):
+				continue
+			result.append(status_id)
+		return result
+	var status_id := StringName(String(raw_tags).strip_edges())
+	if status_id != &"" and StatusEffectCatalog.has_status(status_id):
+		result.append(status_id)
+	return result
+
+
+func _setup_status_effect_tuning_ui() -> void:
+	_clear_status_effect_tuning_fields()
+	%ApplyStatusEffectTuningButton.disabled = true
+	%SaveStatusEffectTuningButton.disabled = true
+	%ResetStatusEffectTuningButton.disabled = true
+	%StatusEffectTuningStatusLabel.text = "장비 탭에서 상태이상을 선택하세요."
+
+
+func _clear_status_effect_tuning_fields() -> void:
+	for child in %StatusEffectTuningFields.get_children():
+		%StatusEffectTuningFields.remove_child(child)
+		child.free()
+	_status_effect_tuning_spin_rows.clear()
+
+
+func _on_status_effect_option_selected(_index: int) -> void:
+	if _status_effect_tuning_ui_refreshing:
+		return
+	_refresh_status_effect_tuning_ui()
+
+
+func _refresh_status_effect_tuning_ui() -> void:
+	_clear_status_effect_tuning_fields()
+	var status_id := _get_selected_status_effect_id()
+	if status_id == &"":
+		%StatusEffectTuningStatusLabel.text = "장비 탭에서 상태이상을 선택하세요."
+		%ApplyStatusEffectTuningButton.disabled = true
+		%SaveStatusEffectTuningButton.disabled = true
+		%ResetStatusEffectTuningButton.disabled = true
+		return
+	if not _status_effect_snapshots.supports_status_tuning(status_id):
+		%StatusEffectTuningStatusLabel.text = "이 상태이상은 튜닝을 지원하지 않습니다."
+		%ApplyStatusEffectTuningButton.disabled = true
+		%SaveStatusEffectTuningButton.disabled = true
+		%ResetStatusEffectTuningButton.disabled = true
+		return
+	var tuned := _status_effect_snapshots.build_tuned_values(status_id)
+	var field_defs := _status_effect_snapshots.get_field_defs(status_id)
+	_status_effect_tuning_ui_refreshing = true
+	for field_def in field_defs:
+		_add_status_effect_tuning_row(status_id, field_def, tuned)
+	_status_effect_tuning_ui_refreshing = false
+	_refresh_status_effect_tuning_status_only(status_id)
+	%ApplyStatusEffectTuningButton.disabled = false
+	%SaveStatusEffectTuningButton.disabled = false
+	%ResetStatusEffectTuningButton.disabled = false
+
+
+func _add_status_effect_tuning_row(status_id: StringName, field_def: Dictionary, tuned: Dictionary) -> void:
+	var property: String = field_def["property"]
+	var initial_value := float(tuned.get(property, 0.0))
+	var row := TestArenaTuningUiUtil.create_tuning_row(
+		%StatusEffectTuningFields,
+		field_def,
+		initial_value,
+		_on_status_effect_tuning_value_changed.bind(status_id, property),
+		_on_status_effect_tuning_spin_tree_entered.bind(status_id, property),
+		func(spin: SpinBox, direction: int) -> void:
+			_on_status_effect_tuning_step_pressed(spin, status_id, property, direction),
+		TUNING_SPIN_BUTTON_SIZE,
+		TUNING_SPIN_BUTTON_FONT_SIZE,
+		TUNING_SPIN_MIN_HEIGHT
+	)
+	_apply_status_effect_tuning_row_lock_state(status_id, property, row)
+	_status_effect_tuning_spin_rows.append(row)
+
+
+func _on_status_effect_tuning_spin_tree_entered(
+	spin: SpinBox,
+	status_id: StringName,
+	property: String
+) -> void:
+	_on_tuning_spin_tree_entered(spin)
+	_wire_spin_box_text_commit(
+		spin,
+		func(new_value: float) -> void:
+			_on_status_effect_tuning_value_changed(new_value, status_id, property)
+	)
+
+
+func _on_status_effect_tuning_step_pressed(
+	spin: SpinBox,
+	status_id: StringName,
+	property: String,
+	direction: int
+) -> void:
+	_on_status_effect_tuning_value_changed(
+		spin.value + spin.step * float(direction),
+		status_id,
+		property
+	)
+
+
+func _on_status_effect_tuning_value_changed(
+	new_value: float,
+	status_id: StringName,
+	property: String
+) -> void:
+	if _status_effect_tuning_ui_refreshing:
+		return
+	_store_status_effect_tuning_value(status_id, property, new_value)
+	_apply_status_effect_tuning_live(status_id)
+	_sync_status_effect_tuning_spin_display(status_id, property)
+	_refresh_status_effect_tuning_status_only(status_id)
+
+
+func _store_status_effect_tuning_value(status_id: StringName, property: String, new_value: float) -> void:
+	var stored: Variant = new_value
+	for field_def in _status_effect_snapshots.get_field_defs(status_id):
+		if field_def.get("property") != property:
+			continue
+		if bool(field_def.get("integer", false)):
+			stored = int(roundf(new_value))
+		break
+	_status_effect_snapshots.set_session_value(status_id, property, stored)
+
+
+func _apply_status_effect_tuning_live(status_id: StringName) -> void:
+	_status_effect_snapshots.apply_to_catalog(status_id)
+	if _active_mob != null and is_instance_valid(_active_mob):
+		# 수치 변경 시 활성 효과의 남은 지속시간은 유지합니다.
+		_active_mob.refresh_status_effect_profiles(status_id, false)
+
+
+func _sync_status_effect_tuning_spin_display(status_id: StringName, property: String) -> void:
+	var tuned := _status_effect_snapshots.build_tuned_values(status_id)
+	for row in _status_effect_tuning_spin_rows:
+		if row.get("property") != property:
+			continue
+		var spin: SpinBox = row.get("spin")
+		if not is_instance_valid(spin):
+			return
+		_status_effect_tuning_ui_refreshing = true
+		spin.value = float(tuned.get(property, 0.0))
+		_status_effect_tuning_ui_refreshing = false
+		return
+
+
+func _refresh_status_effect_tuning_status_only(status_id: StringName) -> void:
+	var status_parts: PackedStringArray = []
+	if _status_effect_snapshots.has_saved_snapshot(status_id):
+		status_parts.append("저장된 스냅샷 적용 중")
+	if not _status_effect_snapshots.get_session_overrides(status_id).is_empty():
+		status_parts.append("미저장 변경 있음")
+	%StatusEffectTuningStatusLabel.text = (
+		" · ".join(status_parts)
+		if not status_parts.is_empty()
+		else "카탈로그 기본값"
+	)
+	%StatusEffectRuleHintLabel.text = _build_status_rule_hint(status_id)
+
+
+func _commit_and_apply_status_effect_tuning_from_spins() -> void:
+	var status_id := _get_selected_status_effect_id()
+	if status_id == &"":
+		return
+	for row in _status_effect_tuning_spin_rows:
+		var spin: SpinBox = row.get("spin")
+		if not is_instance_valid(spin):
+			continue
+		_commit_spin_box_pending(spin)
+		var property: String = row.get("property", "")
+		if property.is_empty():
+			continue
+		_store_status_effect_tuning_value(status_id, property, spin.value)
+	_apply_status_effect_tuning_live(status_id)
+
+
+func _on_apply_status_effect_tuning_pressed() -> void:
+	var status_id := _get_selected_status_effect_id()
+	if status_id == &"":
+		return
+	_commit_and_apply_status_effect_tuning_from_spins()
+	_refresh_status_effect_tuning_ui()
+	_update_status("상태이상 튜닝 적용: %s" % StatusEffectCatalog.get_display_name(status_id))
+
+
+func _on_save_status_effect_tuning_pressed() -> void:
+	var status_id := _get_selected_status_effect_id()
+	if status_id == &"":
+		return
+	_commit_and_apply_status_effect_tuning_from_spins()
+	_status_effect_snapshots.save_status(status_id)
+	_refresh_status_effect_tuning_ui()
+	_update_status("상태이상 스냅샷 저장: %s" % StatusEffectCatalog.get_display_name(status_id))
+
+
+func _on_reset_status_effect_tuning_pressed() -> void:
+	var status_id := _get_selected_status_effect_id()
+	if status_id == &"":
+		return
+	_status_effect_snapshots.reset_status(status_id)
+	_refresh_status_effect_tuning_ui()
+	_update_status("상태이상 스냅샷 초기화: %s" % StatusEffectCatalog.get_display_name(status_id))
+
+
+func _get_selected_status_effect_id() -> StringName:
+	var option: OptionButton = %StatusEffectOption
+	if option.get_item_count() <= 0 or option.selected < 0:
+		return &""
+	return StringName(option.get_item_metadata(option.selected))
+
+
+func _apply_status_effect_tuning_row_lock_state(
+	status_id: StringName,
+	property: String,
+	row: Dictionary
+) -> void:
+	var spin: SpinBox = row.get("spin")
+	var dec_button: Button = row.get("dec_button")
+	var inc_button: Button = row.get("inc_button")
+	var is_locked := _is_status_effect_property_locked(status_id, property)
+	if is_instance_valid(spin):
+		spin.editable = not is_locked
+		var lock_color := Color(0.95, 0.82, 0.38, 1.0) if is_locked else Color.WHITE
+		spin.add_theme_color_override("font_color", lock_color)
+		var line_edit := spin.get_line_edit()
+		if line_edit:
+			line_edit.add_theme_color_override("font_color", lock_color)
+	if is_instance_valid(dec_button):
+		dec_button.disabled = is_locked
+	if is_instance_valid(inc_button):
+		inc_button.disabled = is_locked
+
+
+func _is_status_effect_property_locked(status_id: StringName, property: String) -> bool:
+	if status_id != POISON_STATUS_ID:
+		return false
+	return STATUS_POISON_LOCKED_PROPERTIES.has(property)
+
+
+func _build_status_rule_hint(status_id: StringName) -> String:
+	if status_id == POISON_STATUS_ID:
+		return "독은 무기 source 기준 지속/틱을 우선 사용합니다(잠금 필드 참고)."
+	return ""
 
 
 # 드롭다운에서 선택 중인 몹 스탯·역할을 표시합니다.

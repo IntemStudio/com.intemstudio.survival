@@ -76,6 +76,14 @@ func advance_tick_timer(delta: float) -> void:
 	tick_timer -= delta
 
 
+func refresh_from_data(reset_duration: bool = false) -> void:
+	if data == null:
+		return
+	_refresh_tick_profile()
+	if reset_duration:
+		refresh_duration()
+
+
 func _refresh_tick_profile() -> void:
 	if data == null:
 		return

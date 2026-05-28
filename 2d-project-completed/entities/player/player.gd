@@ -364,6 +364,12 @@ func magnetize_field_pickups() -> void:
 			coin.start_magnet(self)
 
 
+# grant_on_hit — 무기 적중 시 장비·런 패시브 상태이상 부여를 반영합니다.
+func apply_loadout_on_hit(target_mob: Node, source_weapon: WeaponData) -> void:
+	var grant_modifiers := _stats.get_combined_persistent_modifiers()
+	PassiveResolver.on_hit(self, _loadout_registry, grant_modifiers, target_mob, source_weapon)
+
+
 # 외부 트리거가 플레이어에게 런타임 버프를 부여합니다.
 func apply_buff(buff_data: BuffData, source_id: String = "", stacks: int = 1) -> void:
 	_buff_controller.add_buff(buff_data, source_id, stacks)

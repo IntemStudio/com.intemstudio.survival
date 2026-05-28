@@ -36,3 +36,22 @@ static func on_dash(
 	if player == null or grant_modifiers.is_empty():
 		return
 	LoadoutGrantPassive.apply_on_dash(player, registry, grant_modifiers)
+
+
+# grant_on_hit 태그를 무기 적중 시 반영합니다.
+static func on_hit(
+	player: Node,
+	registry: ItemRegistry,
+	grant_modifiers: Dictionary,
+	target_mob: Node,
+	source_weapon: WeaponData
+) -> void:
+	if player == null or grant_modifiers.is_empty() or target_mob == null:
+		return
+	LoadoutGrantPassive.apply_on_hit(
+		player,
+		registry,
+		grant_modifiers,
+		target_mob,
+		source_weapon
+	)

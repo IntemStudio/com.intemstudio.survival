@@ -1,7 +1,7 @@
 # Wiki - Weapons
 
 **역할:** 무기 타입, 획득 UI, 자동 공격, 성장 정책을 정리합니다.
-**관련:** [`Projectiles.md`](Projectiles.md), [`Combat.md`](Combat.md), [`Progression.md`](Progression.md), [`../Architecture/Architecture_Weapons.md`](../Architecture/Architecture_Weapons.md), [`../../BACKLOG.md`](../../BACKLOG.md)
+**관련:** [`Projectiles.md`](Projectiles.md), [`Combat.md`](Combat.md), [`Progression.md`](Progression.md), [`../Architecture/Architecture_Weapons.md`](../Architecture/Architecture_Weapons.md), [`../Architecture/Architecture_StatusEffects.md`](../Architecture/Architecture_StatusEffects.md), [`../../BACKLOG.md`](../../BACKLOG.md)
 
 ---
 

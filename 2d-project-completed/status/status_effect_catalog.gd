@@ -27,6 +27,15 @@ static func get_display_name(status_id: StringName) -> String:
 	return data.get_display_name_localized() if data != null else String(status_id)
 
 
+static func get_all_status_ids() -> Array[StringName]:
+	_ensure_cache()
+	var ids: Array[StringName] = []
+	for key in _cache.keys():
+		ids.append(key)
+	ids.sort_custom(func(a: StringName, b: StringName) -> bool: return String(a) < String(b))
+	return ids
+
+
 static func _ensure_cache() -> void:
 	if not _cache.is_empty():
 		return
@@ -107,6 +116,15 @@ static func _ensure_cache() -> void:
 		0.8,
 		8.0,
 		Color(0.45, 0.8, 1.0)
+	))
+	_register(_create_move_speed_mult(
+		&"sticky_goo",
+		"Sticky Goo",
+		"끈적이",
+		CATEGORY_COLD,
+		0.7,
+		4.0,
+		Color(0.62, 0.95, 0.62)
 	))
 	_register(_create_damage_taken_mult(
 		&"frostbite",

@@ -1,6 +1,6 @@
 # Architecture — Mobs (몹)
 
-**진입:** [`AGENTS.md`](../../AGENTS.md) · 플레이 규칙: [`Wiki/Mobs.md`](../Wiki/Mobs.md), [`Wiki/Combat.md`](../Wiki/Combat.md) · 스폰/밸런스: [`Architecture_GameLoop_Balance.md`](Architecture_GameLoop_Balance.md)
+**진입:** [`AGENTS.md`](../../AGENTS.md) · 플레이 규칙: [`Wiki/Mobs.md`](../Wiki/Mobs.md), [`Wiki/Combat.md`](../Wiki/Combat.md) · 스폰/밸런스: [`Architecture_GameLoop_Balance.md`](Architecture_GameLoop_Balance.md) · 상태이상: [`Architecture_StatusEffects.md`](Architecture_StatusEffects.md)
 
 몹 공통 스크립트, 변종 씬, 이동·공격, 상태이상, 사망·보상, 풀링 계약을 정리한다. 몹의 기획 역할, 데모 우선순위, 보스/특수몹 최종 패턴은 Wiki와 Backlog에서 관리한다.
 

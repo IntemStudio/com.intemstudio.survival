@@ -37,6 +37,11 @@
 - [x] 1주차·GDD·문서 정렬
 - [x] F6 테스트 아레나 GUI — 몹/무기 탭·튜닝 스냅샷·인벤 착용·탭 바·[`Architecture_TestArena.md`](../../Architecture/Architecture_TestArena.md)
 - [x] F6 무기 GUI — 피해·APS·사거리·발사체 생성 수 SpinBox (`TestArenaWeaponSnapshot` core)
+- [x] F6 무기 탭 보조손 섹션 — 활성 세트 offhand Equip + 설명 패널
+- [x] F6 보조손 튜닝 스냅샷 — `block/armor/weapon_damage_mult/power` SpinBox 적용·저장·초기화 (`TestArenaGearSnapshot`)
+- [x] F6 상태이상 탭 — 장비 탭 읽기 전용 진입(`grant_on_hit`) + 자동 선택 + 상태이상 튜닝 저장/재실행 자동 적용 (`TestArenaStatusEffectSnapshot`)
+- [x] F6 튜닝 UI 공통화 — `test_arena_tuning_ui.gd`로 무기/보조 SpinBox 행 생성·입력 commit 공통 처리
+- [x] F6 보조손 min/max 안전장치 — `block_min ≤ block_max`, `armor_min ≤ armor_max` 저장 clamp
 - [x] F6 특수 A — 사망 burst 지연 링 예고 (`death_burst_warning`, `AttackFactory`)
 - [x] F6 특수 B — 돌진 거리 GUI·`mob_charge_lane` 레인 예고 후 돌진 (`TestArenaMobSnapshot`)
 - [x] fast 몹 시인성 — `mob_speed_trail` (이동 꼬리·먼지, `mob_fast.tscn`) — [`Mobs.md`](../../Wiki/Mobs.md)
@@ -86,6 +91,7 @@
 | 6b | **Special B** F6 몹 탭 — **돌진 거리** 스핀 표시(사망 폭발 스핀 없음) | [ ] |
 | 7 | 무기 Equip → **인벤 활성 weapon**·튜닝 즉시 반영 | [ ] |
 | 8 | 무기 **피해·APS·사거리·발사체 수** 스핀 → 전투·설명 omit 반영 | [ ] |
+| 8b | 보조손 Equip + `block/armor/weapon_damage_mult/power` 스핀 **적용/저장/초기화** 및 재실행 유지 | [ ] |
 | 9 | 몹·무기 튜닝 **적용/저장**(SpinBox 직접 입력 포함)·스폰 즉시 반영·상태 색상 | [ ] |
 | 10 | **fast** 스폰 후 이동 시 하늘색 꼬리·먼지, 정지·풀 반환 시 즉시 소거 | [ ] |
 

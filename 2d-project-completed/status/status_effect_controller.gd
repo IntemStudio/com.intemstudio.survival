@@ -86,6 +86,15 @@ func has_status(status_id: StringName) -> bool:
 	return false
 
 
+func refresh_active_status_profiles(status_id: StringName = &"", reset_duration: bool = false) -> void:
+	for active in _active_statuses:
+		if active == null:
+			continue
+		if status_id != &"" and active.get_key() != status_id:
+			continue
+		active.refresh_from_data(reset_duration)
+
+
 func _find_stack_target(data: StatusEffectData, source_id: String) -> ActiveStatusEffect:
 	if data.allows_unlimited_stacks():
 		return null

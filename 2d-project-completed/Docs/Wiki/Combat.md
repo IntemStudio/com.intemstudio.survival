@@ -1,7 +1,7 @@
 # Wiki - Combat
 
 **역할:** 전투 피해, 피격, 방어, 상태이상 규칙을 플레이어 경험 기준으로 정리합니다.  
-**관련:** [`GameRules.md`](GameRules.md), [`Weapons.md`](Weapons.md), [`Projectiles.md`](Projectiles.md), [`Mobs.md`](Mobs.md), [`Items_Inventory.md`](Items_Inventory.md), [`../Architecture/Architecture_Mobs.md`](../Architecture/Architecture_Mobs.md)
+**관련:** [`GameRules.md`](GameRules.md), [`Weapons.md`](Weapons.md), [`Projectiles.md`](Projectiles.md), [`Mobs.md`](Mobs.md), [`Items_Inventory.md`](Items_Inventory.md), [`../Architecture/Architecture_Mobs.md`](../Architecture/Architecture_Mobs.md), [`../Architecture/Architecture_StatusEffects.md`](../Architecture/Architecture_StatusEffects.md)
 
 ---
 

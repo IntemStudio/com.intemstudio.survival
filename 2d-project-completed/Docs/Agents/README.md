@@ -22,11 +22,12 @@
 | 런 루프·스폰·클리어 | `Docs/Architecture/Architecture_GameLoop_Balance.md`, `game/game.gd`, `game/balance/*` |
 | 아레나 웨이브 | `game/arena/arena_wave_director.gd`, `game/game.gd`, `Docs/Wiki/GameRules.md` |
 | 버프·조건부 스탯 효과 | `Docs/Architecture/Architecture_Buffs.md`, `buff/*`, `entities/player/player.gd`, `game/game.gd` |
+| 몹 상태이상(DoT/둔화/피해증폭) | `Docs/Architecture/Architecture_StatusEffects.md`, `status/*`, `entities/mob/mob.gd`, `weapons/data/weapon_data.gd` |
 | 패시브·장비 grant·RunPassive·무기 런 강화 | `Docs/Architecture/Architecture_Passives.md`, `inventory/loadout_grant_passive.gd`, `passive/*`, `game/weapon_run_state.gd`, `game/reward_pool.gd` |
 | 공격 시스템·독립체 설계 | `Docs/Architecture/Architecture_AttackSystem.md`, `Architecture_Weapons.md`, `Architecture_Projectiles.md` |
 | 무기 추가·수정 | `Docs/Architecture/Architecture_Weapons.md`, `Docs/Architecture/Architecture_Projectiles.md`, `weapons/data/weapon_data.gd`, `weapons/catalogs/*`, `weapons/core/gun.gd` |
 | 몹 추가·수정 | `Docs/Architecture/Architecture_Mobs.md`, `entities/mob/mob.gd`, `game/balance/mob_spawn_selector.gd`, `game/pool/scene_pool.gd` |
-| F6 테스트 아레나 | `Docs/Architecture/Architecture_TestArena.md`, `game/test_arena.gd`, `test_arena.tscn` |
+| F6 테스트 아레나 | `Docs/Architecture/Architecture_TestArena.md`, `game/test_arena.gd`, `game/test_arena_*_snapshot.gd`, `test_arena.tscn` |
 | 인벤토리·장비 | `Docs/Architecture/Architecture_Inventory.md`, `inventory/*.gd`, `ui/inventory/*` |
 | 무기 획득 UI | `ui/weapon_select_menu.gd`, `survivors_game.tscn`, `Docs/Architecture/Architecture_Weapons.md` |
 | 일시정지·설정 | `ui/pause_menu.gd`, `ui/settings/*`, `AGENTS_Display_UI.md` |

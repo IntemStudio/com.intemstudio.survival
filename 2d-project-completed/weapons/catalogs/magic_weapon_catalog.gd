@@ -86,7 +86,7 @@ static func _build_cache() -> void:
 			"element": "fire",
 			"style": "Orbit",
 			"effect": "Orbital fire damage (loadout grant).",
-			"status": [&"scorch"],
+			"status": [&"burn"],
 		},
 		{
 			"id": "king_bible",

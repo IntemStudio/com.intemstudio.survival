@@ -43,7 +43,7 @@
 | `survivors_game.tscn` | 메인 플레이 씬 |
 | `test_arena.tscn` | F6 무기·몹 테스트 씬 (`Architecture_TestArena.md`) |
 | `game/test_arena.gd` | F6 오케스트레이션·튜닝 GUI |
-| `game/test_arena_*_snapshot.gd` | F6 무기/몹 수치 스냅샷 |
+| `game/test_arena_*_snapshot.gd` | F6 무기/몹/보조/상태이상 수치 스냅샷 |
 | `ui/test_arena_tab_bar.gd` | F6 패널 탭 바(4등분·줄바꿈) |
 | `game/game.gd` | 메인 런 오케스트레이션, 서바이벌/아레나 모드 분기 |
 | `game/run_config.gd` | 로비 선택 모드 전달 |
@@ -71,6 +71,7 @@
 - [`Architecture/Architecture_AttackSystem.md`](Architecture/Architecture_AttackSystem.md)
 - [`Architecture/Architecture_Weapons.md`](Architecture/Architecture_Weapons.md)
 - [`Architecture/Architecture_Projectiles.md`](Architecture/Architecture_Projectiles.md)
+- [`Architecture/Architecture_StatusEffects.md`](Architecture/Architecture_StatusEffects.md)
 - [`Architecture/Architecture_Buffs.md`](Architecture/Architecture_Buffs.md)
 - [`Architecture/Architecture_Passives.md`](Architecture/Architecture_Passives.md)
 - [`Architecture/Architecture_GameLoop_Balance.md`](Architecture/Architecture_GameLoop_Balance.md)

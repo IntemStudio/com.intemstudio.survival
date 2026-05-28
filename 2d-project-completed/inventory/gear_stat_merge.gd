@@ -39,6 +39,7 @@ const _TAG_LIST_KEYS: Array[String] = [
 	"grant_on_dash",
 	"grant_on_kill",
 	"grant_on_wave_start",
+	"grant_on_hit",
 ]
 
 

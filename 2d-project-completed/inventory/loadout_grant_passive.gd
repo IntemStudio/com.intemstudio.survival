@@ -91,6 +91,31 @@ static func apply_on_wave_start(
 	_dispatch_grant_tags(player, registry, modifiers, "grant_on_wave_start", _ON_WAVE_START_HANDLERS)
 
 
+# 무기 적중 시 grant_on_hit 태그를 상태이상으로 적용합니다.
+static func apply_on_hit(
+	player: Node2D,
+	_registry: ItemRegistry,
+	modifiers: Dictionary,
+	target_mob: Node,
+	source_weapon: WeaponData
+) -> void:
+	if player == null or target_mob == null or modifiers.is_empty():
+		return
+	if not target_mob.has_method(&"apply_status"):
+		return
+	var tags: Variant = modifiers.get("grant_on_hit", [])
+	if not tags is Array:
+		return
+	for tag_variant in tags:
+		var status_id := StringName(String(tag_variant))
+		if status_id == &"":
+			continue
+		if not StatusEffectCatalog.has_status(status_id):
+			push_warning("LoadoutGrantPassive: unknown grant_on_hit '%s'" % String(status_id))
+			continue
+		target_mob.call(&"apply_status", status_id, source_weapon)
+
+
 # 활성 세트 offhand 장비 스프라이트를 표시합니다(양손 무기 시 숨김).
 static func refresh_offhand_visual(
 	player: Node2D,

@@ -570,6 +570,29 @@ fit_content = true
 scroll_active = true
 autowrap_mode = 3
 
+[node name="OffhandStatusRow" type="HBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="OffhandStatusHintLabel" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox/OffhandStatusRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(140, 0)
+theme_override_font_sizes/font_size = 13
+text = "적중 상태이상: 없음"
+
+[node name="OffhandStatusOption" type="OptionButton" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox/OffhandStatusRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="EditOffhandStatusButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox/OffhandStatusRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 32)
+layout_mode = 2
+text = "상태이상 수정"
+
 [node name="OffhandTuningLabel" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -660,6 +683,75 @@ layout_mode = 2
 text = "저장"
 
 [node name="ResetProjectileTuningButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/WeaponTab/WeaponVBox/ProjectileTuningButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 32)
+layout_mode = 2
+text = "초기화"
+
+[node name="StatusEffectTab" type="ScrollContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="StatusEffectVBox" type="VBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/StatusEffectTab"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="StatusEffectTitle" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/StatusEffectTab/StatusEffectVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "상태이상 탭"
+
+[node name="StatusEffectOption" type="OptionButton" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/StatusEffectTab/StatusEffectVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="StatusEffectNavLabel" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/StatusEffectTab/StatusEffectVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.75, 0.95, 1)
+theme_override_font_sizes/font_size = 13
+text = "장비 탭에서 상태이상 수정을 선택하세요."
+
+[node name="StatusEffectRuleHintLabel" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/StatusEffectTab/StatusEffectVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.82, 0.38, 1)
+theme_override_font_sizes/font_size = 12
+text = ""
+
+[node name="StatusEffectTuningStatusLabel" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/StatusEffectTab/StatusEffectVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.75, 0.95, 1)
+theme_override_font_sizes/font_size = 13
+text = "장비 탭에서 상태이상을 선택하세요."
+
+[node name="StatusEffectTuningFields" type="VBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/StatusEffectTab/StatusEffectVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="StatusEffectTuningButtons" type="HBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/StatusEffectTab/StatusEffectVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ApplyStatusEffectTuningButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/StatusEffectTab/StatusEffectVBox/StatusEffectTuningButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 32)
+layout_mode = 2
+text = "적용"
+
+[node name="SaveStatusEffectTuningButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/StatusEffectTab/StatusEffectVBox/StatusEffectTuningButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 32)
+layout_mode = 2
+text = "저장"
+
+[node name="ResetStatusEffectTuningButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/StatusEffectTab/StatusEffectVBox/StatusEffectTuningButtons"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(100, 32)
 layout_mode = 2

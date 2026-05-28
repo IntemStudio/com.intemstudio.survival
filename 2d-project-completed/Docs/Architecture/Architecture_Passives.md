@@ -34,7 +34,7 @@
 | 악세서리 시너지 | RunPassive + Loadout | `AccessorySynergy` — **활성 세트 악세서리** + 보유 패시브 |
 | 무기 런 강화 | RunPassive(보상) | `WeaponRunState`, `RewardChoice.WEAPON_UPGRADE` |
 | 보상 풀 혼합 | Game + UI | `RewardPool`, `weapon_select_menu.present_reward_choices` |
-| grant 트리거 진입 | 공통 | `PassiveResolver.on_kill` / `on_wave_start` / `on_dash` |
+| grant 트리거 진입 | 공통 | `PassiveResolver.on_kill` / `on_wave_start` / `on_dash` / `on_hit` |
 
 ### Out of Scope
 
@@ -56,7 +56,7 @@
 |-----------|------|
 | `inventory/gear_data.gd` | 장비 `stat_modifiers` |
 | `inventory/gear_stat_merge.gd` | 합산·`grant_*` 리스트 병합 |
-| `inventory/loadout_grant_passive.gd` | 궤도·대시·kill/wave grant 핸들러 |
+| `inventory/loadout_grant_passive.gd` | 궤도·대시·kill/wave/on-hit grant 핸들러 |
 | `inventory/loadout_stat_apply.gd` | loadout → 이동·피해·APS·체력 |
 | `inventory/gear_catalog_entries.gd` | 액세서리 grant 데이터 |
 
@@ -138,6 +138,7 @@ buff_modifiers      ← BuffController
 | `on_dash` | `Player` 대시 | `PassiveResolver.on_dash` |
 | `on_wave_start` | 아레나 웨이브 | `PassiveResolver.on_wave_start` + `BuffTriggerRouter` |
 | `on_kill` | `Game.register_kill` | `PassiveResolver.on_kill` |
+| `on_hit` | 무기 적중 (`Mob.apply_weapon_damage`) | `PassiveResolver.on_hit` |
 | `on_level_up` | 레벨업·웨이브 보상 | `RewardPool` (무기·강화·패시브) |
 
 ## Flow

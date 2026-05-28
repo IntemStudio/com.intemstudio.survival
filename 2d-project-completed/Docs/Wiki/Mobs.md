@@ -1,7 +1,7 @@
 # Wiki - Mobs
 
 **역할:** 몹 종류, 등장 시점, 전투 역할, 보스·특수몹 기획 상태를 정리합니다.  
-**관련:** [`Combat.md`](Combat.md), [`GameRules.md`](GameRules.md), [`../Architecture/Architecture_Mobs.md`](../Architecture/Architecture_Mobs.md), [`../Architecture/Architecture_GameLoop_Balance.md`](../Architecture/Architecture_GameLoop_Balance.md), [`../Plan/Plan_Balance_VS_Curve_Alignment.md`](../Plan/Plan_Balance_VS_Curve_Alignment.md)
+**관련:** [`Combat.md`](Combat.md), [`GameRules.md`](GameRules.md), [`../Architecture/Architecture_Mobs.md`](../Architecture/Architecture_Mobs.md), [`../Architecture/Architecture_StatusEffects.md`](../Architecture/Architecture_StatusEffects.md), [`../Architecture/Architecture_GameLoop_Balance.md`](../Architecture/Architecture_GameLoop_Balance.md), [`../Plan/Plan_Balance_VS_Curve_Alignment.md`](../Plan/Plan_Balance_VS_Curve_Alignment.md)
 
 ---
 

@@ -23,7 +23,7 @@
 | 런 수명 | 새 런 시작 시 상태 생성, 런 종료 시 가방·장비 세트·상자 보상 초기화 |
 | UI 연동 | `InventoryService`를 통해 드래그, 우클릭, 더블클릭, 세트 전환, 왼쪽 Shift+좌클릭 버리기를 상태 변경으로 반영 |
 | 전투 연동 | 장착된 활성 세트 weapon/offhand와 공유 방어구만 현재 런의 플레이어에 적용 |
-| 조건부 장비 효과 | `grant_on_dash` 같은 태그를 런타임 버프 또는 발사체 부여로 연결 |
+| 조건부 장비 효과 | `grant_on_dash`·`grant_on_hit` 같은 태그를 런타임 버프, 발사체, 상태이상 부여로 연결 |
 
 ### Out of Scope
 
@@ -44,7 +44,7 @@
 | `weapons/data/weapon_data.gd` | 무기 데이터. 인벤에서는 `weapon_id`를 `item_id`처럼 사용한다. |
 | `inventory/gear_data.gd` | 방어구·악세·offhand 장비 데이터 |
 | `inventory/player_loadout_state.gd` | 세트/가방/활성 세트 상태 저장 모델 |
-| `inventory/item_registry.gd` | weapon/gear 등록·해석, 슬롯 검증, 상자 보상 기본 슬롯 분류, loadout 스탯 합산 |
+| `inventory/item_registry.gd` | weapon/gear 등록·해석, 슬롯 검증, 상자 보상 기본 슬롯 분류, loadout 스탯 합산 (`set_gear_modifier_resolver`는 F6 보조손 튜닝 주입용) |
 | `inventory/item_reward_picker.gd` | 상자 보상 후보를 슬롯 필터, 등급, 중복 제외 조건으로 추린다 |
 | `inventory/gear_stat_merge.gd` | `*_mult` 곱연산, min/max 합산, 태그 누적 같은 스탯 병합 규칙 |
 | `inventory/gear_stat_display.gd` | 장비 툴팁용 표시 문자열 생성 |
@@ -53,7 +53,7 @@
 | `inventory/inventory_game_bridge.gd` | I/Tab/RMB 입력, 메뉴 열기/닫기, HUD 전투 세트 표시 연결 |
 | `inventory/loadout_stat_apply.gd` | 이동·피해·공격속도·방어·체력 스탯 공식 제공 |
 | `entities/player/stats/character_stats.gd` | 장비·버프 modifier source를 보관하고 `LoadoutStatApply` 공식으로 최종 플레이어 수치 계산 |
-| `inventory/loadout_grant_passive.gd` | 장착 장비 grant 태그로 궤도, dash haste 버프, dash darts, offhand 비주얼 적용 |
+| `inventory/loadout_grant_passive.gd` | 장착 장비 grant 태그로 궤도, dash haste 버프, dash darts, on-hit 상태이상, offhand 비주얼 적용 |
 | `ui/inventory/inventory_menu.gd` | 4칸 전투 슬롯, 공유 방어구, 가방 UI, `InventoryService` 호출, 버린 장비 월드 드롭 위임 |
 | `ui/inventory/inventory_slot.gd` | 슬롯 1칸 표시·드래그·입력 위젯, 왼쪽 Shift 상태 추적 |
 | `game/rewards/gold_chest.gd` | 웨이브 사이 월드 상자, 가격 라벨, 구매 UI 요청 |
@@ -93,7 +93,7 @@ Game / TestArena
 10. 인벤토리에서 왼쪽 Shift+좌클릭으로 가방 또는 장착 슬롯 장비를 버리면 `Game.can_drop_equipment_item()`을 먼저 확인한 뒤 슬롯을 비우고 `EquipmentDrop`을 플레이어 앞에 생성한다. 생성 실패 시 같은 슬롯에 원래 `item_id`를 복원한다.
 11. weapon/offhand는 `active_set_index` 세트에 장착되고, 방어구·악세는 `sets[0]`에 장착된다.
 12. Tab·닫힌 RMB·비활성 전투 슬롯 좌클릭은 활성 세트를 바꾸고 HUD 갱신, 전투 재적용을 수행한다.
-13. `InventoryCombatBridge.apply_loadout_to_player()`가 장착된 활성 세트 weapon/offhand와 공유 방어구의 스탯을 `Player.refresh_stats_from_loadout()`에 전달하고, 플레이어는 합산 modifier를 `CharacterStats`의 loadout source로 저장한다. grant 패시브와 offhand 비주얼만 별도 적용하며, `grant_on_dash: haste`처럼 시간이 있는 효과는 `BuffTriggerRouter`를 통해 `Player`의 런타임 버프로 부여한다.
+13. `InventoryCombatBridge.apply_loadout_to_player()`가 장착된 활성 세트 weapon/offhand와 공유 방어구의 스탯을 `Player.refresh_stats_from_loadout()`에 전달하고, 플레이어는 합산 modifier를 `CharacterStats`의 loadout source로 저장한다. grant 패시브와 offhand 비주얼만 별도 적용하며, `grant_on_dash: haste`처럼 시간이 있는 효과는 `BuffTriggerRouter`를 통해 `Player`의 런타임 버프로 부여하고 `grant_on_hit: sticky_goo` 같은 태그는 무기 적중 시 `LoadoutGrantPassive`를 통해 몹 상태이상으로 적용한다.
 14. 클리어, 패배, 로비 복귀, 새 런 시작 시 런 인벤토리 상태를 영구 저장하지 않고 폐기한다.
 
 ### Editor / Data
@@ -118,6 +118,7 @@ Game / TestArena
 | 공유 방어구 획득은 대상 공유 슬롯이 비어 있으면 바로 장착하고, 차 있으면 가방에 넣는다. | 헬멧·갑옷·장갑·부츠·악세도 빈 슬롯일 때는 획득 즉시 빌드에 반영한다. |
 | 전투 적용은 활성 세트 weapon만 대상으로 한다. | 비활성 weapon이 자동 공격, 궤도, 장판을 만들지 않게 한다. |
 | F6 무기 GUI 착용은 `try_force_equip_weapon_on_active_set`로 활성 weapon만 바꾼다. 기존 무기는 가방이 아닌 삭제. | `acquire_item`의 빈 슬롯·가방 우선 규칙과 분리 |
+| `ItemRegistry.set_gear_modifier_resolver`는 F6에서만 설정한다. | 테스트 튜닝 오버라이드가 F5 메인 런 밸런스에 새지 않게 한다. |
 | 비활성 세트 offhand는 스탯, 패시브, 비주얼 효과를 적용하지 않는다. | 세트 전환 전까지 대기 장비로만 취급한다. |
 | 양손 weapon 장착 시 같은 세트의 offhand는 비워야 한다. | 한손/offhand 빌드와 양손 빌드의 경계를 유지한다. |
 | 다른 세트의 장비 슬롯끼리 직접 스왑하지 않는다. | UI는 4칸을 동시에 보여도 데이터는 세트별로 분리된다. |
@@ -139,6 +140,8 @@ Game / TestArena
 | 장비 획득 배치 변경 | 활성/비활성 weapon·offhand 빈 슬롯 우선순위, 공유 방어구 빈 슬롯, 가방 가득 참, `EquipmentDrop` 상호작용 획득 처리 |
 | 인벤 UI 변경 | 4칸 weapon/offhand 동시 표시, 공유 방어구, RMB 해제와 닫힌 RMB 스왑 충돌 여부, 왼쪽 Shift+좌클릭 버리기와 월드 드롭 복원 |
 | 전투 적용 변경 | 장착 장비만 합산하는지, 가방/비활성 장비 제외, `apply_inventory_loadout_to_player()`, `refresh_stats_from_loadout()`, `clear_loadout_stats()`, `CharacterStats` source 갱신 순서, 런타임 버프와 중복 적용 여부 |
+| F6 연동 변경 | `set_gear_modifier_resolver` 설정/해제 범위, `Docs/Architecture/Architecture_TestArena.md`의 보조 튜닝 스냅샷(`TestArenaGearSnapshot`) 및 상태이상 탭 진입/자동 선택 규칙과 일치 여부 |
+| `grant_on_hit` 태그 정책 변경 | `LoadoutGrantPassive.apply_on_hit`, `StatusEffectCatalog`, `Docs/Architecture/Architecture_StatusEffects.md`, F6 상태이상 탭(`TestArenaStatusEffectSnapshot`) 자동 적용/저장 의미 |
 | 상자 보상 변경 | 골드 차감/환불, 부위 필터, 등급 확률, 중복 제외, 가방 가득 참 처리 |
 | 런 초기화 변경 | 새 런, 클리어, 패배, 로비 복귀에서 장비 상태와 골드가 저장되지 않는지 확인 |
 

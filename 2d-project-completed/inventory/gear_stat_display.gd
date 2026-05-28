@@ -54,6 +54,7 @@ const _STAT_SKIP_KEYS: Array[String] = [
 	"wall_near_move_speed_mult",
 	"grant_orbital",
 	"grant_on_dash",
+	"grant_on_hit",
 	"dart_damage_min",
 	"dart_damage_max",
 	"intelligence_stat_mult",
@@ -206,6 +207,11 @@ static func _append_grant_tags(lines: PackedStringArray, stats: Dictionary) -> v
 			lines.append("On Dash: %s" % String(stats["grant_on_dash"]))
 		else:
 			lines.append("대시 시: %s" % String(stats["grant_on_dash"]))
+	if stats.has("grant_on_hit"):
+		if en:
+			lines.append("On Hit: %s" % String(stats["grant_on_hit"]))
+		else:
+			lines.append("적중 시: %s" % String(stats["grant_on_hit"]))
 
 
 static func _append_min_max_stat(
