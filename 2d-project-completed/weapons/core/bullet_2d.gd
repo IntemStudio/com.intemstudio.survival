@@ -43,10 +43,11 @@ func _physics_process(delta: float) -> void:
 	const DEFAULT_SPEED := 1000.0
 	var speed := DEFAULT_SPEED
 	var max_range := 1200.0
+	var radius_mult := LoadoutStatApply.get_combat_power_radius_mult()
 	if _weapon:
 		if _weapon.projectile_speed > 0.0:
 			speed = _weapon.projectile_speed
-		max_range = _weapon.get_projectile_range()
+		max_range = _weapon.get_projectile_range() * radius_mult
 
 	position += Vector2.RIGHT.rotated(rotation) * speed * delta
 	_travelled_distance += speed * delta
@@ -108,7 +109,7 @@ func _explode_at(center: Vector2) -> void:
 	if not _weapon:
 		return
 
-	var radius := _weapon.explosion_radius
+	var radius := _weapon.explosion_radius * LoadoutStatApply.get_combat_power_radius_mult()
 	if radius <= 0.0:
 		radius = 90.0
 

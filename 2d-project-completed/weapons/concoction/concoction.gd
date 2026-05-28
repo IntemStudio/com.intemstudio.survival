@@ -41,7 +41,8 @@ func setup_weapon(thrower: Node2D, aim_position: Vector2, weapon_data: WeaponDat
 	_thrower = thrower
 	_weapon = weapon_data
 	_speed = weapon_data.throw_speed
-	_max_range = weapon_data.throw_range
+	var range_mult := LoadoutStatApply.get_combat_power_radius_mult()
+	_max_range = weapon_data.throw_range * range_mult
 
 	_start_position = global_position
 	var to_aim := aim_position - _start_position
@@ -95,7 +96,7 @@ func _explode_at(impact_position: Vector2) -> void:
 		return
 	_has_exploded = true
 
-	var radius := _weapon.aoe_radius
+	var radius := _weapon.aoe_radius * LoadoutStatApply.get_combat_power_radius_mult()
 	_spawn_explosion_visual(impact_position, radius)
 	_spawn_area_damage_zone(impact_position, radius)
 	PoolUtil.release_node(self)

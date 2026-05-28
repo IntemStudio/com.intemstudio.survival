@@ -418,6 +418,11 @@ func get_effective_attacks_per_second(weapon: WeaponData) -> float:
 	return _stats.get_effective_attacks_per_second(weapon)
 
 
+# 장비·버프의 power를 반영한 범위/반경 배율입니다.
+func get_power_radius_mult() -> float:
+	return _stats.get_power_radius_mult()
+
+
 func _refresh_weapon_combat_modifiers() -> void:
 	for gun in %Weapons.get_children():
 		if gun.has_method(&"refresh_loadout_combat_modifiers"):

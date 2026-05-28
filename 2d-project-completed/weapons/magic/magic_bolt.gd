@@ -46,9 +46,10 @@ func _physics_process(delta: float) -> void:
 		_apply_homing(delta)
 
 	var speed := _weapon.projectile_speed
+	var radius_mult := LoadoutStatApply.get_combat_power_radius_mult()
 	position += Vector2.RIGHT.rotated(rotation) * speed * delta
 	_travelled_distance += speed * delta
-	if _travelled_distance >= _weapon.get_projectile_range():
+	if _travelled_distance >= _weapon.get_projectile_range() * radius_mult:
 		PoolUtil.release_node(self)
 
 
@@ -132,7 +133,7 @@ func _spawn_explosion(center: Vector2) -> void:
 	if not game or not _weapon:
 		return
 
-	var radius := _weapon.explosion_radius
+	var radius := _weapon.explosion_radius * LoadoutStatApply.get_combat_power_radius_mult()
 	if radius <= 0.0:
 		radius = 90.0
 

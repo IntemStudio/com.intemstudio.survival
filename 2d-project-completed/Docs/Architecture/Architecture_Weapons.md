@@ -23,7 +23,7 @@
 | 피해 전달 | 발사체·장판·궤도 스크립트가 weapon 귀속 피해를 적용하도록 연결 |
 | 피해 통계 | `WeaponDamageTracker`가 `WeaponData.get_unique_key()` 기준으로 누적 피해 표시 |
 | 상태이상 부여 | `WeaponData.status_effects`와 `grant_on_hit` 태그를 `Mob`의 `StatusEffectController`에 전달 |
-| 장비 스탯 연동 | 장착된 loadout 장비의 피해·APS 배율만 `Player` 계산 경로에서 반영 |
+| 장비 스탯 연동 | 장착된 loadout 장비의 피해·APS·범위(power) 배율만 `Player` 계산 경로에서 반영 |
 | 무기 조건부 버프 | wave start 같은 런 이벤트에서 `BuffTriggerRouter`가 weapon id를 보고 런타임 버프 부여 |
 
 ### Out of Scope
@@ -89,7 +89,7 @@ WeaponSelectMenu
 7. 활성 일반 무기는 `attack` 액션(기본 좌클릭) 유지 시 timer에 맞춰 `shoot()`를 호출한다. 자동 공격 on일 때는 Gun 타겟팅 `Area2D` 사거리 안에 몹이 있을 때만 같은 경로로 `shoot()`한다. 활성 궤도 무기는 별도 companion이 physics tick에서 overlap 피해를 처리한다.
 8. 비활성 세트나 가방의 weapon은 `Gun`을 만들지 않으며 자동 공격 on이어도 발사하지 않는다.
 9. `Gun.shoot()`는 `weapon_type`과 delivery helper에 따라 탄환, 근접 발사체, 마법 탄, 투척체, 장판을 스폰한다. 카탈로그 Melee는 대부분 판정상 발사체지만 `melee_projectile.tscn`의 검기형 폴리곤 비주얼로 총알과 구분한다. 근접 movement는 직선 관통(`StraightPierce`), 직선 왕복(`Return`), 타원형 곡선 왕복(`CurvedReturn`), 감속 직선(`Decelerate`), 궤도(`Orbit`)로 나뉜다.
-10. 각 피해 오브젝트는 `LoadoutStatApply.roll_combat_damage()` 또는 플레이어의 `roll_weapon_damage()`를 통해 장착 장비 배율을 반영한 피해를 굴린다.
+10. 각 피해 오브젝트는 `LoadoutStatApply.roll_combat_damage()` 또는 플레이어의 `roll_weapon_damage()`를 통해 장착 장비 배율을 반영한 피해를 굴린다. `power`는 장비·패시브·버프 source를 합산한 뒤 1회 softcap으로 피해 배율에 적용한다.
 11. 플레이어 발사체가 환경 레이어 장애물에 닿으면 막힌 것으로 처리한다. 일반/관통/투척/부메랑은 풀로 반환하고, 폭발형 탄·마법과 연금 투척체는 충돌 지점에서 폭발 또는 장판을 만든 뒤 반환한다.
 12. 몹에 닿으면 `Mob.apply_weapon_damage()`가 상태이상 피해 증폭, HP 감소, 피격 연출, `status_effects` 적용, `grant_on_hit` 상태이상 적용, 피해 통계 등록을 처리한다.
 13. 상태이상 DoT는 `Mob.apply_status_tick_damage()`로 들어가 source weapon 기준 피해 통계를 유지한다.
@@ -120,6 +120,7 @@ WeaponSelectMenu
 | 자동 공격은 `_has_enemy_in_attack_range()`(Gun overlap + 무기 사거리)가 true일 때만 timer·`shoot()`·버스트를 진행한다. 수동 `attack`은 예외. | 적이 없을 때 허공 사격·쿨다운 소모를 막는다. |
 | `Gun`은 `/root/Game`과 `ObjectPools`를 전제로 스폰한다. | 씬 분리나 테스트 씬 변경 시 루트 계약을 맞춰야 한다. |
 | loadout damage/APS 배율은 발사체가 직접 계산하기보다 `Player`/`LoadoutStatApply` 경로를 사용하고, 가방 장비는 제외한다. | 인벤 장착 장비 스탯 반영 위치를 한 곳으로 모은다. |
+| `power` 배율은 피해와 범위 모두 장비·패시브·버프 합산값으로 1회 계산한다. | source별 중복 점감/중복 곱으로 과도하게 커지는 회귀를 방지한다. |
 | `melee_range_override` / `projectile_range_override` > 0일 때만 `get_melee_range()` / `get_projectile_range()`를 덮어쓴다. F5는 override 0. | F6 QA와 메인 `range_type` 표 분리 |
 
 ## Change Guidelines

@@ -27,7 +27,7 @@ func pool_on_acquire() -> void:
 func setup(weapon_data: WeaponData, player: Node2D, initial_angle := -1.0) -> void:
 	_weapon = weapon_data
 	_player = player
-	_orbit_radius = weapon_data.get_orbit_radius()
+	_orbit_radius = weapon_data.get_orbit_radius() * LoadoutStatApply.get_combat_power_radius_mult()
 	_angle = initial_angle if initial_angle >= 0.0 else randf() * TAU
 	if $Sprite:
 		$Sprite.modulate = weapon_data.get_element_color()

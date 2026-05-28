@@ -39,6 +39,8 @@
 - [x] F6 무기 GUI — 피해·APS·사거리·발사체 생성 수 SpinBox (`TestArenaWeaponSnapshot` core)
 - [x] F6 무기 탭 보조손 섹션 — 활성 세트 offhand Equip + 설명 패널
 - [x] F6 보조손 튜닝 스냅샷 — `block/armor/weapon_damage_mult/power` SpinBox 적용·저장·초기화 (`TestArenaGearSnapshot`)
+- [x] **보조손 `power` 전투 반영** — 피해·범위(사거리·AOE·궤도) 배율, 장비·패시브·버프 **합산 1회 softcap** (`LoadoutStatApply`, `CharacterStats`, 발사체·`Gun` 경로)
+- [x] **`power` 문서 정렬** — [`Architecture_Inventory.md`](../../Architecture/Architecture_Inventory.md), [`Architecture_Weapons.md`](../../Architecture/Architecture_Weapons.md), [`Architecture_TestArena.md`](../../Architecture/Architecture_TestArena.md)
 - [x] F6 상태이상 탭 — 장비 탭 읽기 전용 진입(`grant_on_hit`) + 자동 선택 + 상태이상 튜닝 저장/재실행 자동 적용 (`TestArenaStatusEffectSnapshot`)
 - [x] F6 튜닝 UI 공통화 — `test_arena_tuning_ui.gd`로 무기/보조 SpinBox 행 생성·입력 commit 공통 처리
 - [x] F6 보조손 min/max 안전장치 — `block_min ≤ block_max`, `armor_min ≤ armor_max` 저장 clamp
@@ -92,6 +94,7 @@
 | 7 | 무기 Equip → **인벤 활성 weapon**·튜닝 즉시 반영 | [ ] |
 | 8 | 무기 **피해·APS·사거리·발사체 수** 스핀 → 전투·설명 omit 반영 | [ ] |
 | 8b | 보조손 Equip + `block/armor/weapon_damage_mult/power` 스핀 **적용/저장/초기화** 및 재실행 유지 | [ ] |
+| 8c | **`power` 전투 체감** — 동일 무기·몹 대상, power 0 vs 10 vs 20(또는 튜닝값)에서 **피해·사거리/AOE** 단조 증가(softcap 구간은 표보다 낮게 체감 가능) | [ ] |
 | 9 | 몹·무기 튜닝 **적용/저장**(SpinBox 직접 입력 포함)·스폰 즉시 반영·상태 색상 | [ ] |
 | 10 | **fast** 스폰 후 이동 시 하늘색 꼬리·먼지, 정지·풀 반환 시 즉시 소거 | [ ] |
 
@@ -119,6 +122,8 @@ F5 → 로비 → **아레나**.
 ## Verification
 
 - [ ] F6 특수몹·fast 시인성 (위 표)
+- [ ] F6 보조손 `power` 전투 체감 (표 8c)
+- [x] 보조손 `power` 코드·아키텍처 문서 반영
 - [ ] F6 무기 풀
 - [ ] F5 아레나·인벤·상자 (위 표)
 - [x] 게임오버/클리어 통계 UI

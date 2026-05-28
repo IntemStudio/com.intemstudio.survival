@@ -97,6 +97,8 @@ func roll_weapon_damage(
 	if not persistent.is_empty():
 		mult *= LoadoutStatApply.compute_damage_mult(persistent, weapon, player_level)
 	mult *= LoadoutStatApply.compute_damage_mult(_buff_modifiers, weapon, player_level)
+	# power는 전체 소스 합산 후 1회만 점감 적용합니다.
+	mult *= LoadoutStatApply.compute_power_damage_mult(_get_all_source_modifiers())
 	return maxi(1, roundi(float(rolled) * mult))
 
 
@@ -109,3 +111,14 @@ func get_effective_attacks_per_second(weapon: WeaponData) -> float:
 	if not persistent.is_empty():
 		mult *= LoadoutStatApply.compute_attack_speed_mult(persistent, weapon)
 	return weapon.attacks_per_second * mult
+
+
+# power(장비/패시브/버프) 기반 범위·반경 배율입니다.
+func get_power_radius_mult() -> float:
+	return LoadoutStatApply.compute_power_radius_mult(_get_all_source_modifiers())
+
+
+func _get_all_source_modifiers() -> Dictionary:
+	var totals := get_combined_persistent_modifiers()
+	GearStatMerge.merge_into(totals, _buff_modifiers)
+	return totals

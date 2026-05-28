@@ -51,8 +51,8 @@
 | `inventory/inventory_service.gd` | UI가 호출하는 장착·해제·드래그·세트 전환·버리기 API. F6 GUI: `try_force_equip_weapon_on_active_set()` |
 | `inventory/inventory_combat_bridge.gd` | 장착된 활성 weapon과 장비 스탯을 `Player`에 적용 |
 | `inventory/inventory_game_bridge.gd` | I/Tab/RMB 입력, 메뉴 열기/닫기, HUD 전투 세트 표시 연결 |
-| `inventory/loadout_stat_apply.gd` | 이동·피해·공격속도·방어·체력 스탯 공식 제공 |
-| `entities/player/stats/character_stats.gd` | 장비·버프 modifier source를 보관하고 `LoadoutStatApply` 공식으로 최종 플레이어 수치 계산 |
+| `inventory/loadout_stat_apply.gd` | 이동·피해·공격속도·방어·체력 스탯 공식 제공 (`power` softcap 포함) |
+| `entities/player/stats/character_stats.gd` | 장비·버프 modifier source를 보관하고 `LoadoutStatApply` 공식으로 최종 플레이어 수치 계산 (`power`는 source 합산 후 1회 적용) |
 | `inventory/loadout_grant_passive.gd` | 장착 장비 grant 태그로 궤도, dash haste 버프, dash darts, on-hit 상태이상, offhand 비주얼 적용 |
 | `ui/inventory/inventory_menu.gd` | 4칸 전투 슬롯, 공유 방어구, 가방 UI, `InventoryService` 호출, 버린 장비 월드 드롭 위임 |
 | `ui/inventory/inventory_slot.gd` | 슬롯 1칸 표시·드래그·입력 위젯, 왼쪽 Shift 상태 추적 |
@@ -125,6 +125,7 @@ Game / TestArena
 | 방어구 5칸과 악세는 항상 `sets[0]`을 공유한다. | 편집 탭과 전투 세트가 방어구 데이터를 바꾸지 않게 한다. |
 | loadout 합산은 장착된 방어구·악세 `sets[0]` + 활성 세트 offhand만 포함하고 weapon은 제외한다. | weapon은 `InventoryCombatBridge`가 단일 `Gun`으로 처리한다. |
 | `*_mult` 스탯은 더하지 말고 곱한다. | 장비 배율이 선형 합산되어 과도하게 왜곡되는 것을 막는다. |
+| `power`는 source별로 따로 곱하지 않고, 장비·패시브·버프 합산값 기준으로 **1회** 점감(softcap) 적용한다. | source 분리 계산 시 배율이 과도하게 커지는 회귀를 방지한다. |
 | `damage_element == "magic"`인 마법 무기는 `magic_damage_mult`를 타입·원소 중 한 번만 곱한다. | 마법 타입과 magic 원소의 중복 배율을 방지한다. |
 | 상자 지급은 슬롯 필터, 등급 필터, 중복 제외를 모두 통과해야 한다. | 부위 상자와 1~10웨이브 `Common`/`Uncommon` 제한을 지킨다. |
 | 상자 슬롯 필터는 `ItemRegistry.get_item_reward_slot()` 기준으로 판정한다. | 한손 weapon이 `offhand`에 착용 가능하더라도 보조손 상자 결과로 나오지 않게 한다. |

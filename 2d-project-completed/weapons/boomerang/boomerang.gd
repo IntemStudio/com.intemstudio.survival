@@ -37,11 +37,12 @@ func setup(thrower: Node2D, direction: Vector2, dmg: int, range_dist: float, mov
 
 func setup_weapon(thrower: Node2D, direction: Vector2, weapon_data: WeaponData) -> void:
 	_weapon = weapon_data
+	var range_mult := LoadoutStatApply.get_combat_power_radius_mult()
 	setup(
 		thrower,
 		direction,
 		0,
-		weapon_data.get_projectile_range(),
+		weapon_data.get_projectile_range() * range_mult,
 		weapon_data.throw_speed
 	)
 	if has_node("Sprite2D"):

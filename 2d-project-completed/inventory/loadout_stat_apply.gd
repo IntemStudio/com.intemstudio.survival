@@ -6,6 +6,10 @@ extends RefCounted
 const BASE_MAX_HEALTH := 100.0
 ## heart min/max 합산값 1당 최대 체력 보너스(툴팁 "+1 Heart" 체감용).
 const HEART_HP_PER_POINT := 10.0
+const POWER_DAMAGE_PER_POINT := 0.01
+const POWER_RADIUS_PER_POINT := 0.01
+const POWER_SOFTCAP_START := 50.0
+const POWER_SOFTCAP_SLOPE := 0.5
 
 
 static func get_mult(modifiers: Dictionary, key: String) -> float:
@@ -61,6 +65,24 @@ static func compute_damage_mult(
 
 	mult *= _element_damage_mult(modifiers, weapon.damage_element, weapon)
 	return mult
+
+
+# power 점감(soft cap) 적용 후 실효 파워 값을 계산합니다.
+static func compute_effective_power(modifiers: Dictionary) -> float:
+	var power := float(modifiers.get("power", 0.0))
+	if power <= POWER_SOFTCAP_START:
+		return power
+	return POWER_SOFTCAP_START + (power - POWER_SOFTCAP_START) * POWER_SOFTCAP_SLOPE
+
+
+# power 1당 무기 피해 +1%(점감 포함).
+static func compute_power_damage_mult(modifiers: Dictionary) -> float:
+	return 1.0 + compute_effective_power(modifiers) * POWER_DAMAGE_PER_POINT
+
+
+# power 1당 범위/반경 +1%(점감 포함).
+static func compute_power_radius_mult(modifiers: Dictionary) -> float:
+	return 1.0 + compute_effective_power(modifiers) * POWER_RADIUS_PER_POINT
 
 
 # heart_* 합산 → 최대 체력. min·max 평균 × HEART_HP_PER_POINT.
@@ -148,3 +170,10 @@ static func get_effective_attacks_per_second(weapon: WeaponData) -> float:
 	if player and player.has_method(&"get_effective_attacks_per_second"):
 		return player.get_effective_attacks_per_second(weapon)
 	return weapon.attacks_per_second
+
+
+static func get_combat_power_radius_mult() -> float:
+	var player := find_combat_player()
+	if player and player.has_method(&"get_power_radius_mult"):
+		return float(player.call(&"get_power_radius_mult"))
+	return 1.0

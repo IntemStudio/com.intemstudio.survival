@@ -113,7 +113,7 @@ func spawn_throwing_from_gun(
 				player,
 				shoot_direction,
 				rolled_damage,
-				weapon.get_projectile_range(),
+				weapon.get_projectile_range() * LoadoutStatApply.get_combat_power_radius_mult(),
 				weapon.throw_speed
 			)
 	else:

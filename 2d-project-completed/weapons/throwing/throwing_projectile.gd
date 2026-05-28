@@ -36,7 +36,7 @@ func _physics_process(delta: float) -> void:
 		return
 
 	var speed := _weapon.throw_speed
-	var max_range := _weapon.get_projectile_range()
+	var max_range := _weapon.get_projectile_range() * LoadoutStatApply.get_combat_power_radius_mult()
 	var move_dir: Vector2
 
 	if _returning:

@@ -79,7 +79,7 @@ func _physics_process(delta: float) -> void:
 		return
 
 	var speed := _weapon.get_melee_projectile_speed()
-	var max_range := _weapon.get_melee_range()
+	var max_range := _weapon.get_melee_range() * LoadoutStatApply.get_combat_power_radius_mult()
 	if _weapon.should_projectile_decelerate():
 		_move_decelerating(delta)
 		return

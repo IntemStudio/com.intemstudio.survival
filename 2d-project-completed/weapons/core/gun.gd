@@ -153,9 +153,10 @@ func _get_attack_range() -> float:
 func get_display_attack_range() -> float:
 	if not weapon:
 		return 0.0
+	var range_mult := _get_power_radius_mult()
 	if weapon.is_orbit_attack():
-		return weapon.get_orbit_radius()
-	return weapon._get_attack_range()
+		return weapon.get_orbit_radius() * range_mult
+	return weapon._get_attack_range() * range_mult
 
 
 func _get_nearest_enemy(enemies: Array, from_position: Vector2, max_range: float = INF) -> Node2D:
@@ -301,12 +302,13 @@ func _get_shoot_direction() -> Vector2:
 
 func _get_throw_aim_position() -> Vector2:
 	var origin := _shooting_point.global_position
+	var throw_range := weapon.throw_range * _get_power_radius_mult()
 	if is_instance_valid(_current_target):
 		var target_pos := _get_target_aim_position(_current_target)
 		var to_target := origin.direction_to(target_pos)
-		var distance := minf(origin.distance_to(target_pos), weapon.throw_range)
+		var distance := minf(origin.distance_to(target_pos), throw_range)
 		return origin + to_target * distance
-	return origin + _get_shoot_direction() * weapon.throw_range
+	return origin + _get_shoot_direction() * throw_range
 
 
 func _get_spawn_transform() -> Transform2D:
@@ -339,6 +341,13 @@ func _get_effective_attacks_per_second() -> float:
 		return player.get_effective_attacks_per_second(weapon)
 	if weapon:
 		return weapon.attacks_per_second
+	return 1.0
+
+
+func _get_power_radius_mult() -> float:
+	var player := _get_player()
+	if player and player.has_method(&"get_power_radius_mult"):
+		return float(player.call(&"get_power_radius_mult"))
 	return 1.0
 
 

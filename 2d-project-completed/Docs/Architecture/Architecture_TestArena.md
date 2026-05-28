@@ -19,7 +19,7 @@
 | 몹 전투 튜닝 | 접촉/원거리·**사망 폭발**(특수 A 등, 범위·피해·지연)·**돌진 거리**(특수 B 등) — `TestArenaMobSnapshot`, `user://test_arena_mob_snapshots.cfg` |
 | 무기/보조 선택·착용 | 카탈로그 필터, 인벤 강제 장착, 튜닝 스냅샷 적용 |
 | 무기·발사체 튜닝 | 피해·APS·사거리·발사체 수 + movement·타입별 SpinBox, **적용/저장**, `user://test_arena_weapon_snapshots.cfg` |
-| 보조손 튜닝 | `block_min/max`, `armor_min/max`, `weapon_damage_mult`, `power` SpinBox, **적용/저장**, `user://test_arena_gear_snapshots.cfg` |
+| 보조손 튜닝 | `block_min/max`, `armor_min/max`, `weapon_damage_mult`, `power` SpinBox, **적용/저장**, `user://test_arena_gear_snapshots.cfg` (`power`는 피해·범위에 합산 1회 softcap) |
 | 상태이상 튜닝 | `duration/tick/배율` SpinBox, **적용/저장**, `user://test_arena_status_effect_snapshots.cfg` |
 | SpinBox 값 확정 | LineEdit 직접 입력 → **적용** 또는 **저장**(`spin.apply()`), Enter·포커스 이탈 시에도 반영 |
 | 패널 UI | 몹/무기/상태이상 탭, 고정 너비 탭 바(행당 최대 4칸) |
@@ -73,7 +73,7 @@ test_arena.gd
 3. **무기 탭(무기 섹션):** 필터·선택 → 설명 BBCode(`omit`으로 튜닝 중 필드 숨김) → Equip → 인벤 활성 weapon 슬롯 교체 → `build_tuned_weapon()` 적용 후 `Gun` 갱신.
 4. **무기 탭(보조 섹션):** 선택 → Equip → 인벤 활성 offhand 슬롯 교체 → loadout 재적용. 양손 무기면 `inventory.error.offhand_blocked`로 거절.
 5. **보조손 상태이상 진입**(`%OffhandStatusOption`, `%EditOffhandStatusButton`): 장비 탭에서 `grant_on_hit`를 읽기 전용으로 고르고, 버튼으로 상태이상 탭으로 이동해 자동 선택한다(장비 탭에서 상태이상 수치 직접 수정은 금지).
-6. **보조손 튜닝**(`%OffhandTuningFields`, UI 라벨 「보조손 튜닝」): 선택 보조의 `stat_modifiers` 중 `block_min/max`, `armor_min/max`, `weapon_damage_mult`, `power`가 있을 때만 SpinBox 표시. **적용**·**저장**·**초기화** → `user://test_arena_gear_snapshots.cfg`. 변경 즉시 `apply_inventory_loadout_to_player()`로 반영.
+6. **보조손 튜닝**(`%OffhandTuningFields`, UI 라벨 「보조손 튜닝」): 선택 보조의 `stat_modifiers` 중 `block_min/max`, `armor_min/max`, `weapon_damage_mult`, `power`가 있을 때만 SpinBox 표시. **적용**·**저장**·**초기화** → `user://test_arena_gear_snapshots.cfg`. 변경 즉시 `apply_inventory_loadout_to_player()`로 반영되며, `power`는 장비·패시브·버프 합산값으로 1회 softcap 적용된다.
 7. **무기 튜닝**(`%ProjectileTuningFields`, UI 라벨 「무기 튜닝」): `CORE_FIELD_DEFS` + 유형별 사거리·발사체 수 + `FIELD_DEFS_*` SpinBox. 스핀 변경 시 세션 반영(±·Enter). **적용**·**저장**·**초기화** → `user://test_arena_weapon_snapshots.cfg`. 장착 중이면 `_apply_tuning_live` 즉시 반영.
 8. **상태이상 튜닝**(`%StatusEffectTuningFields`): `duration_seconds`, `max_stacks`, `damage_taken_mult`, `move_speed_mult`, DoT 계열은 `tick_damage_min/max`, `tick_interval`까지 제공. **적용**·**저장**·**초기화** → `user://test_arena_status_effect_snapshots.cfg`. 적용 시 활성 몹의 동일 상태이상 tick profile을 즉시 재계산하되, **남은 지속시간은 리셋하지 않고 유지**한다.
 9. movement: `ProjectileMovementOption` — 옵션이 2개 이상일 때만 행 표시.
@@ -100,7 +100,7 @@ override가 0이거나 세션에 없으면 `range_type` 표(`MELEE_RANGE_BY_TYPE
 | 막기 | `block_min`, `block_max` | 선택 보조 `stat_modifiers`에 block 키가 있을 때 |
 | 방어 | `armor_min`, `armor_max` | 선택 보조 `stat_modifiers`에 armor 키가 있을 때 |
 | 무기 피해 | `weapon_damage_mult` | 선택 보조 `stat_modifiers`에 키가 있을 때 |
-| 파워 | `power` | 선택 보조 `stat_modifiers`에 키가 있을 때 |
+| 파워 | `power` | 선택 보조 `stat_modifiers`에 키가 있을 때 (피해 + 범위, 합산 1회 softcap) |
 
 `grant_orbital` 같은 태그/문자열 키는 SpinBox 튜닝 대상이 아니다. **F5 메인 런은 이 스냅샷을 읽지 않는다.**
 
