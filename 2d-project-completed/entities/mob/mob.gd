@@ -76,10 +76,24 @@ const POOL_STORAGE_POSITION := Vector2(-50000.0, -50000.0)
 const CONTACT_STANDOFF_PADDING := 6.0
 const ATTACK_RANGE_RING_TEXTURE := preload("res://art/shared/fx/circle.png")
 const MELEE_ATTACK_RANGE_RING_COLOR := Color(0.95, 0.4, 0.32, 0.28)
+const STATUS_ICON_DEFAULT_TEXT := "ST"
+const STATUS_ICON_TEXT := {
+	&"bleed": "BD",
+	&"burn": "BR",
+	&"scorch": "SC",
+	&"zap": "ZP",
+	&"poison": "PS",
+	&"toxic": "TX",
+	&"chill": "CH",
+	&"frostbite": "FB"
+}
 
 @onready var player: Node2D = get_node("/root/Game/Player")
 @onready var _target_indicator: Node2D = %TargetIndicator
 @onready var _attack_range_ring: Sprite2D = get_node_or_null("AttackRangeRing")
+@onready var _status_effect_icons: HBoxContainer = get_node_or_null("StatusEffectIcons") as HBoxContainer
+
+var _status_icon_signature := ""
 
 
 # 스폰 직전 Game에서 호출해 밸런스 HP 배수를 반영합니다.
@@ -96,6 +110,7 @@ func pool_reset() -> void:
 		remove_from_group("mobs")
 	_nettles_timer = 0.0
 	_status_effects.clear()
+	_reset_status_effect_icons()
 	_is_dying = false
 	_stage_clear_death = false
 	_is_targeted = false
@@ -272,6 +287,7 @@ func _physics_process(delta: float) -> void:
 	if _charge_windup_remaining > 0.0:
 		_process_charge_windup(delta)
 		_status_effects.tick(delta, self)
+		_refresh_status_effect_icons()
 		_process_nettles(delta)
 		move_and_slide()
 		return
@@ -279,6 +295,7 @@ func _physics_process(delta: float) -> void:
 	if _charge_active:
 		_process_charge_attack(delta)
 		_status_effects.tick(delta, self)
+		_refresh_status_effect_icons()
 		_process_nettles(delta)
 		move_and_slide()
 		return
@@ -302,6 +319,7 @@ func _physics_process(delta: float) -> void:
 		if can_start_charge:
 			_begin_charge_attack(offset)
 			_status_effects.tick(delta, self)
+			_refresh_status_effect_icons()
 			_process_nettles(delta)
 			move_and_slide()
 			return
@@ -325,6 +343,7 @@ func _physics_process(delta: float) -> void:
 		_apply_mob_separation()
 		_clamp_velocity_away_from_player()
 	_status_effects.tick(delta, self)
+	_refresh_status_effect_icons()
 	_process_nettles(delta)
 	move_and_slide()
 
@@ -716,9 +735,16 @@ func _play_hit_flash() -> void:
 
 
 func apply_status(status_id: StringName, weapon: WeaponData = null) -> void:
-	var active := _status_effects.apply_status(status_id, weapon)
-	if active != null and active.data != null:
+	var apply_result: Dictionary = _status_effects.apply_status_with_result(status_id, weapon)
+	var is_new := false
+	if apply_result.has("is_new"):
+		is_new = bool(apply_result["is_new"])
+	var active: ActiveStatusEffect = null
+	if apply_result.has("active"):
+		active = apply_result["active"] as ActiveStatusEffect
+	if is_new and active != null and active.data != null:
 		FloatingStatusEffectText.spawn_status_applied(global_position, active.data)
+	_refresh_status_effect_icons()
 
 
 # 활성 상태이상 틱 프로필을 최신 카탈로그 값으로 다시 계산합니다.
@@ -834,8 +860,97 @@ func _request_die() -> void:
 	_is_dying = true
 	set_targeted(false)
 	_hide_health_bar()
+	_reset_status_effect_icons()
 	set_physics_process(false)
 	call_deferred("_die")
+
+
+# 상태이상 목록을 체력바 상단 아이콘으로 동기화합니다.
+func _refresh_status_effect_icons() -> void:
+	if not is_node_ready():
+		return
+	if _status_effect_icons == null:
+		return
+	var active_statuses: Array[ActiveStatusEffect] = _status_effects.get_active_statuses()
+	var next_signature := _build_status_icon_signature(active_statuses)
+	if next_signature == _status_icon_signature:
+		return
+	_status_icon_signature = next_signature
+	_clear_status_effect_icon_nodes()
+	if active_statuses.is_empty():
+		_status_effect_icons.visible = false
+		return
+	_status_effect_icons.visible = true
+	for active in active_statuses:
+		_status_effect_icons.add_child(_create_status_effect_icon(active))
+
+
+func _reset_status_effect_icons() -> void:
+	_status_icon_signature = ""
+	if not is_node_ready():
+		return
+	if _status_effect_icons == null:
+		return
+	_clear_status_effect_icon_nodes()
+	_status_effect_icons.visible = false
+
+
+func _clear_status_effect_icon_nodes() -> void:
+	if _status_effect_icons == null:
+		return
+	for child in _status_effect_icons.get_children():
+		child.queue_free()
+
+
+func _build_status_icon_signature(active_statuses: Array[ActiveStatusEffect]) -> String:
+	if active_statuses.is_empty():
+		return ""
+	var parts: PackedStringArray = []
+	for active in active_statuses:
+		if active == null:
+			continue
+		parts.append("%s:%d" % [String(active.get_key()), active.stacks])
+	return "|".join(parts)
+
+
+func _create_status_effect_icon(active: ActiveStatusEffect) -> Control:
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(18.0, 18.0)
+	var style := StyleBoxFlat.new()
+	var icon_color := active.data.effect_color if active != null and active.data != null else Color.DIM_GRAY
+	style.bg_color = icon_color.darkened(0.22)
+	style.corner_radius_top_left = 4
+	style.corner_radius_top_right = 4
+	style.corner_radius_bottom_left = 4
+	style.corner_radius_bottom_right = 4
+	panel.add_theme_stylebox_override("panel", style)
+
+	var label := Label.new()
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	label.add_theme_font_size_override("font_size", 10)
+	label.text = _get_status_icon_text(active)
+	label.modulate = Color.WHITE
+	panel.add_child(label)
+
+	if active != null and active.data != null:
+		var stack_suffix := ""
+		if active.stacks > 1:
+			stack_suffix = " x%d" % active.stacks
+		panel.tooltip_text = "%s%s" % [active.data.get_display_name_localized(), stack_suffix]
+	return panel
+
+
+func _get_status_icon_text(active: ActiveStatusEffect) -> String:
+	if active == null:
+		return STATUS_ICON_DEFAULT_TEXT
+	var key := active.get_key()
+	var text: String = String(STATUS_ICON_TEXT.get(key, STATUS_ICON_DEFAULT_TEXT))
+	if active.stacks > 1:
+		return "%s%d" % [text, mini(active.stacks, 9)]
+	return text
 
 
 # 일반 사망 시 플레이어 범위 피해(특수몹 등 export 활성 변종)

@@ -27,7 +27,7 @@
 |------|------|
 | 플레이어 버프/스탯 | `buff/`, `CharacterStats` 계층 범위다. |
 | 장비 상시 modifier | 인벤토리/로드아웃 스탯 병합 경로에서 처리한다. |
-| 상태이상 HUD 상세 UI | 현재는 적용 텍스트 위주이며 아이콘/패널은 별도 범위다. |
+| 상태이상 HUD 대규모 확장 | 현재는 몹 체력바 상단의 경량 아이콘 표시만 포함하며, 전용 패널/디버프 바 확장은 별도 범위다. |
 | 몹 이동/공격 AI 자체 | 상태이상은 배율/피해만 제공하고 행동 로직은 `mob.gd`가 담당한다. |
 | 스폰 곡선/웨이브 밸런스 | `game.gd`, `BalanceTable` 범위다. |
 
@@ -63,8 +63,8 @@ WeaponData.status_effects + status_chance
 1. 무기가 몹에 명중하면 `Mob.apply_weapon_damage()`가 호출된다.
 2. `_apply_weapon_status_effects()`가 `weapon.status_effects`를 순회하며 확률 체크 후 `apply_status()`를 호출한다.
 3. 같은 적중에서 `Player.apply_loadout_on_hit()` → `PassiveResolver.on_hit()` → `LoadoutGrantPassive.apply_on_hit()` 경로로 `grant_on_hit` 상태이상을 추가 적용한다.
-4. `StatusEffectController.apply_status()`는 카탈로그에서 정의를 가져오고, 기존 효과가 있으면 stack/refresh를 적용한다.
-5. 새 효과면 `ActiveStatusEffect.create()`로 source weapon, tick 프로필, duration을 초기화해 목록에 추가한다.
+4. `StatusEffectController.apply_status_with_result()`는 카탈로그에서 정의를 가져오고, 기존 효과가 있으면 stack/refresh를 적용한다.
+5. 새 효과면 `ActiveStatusEffect.create()`로 source weapon, tick 프로필, duration을 초기화해 목록에 추가한다. 이때만 상태이상 플로팅 텍스트를 표시한다(덮어쓰기/갱신은 미표시).
 6. 매 physics tick마다 `StatusEffectController.tick(delta, owner_mob)`가 모든 활성 효과의 tick timer/remaining time을 갱신한다.
 7. DoT tick due 상태면 `owner_mob.apply_status_tick_damage()`를 호출해 속성/색상/무기 귀속으로 피해를 준다.
 8. `Mob.apply_status_tick_damage()`는 상태이상 피해 배율, nettles 추가 배율, 피격 피드백, 피해 통계를 처리하고 사망 여부를 판정한다.
@@ -79,7 +79,7 @@ WeaponData.status_effects + status_chance
 3. 중첩 정책은 `STACK_REFRESH`/`STACK_STACK`, `max_stacks` 조합으로 결정한다.
 4. poison은 무기 스펙 override 규칙이 있으므로 duration/tick 변경 시 무기 필드와 같이 검토한다.
 5. 새 `damage_element`를 추가하면 무기 element/색상/피해 통계 표시와 함께 검증한다.
-6. F6 상태이상 탭은 장비 `grant_on_hit`의 상태이상만 대상으로 하며, 장비 탭에서 직접 상태이상 수치 편집은 허용하지 않는다.
+6. F6 상태이상 탭은 장비 `grant_on_hit` + `grant_orbital`(오브/궤도 무기)의 `status_effects`를 대상으로 하며, 장비 탭에서 직접 상태이상 수치 편집은 허용하지 않는다.
 
 ## Invariants & Gotchas
 
@@ -87,6 +87,7 @@ WeaponData.status_effects + status_chance
 |------|------|
 | 몹 상태이상은 `StatusEffectController`만이 소유/만료한다. | 몹 스크립트 각 지점에서 임의 배열 조작 시 만료/중첩 불일치가 생긴다. |
 | DoT 피해도 반드시 source weapon으로 `register_weapon_damage`에 귀속한다. | 게임오버 피해 목록에서 상태이상 기여 무기가 누락되지 않아야 한다. |
+| 상태이상 적용 플로팅 텍스트는 신규 적용에만 노출한다. | refresh/stack 시 매번 텍스트가 뜨면 전투 가독성이 급격히 떨어진다. |
 | poison은 `source_weapon` 기준으로 duration/tick profile을 재계산한다. | 무기별 독 정체성을 유지하고, 카탈로그 기본값과 충돌하지 않게 한다. |
 | F6 상태이상 탭에서 `poison`의 duration/tick 필드는 잠금 처리한다. | 무기 source 우선 규칙과 상충하는 UI 기대를 사전에 차단한다. |
 | 받는 피해 배율은 element 일치 시 스택 수만큼 곱연산한다. | scorch/toxic/frostbite 같은 디버프 설계가 additive로 바뀌지 않게 한다. |

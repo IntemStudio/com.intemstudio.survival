@@ -11,10 +11,20 @@ func clear() -> void:
 
 
 func apply_status(status_id: StringName, source_weapon: WeaponData = null) -> ActiveStatusEffect:
+	var apply_result: Dictionary = apply_status_with_result(status_id, source_weapon)
+	if not apply_result.has("active"):
+		return null
+	return apply_result["active"] as ActiveStatusEffect
+
+
+func apply_status_with_result(status_id: StringName, source_weapon: WeaponData = null) -> Dictionary:
 	var data := StatusEffectCatalog.get_status(status_id)
 	if data == null:
 		push_warning("StatusEffectController: unknown status '%s'" % String(status_id))
-		return null
+		return {
+			"active": null,
+			"is_new": false
+		}
 
 	var source_id := source_weapon.get_unique_key() if source_weapon != null else ""
 	var existing := _find_stack_target(data, source_id)
@@ -22,13 +32,22 @@ func apply_status(status_id: StringName, source_weapon: WeaponData = null) -> Ac
 		existing.source_weapon = source_weapon
 		existing.source_id = source_id
 		existing.add_stack()
-		return existing
+		return {
+			"active": existing,
+			"is_new": false
+		}
 
 	var active := ActiveStatusEffect.create(data, source_weapon)
 	if not active.is_valid():
-		return null
+		return {
+			"active": null,
+			"is_new": false
+		}
 	_active_statuses.append(active)
-	return active
+	return {
+		"active": active,
+		"is_new": true
+	}
 
 
 func apply_statuses(status_ids: Array[StringName], source_weapon: WeaponData = null) -> Array[ActiveStatusEffect]:
@@ -84,6 +103,17 @@ func has_status(status_id: StringName) -> bool:
 		if active != null and active.get_key() == status_id:
 			return true
 	return false
+
+
+func get_active_statuses() -> Array[ActiveStatusEffect]:
+	var active_list: Array[ActiveStatusEffect] = []
+	for active in _active_statuses:
+		if active == null or active.data == null:
+			continue
+		if active.remaining_seconds <= 0.0:
+			continue
+		active_list.append(active)
+	return active_list
 
 
 func refresh_active_status_profiles(status_id: StringName = &"", reset_duration: bool = false) -> void:

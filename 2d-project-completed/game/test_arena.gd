@@ -24,6 +24,8 @@ const TEST_TAB_INDEX_MOB := 0
 const TEST_TAB_INDEX_WEAPON := 1
 const TEST_TAB_INDEX_GEAR := 2
 const TEST_TAB_INDEX_STATUS_EFFECT := 3
+const WEAPON_SUB_TAB_INDEX_PRIMARY := 0
+const WEAPON_SUB_TAB_INDEX_OFFHAND := 1
 
 const ARMOR_SLOT_LABELS_KO: Dictionary = {
 	EquipSlots.HELMET: "헬멧",
@@ -113,6 +115,9 @@ var _gear_panel_controller := TestArenaGearPanelControllerScript.new()
 var _mob_panel_controller := TestArenaMobPanelControllerScript.new()
 var _equipped_weapon_id := ""
 var _equipped_offhand_id := ""
+var _pending_offhand_context_restore := false
+var _pending_offhand_gear_id := ""
+var _pending_offhand_status_id: StringName = &""
 
 var _pause_menu: CanvasLayer
 var _inventory_menu: CanvasLayer
@@ -152,6 +157,7 @@ func _ready() -> void:
 	_register_mob_scenes()
 	# 3) 탭 세팅: TestPanels 탭 타이틀/탭바 구성
 	_setup_test_panels_tab()
+	_setup_weapon_sub_tabs()
 	# 4) UI 세팅: 탭별 Option/튜닝/가시성 초기화
 	_setup_mob_type_option()
 	_setup_weapon_filters()
@@ -435,6 +441,23 @@ func _setup_test_panels_tab() -> void:
 		tab_bar.rebuild_tabs()
 
 
+func _setup_weapon_sub_tabs() -> void:
+	var weapon_sub_tabs: TabContainer = %WeaponSubTab
+	weapon_sub_tabs.set_tab_title(WEAPON_SUB_TAB_INDEX_PRIMARY, "주무기")
+	weapon_sub_tabs.set_tab_title(WEAPON_SUB_TAB_INDEX_OFFHAND, "보조무기")
+	weapon_sub_tabs.current_tab = WEAPON_SUB_TAB_INDEX_PRIMARY
+	_refresh_weapon_sub_tab_lock_state()
+
+
+func _refresh_weapon_sub_tab_lock_state() -> void:
+	var weapon_sub_tabs: TabContainer = %WeaponSubTab
+	var offhand_enabled: bool = use_inventory_loadout and _inventory_menu != null
+	weapon_sub_tabs.set_tab_title(
+		WEAPON_SUB_TAB_INDEX_OFFHAND,
+		"보조무기" if offhand_enabled else "보조무기(잠금)"
+	)
+
+
 func _setup_mob_type_option() -> void:
 	_mob_panel_controller.setup_mob_type_option()
 
@@ -468,6 +491,17 @@ func _setup_armor_gear_section_visibility() -> void:
 func _setup_offhand_section_visibility() -> void:
 	var enabled := use_inventory_loadout and _inventory_menu != null
 	_gear_panel_controller.setup_offhand_section_visibility(enabled)
+	_refresh_weapon_sub_tab_lock_state()
+	%OffhandDisabledHintLabel.visible = not enabled
+	%OffhandDisabledHintLabel.text = (
+		"보조무기 탭을 사용하려면 인벤 연동(use_inventory_loadout)을 켜세요."
+	)
+	%EquipOffhandButton.disabled = not enabled
+	%ApplyOffhandTuningButton.disabled = not enabled
+	%SaveOffhandTuningButton.disabled = not enabled
+	%ResetOffhandTuningButton.disabled = not enabled
+	if not enabled:
+		%WeaponSubTab.current_tab = WEAPON_SUB_TAB_INDEX_PRIMARY
 
 
 func _wire_gear_snapshot_to_registry() -> void:
@@ -965,9 +999,16 @@ func _on_edit_offhand_status_button_pressed() -> void:
 	if status_ids.is_empty():
 		_update_status("수정할 상태이상이 없습니다.")
 		return
+	_pending_offhand_context_restore = true
+	_pending_offhand_gear_id = ""
+	if %OffhandOption.get_item_count() > 0 and %OffhandOption.selected >= 0:
+		_pending_offhand_gear_id = String(%OffhandOption.get_item_metadata(%OffhandOption.selected))
+	%TestPanelsTab.current_tab = TEST_TAB_INDEX_WEAPON
+	%WeaponSubTab.current_tab = WEAPON_SUB_TAB_INDEX_OFFHAND
 	var selected_id := status_ids[0]
 	if %OffhandStatusOption.get_item_count() > 0 and %OffhandStatusOption.selected >= 0:
 		selected_id = StringName(%OffhandStatusOption.get_item_metadata(%OffhandStatusOption.selected))
+	_pending_offhand_status_id = selected_id
 	_status_effect_controller.open_status_tab_with_status(selected_id)
 
 
@@ -990,14 +1031,48 @@ func _refresh_status_effect_tuning_ui() -> void:
 
 func _on_apply_status_effect_tuning_pressed() -> void:
 	_status_effect_controller.on_apply_status_effect_tuning_pressed()
+	_restore_offhand_context_from_status_tab()
 
 
 func _on_save_status_effect_tuning_pressed() -> void:
 	_status_effect_controller.on_save_status_effect_tuning_pressed()
+	_restore_offhand_context_from_status_tab()
 
 
 func _on_reset_status_effect_tuning_pressed() -> void:
 	_status_effect_controller.on_reset_status_effect_tuning_pressed()
+	_restore_offhand_context_from_status_tab()
+
+
+func _restore_offhand_context_from_status_tab() -> void:
+	if not _pending_offhand_context_restore:
+		return
+	%TestPanelsTab.current_tab = TEST_TAB_INDEX_WEAPON
+	%WeaponSubTab.current_tab = WEAPON_SUB_TAB_INDEX_OFFHAND
+	if not _pending_offhand_gear_id.is_empty():
+		_select_option_by_metadata(%OffhandOption, _pending_offhand_gear_id)
+		_gear_panel_controller.on_offhand_option_selected()
+	if _pending_offhand_status_id != &"":
+		_select_option_by_metadata(%OffhandStatusOption, _pending_offhand_status_id)
+		_refresh_offhand_status_hint()
+	_pending_offhand_context_restore = false
+	_pending_offhand_gear_id = ""
+	_pending_offhand_status_id = &""
+
+
+func _select_option_by_metadata(option: OptionButton, target_value: Variant) -> void:
+	if option == null:
+		return
+	var target_text := String(target_value)
+	if target_text.is_empty():
+		return
+	var item_count: int = option.get_item_count()
+	for index in item_count:
+		var metadata_text := String(option.get_item_metadata(index))
+		if metadata_text != target_text:
+			continue
+		option.select(index)
+		return
 
 
 # ===== Mob 설명 보조 + 공용 유틸 (Step0 boundary freeze) =====

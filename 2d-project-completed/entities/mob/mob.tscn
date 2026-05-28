@@ -43,6 +43,17 @@ max_value = 200.0
 value = 200.0
 show_percentage = false
 
+[node name="StatusEffectIcons" type="HBoxContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+z_index = 101
+offset_left = -52.0
+offset_top = -142.0
+offset_right = 52.0
+offset_bottom = -122.0
+theme_override_constants/separation = 4
+alignment = 1
+
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=469449182]
 shape = SubResource("RectangleShape2D_ypitm")
 debug_color = Color(0.701961, 0.282353, 0.352941, 0.419608)

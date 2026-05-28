@@ -6,6 +6,7 @@ extends RefCounted
 const GearCatalog = preload("res://inventory/gear_catalog.gd")
 const GearStatDisplayScript = preload("res://inventory/gear_stat_display.gd")
 const TestArenaGearTuningUiUtil = preload("res://game/test_arena_gear_tuning_ui.gd")
+const LoadoutGrantPassiveScript = preload("res://inventory/loadout_grant_passive.gd")
 
 var _gear_snapshots: TestArenaGearSnapshot
 var _update_status: Callable
@@ -540,22 +541,78 @@ func _get_selected_offhand_status_ids() -> Array[StringName]:
 	if gear == null:
 		return result
 	var stats := GearStatMerge.normalize_modifiers(gear.stat_modifiers)
-	if not stats.has("grant_on_hit"):
-		return result
-	var raw_tags: Variant = stats["grant_on_hit"]
-	if raw_tags is Array:
-		for raw_tag in raw_tags:
-			var status_id := StringName(String(raw_tag).strip_edges())
-			if status_id == &"" or status_id in result:
-				continue
-			if not StatusEffectCatalog.has_status(status_id):
-				continue
-			result.append(status_id)
-		return result
-	var single_status_id := StringName(String(raw_tags).strip_edges())
-	if single_status_id != &"" and StatusEffectCatalog.has_status(single_status_id):
-		result.append(single_status_id)
+	_append_grant_on_hit_status_ids(stats, result)
+	_append_orbital_weapon_status_ids(stats, result)
 	return result
+
+
+func _append_grant_on_hit_status_ids(stats: Dictionary, result: Array[StringName]) -> void:
+	if not stats.has("grant_on_hit"):
+		return
+	var raw_tags: Variant = stats["grant_on_hit"]
+	_append_status_ids_from_variant(raw_tags, result)
+
+
+func _append_orbital_weapon_status_ids(stats: Dictionary, result: Array[StringName]) -> void:
+	if not stats.has("grant_orbital"):
+		return
+	var raw_tags: Variant = stats["grant_orbital"]
+	var orbital_tags: Array[String] = _to_string_array(raw_tags)
+	if orbital_tags.is_empty():
+		return
+	for orbital_tag in orbital_tags:
+		var weapon_id_variant: Variant = LoadoutGrantPassiveScript.ORBITAL_WEAPON_BY_TAG.get(orbital_tag, "")
+		var weapon_id: String = String(weapon_id_variant).strip_edges()
+		if weapon_id.is_empty():
+			continue
+		var weapon: WeaponData = _resolve_weapon_data(weapon_id)
+		if weapon == null or weapon.status_effects.is_empty():
+			continue
+		for status_id in weapon.status_effects:
+			_append_status_id(status_id, result)
+
+
+func _resolve_weapon_data(weapon_id: String) -> WeaponData:
+	var inventory_menu: CanvasLayer = _get_inventory_menu.call()
+	if inventory_menu == null:
+		return null
+	var menu_service: InventoryService = inventory_menu.get_service()
+	if menu_service == null:
+		return null
+	return menu_service.registry.resolve_weapon(weapon_id)
+
+
+func _append_status_ids_from_variant(raw_status_ids: Variant, result: Array[StringName]) -> void:
+	if raw_status_ids is Array:
+		for raw_status_id in raw_status_ids:
+			var status_id := StringName(String(raw_status_id).strip_edges())
+			_append_status_id(status_id, result)
+		return
+	var single_status_id := StringName(String(raw_status_ids).strip_edges())
+	_append_status_id(single_status_id, result)
+
+
+func _to_string_array(value: Variant) -> Array[String]:
+	var result: Array[String] = []
+	if value is Array:
+		for entry in value:
+			var normalized := String(entry).strip_edges()
+			if normalized.is_empty():
+				continue
+			result.append(normalized)
+		return result
+	var normalized_single := String(value).strip_edges()
+	if not normalized_single.is_empty():
+		result.append(normalized_single)
+	return result
+
+
+func _append_status_id(status_id: StringName, result: Array[StringName]) -> void:
+	if status_id == &"" or status_id in result:
+		return
+	if not StatusEffectCatalog.has_status(status_id):
+		return
+	result.append(status_id)
 
 
 func _apply_gear_tuning_live(_catalog_gear: GearData) -> void:

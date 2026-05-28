@@ -79,7 +79,7 @@ static func merge_into(totals: Dictionary, modifiers: Dictionary) -> void:
 		elif key in _BOOL_OR_KEYS:
 			_merge_bool_or(totals, key, bool(value))
 		elif key in _TAG_LIST_KEYS:
-			_merge_tag_list(totals, key, str(value))
+			_merge_tag_values(totals, key, value)
 		else:
 			push_warning("GearStatMerge: unknown stat key '%s' — last-wins" % key)
 			totals[key] = value
@@ -111,10 +111,19 @@ static func _merge_bool_or(totals: Dictionary, key: String, value: bool) -> void
 	totals[key] = bool(totals.get(key, false)) or value
 
 
+static func _merge_tag_values(totals: Dictionary, key: String, value: Variant) -> void:
+	if value is Array:
+		for tag_value in value:
+			_merge_tag_list(totals, key, String(tag_value))
+		return
+	_merge_tag_list(totals, key, String(value))
+
+
 static func _merge_tag_list(totals: Dictionary, key: String, tag: String) -> void:
-	if tag.is_empty():
+	var normalized_tag := tag.strip_edges()
+	if normalized_tag.is_empty():
 		return
 	var list: Array = totals.get(key, [])
-	if tag not in list:
-		list.append(tag)
+	if normalized_tag not in list:
+		list.append(normalized_tag)
 	totals[key] = list

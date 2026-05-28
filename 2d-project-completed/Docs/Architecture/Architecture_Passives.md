@@ -56,7 +56,7 @@
 |-----------|------|
 | `inventory/gear_data.gd` | 장비 `stat_modifiers` |
 | `inventory/gear_stat_merge.gd` | 합산·`grant_*` 리스트 병합 |
-| `inventory/loadout_grant_passive.gd` | 궤도·대시·kill/wave/on-hit grant 핸들러 |
+| `inventory/loadout_grant_passive.gd` | 궤도·대시·kill/wave/on-hit grant 핸들러 (`grant_orbital` 태그→무기 id 매핑 포함) |
 | `inventory/loadout_stat_apply.gd` | loadout → 이동·피해·APS·체력 |
 | `inventory/gear_catalog_entries.gd` | 액세서리 grant 데이터 |
 

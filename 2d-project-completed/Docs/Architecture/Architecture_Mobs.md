@@ -23,7 +23,7 @@
 | 원거리 공격 | 공격 거리, 예고 마크, windup delay, 투사체 스폰, 쿨다운 |
 | 피격·상태이상 | weapon 피해, 독 tick, nettles, 피격 깜박임, 체력바 표시 |
 | 사망·보상 | 일반 사망 보상, 클리어 사망, `died` 시그널, 풀 반환, (선택) 지연 사망 폭발 |
-| 전투 피드백 | 조준 링, 공격 범위 링, 체력바, 플로팅 데미지, (fast) 이동 속도 트레일 |
+| 전투 피드백 | 조준 링, 공격 범위 링, 체력바, 상태이상 아이콘(체력바 상단), 플로팅 데미지/상태 텍스트, (fast) 이동 속도 트레일 |
 
 ### Out of Scope
 
@@ -87,10 +87,11 @@ Game.spawn_mob()
 6. 원거리 몹은 사거리 안에서 windup을 시작하고, `mob_attack_mark`를 표시한 뒤 delay가 끝나면 `mob_projectile`을 발사한다.
 6b. 돌진 몹은 트리거 거리 안에서 `_begin_charge_attack` → `mob_charge_lane` 스폰·제자리 windup → `_start_charge_movement`로 가속 이동 → `charge_end_burst_*` 범위 피해·쿨다운.
 7. 무기/장판 피해는 `apply_weapon_damage()`로 들어와 상태이상 받는 피해 배율, HP 감소, hit flash, health bar, floating text, weapon damage 등록을 처리한다.
-8. 무기가 가진 `status_effects`는 `StatusEffectController`에 적용되고, 매 physics tick마다 DoT/만료/둔화 배율을 갱신한다.
-9. HP가 0 이하가 되면 `_request_die()`가 중복 사망을 막고 `_die()`를 deferred 호출한다.
-10. 일반 사망은 `died` 시그널, (선택) `schedule_mob_death_burst`, 연기, `Game.register_kill()`, `KillRewards`, XP/골드/자석/체력 픽업을 처리한 뒤 풀로 반환한다. 지연 폭발은 몹 풀 반환 후에도 사망 좌표에서 이어진다.
-11. 클리어 사망은 `_stage_clear_death`를 켜고 드랍·처치 집계 없이 풀로 반환한다.
+8. 무기가 가진 `status_effects`는 `StatusEffectController`에 적용되고, 신규 적용 시에만 상태이상 플로팅 텍스트를 표시한다(갱신/중첩은 미표시).
+9. 매 physics tick마다 DoT/만료/둔화 배율을 갱신하고, 활성 상태 목록을 체력바 상단 `StatusEffectIcons`에 동기화한다.
+10. HP가 0 이하가 되면 `_request_die()`가 중복 사망을 막고 `_die()`를 deferred 호출한다.
+11. 일반 사망은 `died` 시그널, (선택) `schedule_mob_death_burst`, 연기, `Game.register_kill()`, `KillRewards`, XP/골드/자석/체력 픽업을 처리한 뒤 풀로 반환한다. 지연 폭발은 몹 풀 반환 후에도 사망 좌표에서 이어진다.
+12. 클리어 사망은 `_stage_clear_death`를 켜고 드랍·처치 집계 없이 풀로 반환한다.
 
 ### Editor / Data
 
@@ -113,6 +114,7 @@ Game.spawn_mob()
 | 일반 사망과 클리어 사망을 섞지 않는다. | 클리어 시 대량 드랍과 처치 수 인플레를 막는다. |
 | 풀링 대상은 `pool_reset()`에서 상태, 타이머, 예고 마크, 물리 레이어를 정리해야 한다. | 재사용 시 이전 몹의 상태가 새 몹에 남지 않게 한다. |
 | 상태이상 DoT도 source `WeaponData`를 통해 `Game.register_weapon_damage()`에 기록해야 한다. | 게임오버·일시정지 피해 목록에서 DoT 피해 귀속이 누락되지 않게 한다. |
+| `StatusEffectIcons` 노드는 변종 씬에 없을 수 있으므로 null-safe로 접근한다. | `mob_fast.tscn`처럼 경량 변종 prewarm/pool_reset에서 null 참조를 방지한다. |
 | `mob_kind`를 바꾸면 보상, Wiki, 테스트 아레나 라벨을 함께 확인한다. | 보상과 UI가 다른 종류로 표시되는 것을 막는다. |
 | `mob_speed_trail`은 `mob.gd`의 `pool_reset`을 호출받지 않는다. | 부모 `collision_layer == 0`·`POOL_STORAGE_POSITION`·저속으로 트레일을 끈다. |
 
@@ -127,7 +129,7 @@ Game.spawn_mob()
 | 사망 보상 변경 | 일반 사망과 클리어 사망 분리, XP/골드 풀링, 자석/체력 저확률 드랍 |
 | 풀링 변경 | `ScenePool` prewarm, `pool_reset()`, `pool_on_acquire()`, `mob_attack_mark`·`mob_charge_lane` release |
 | F6 몹 튜닝 | `TestArenaMobSnapshot`, `test_arena.gd` MOB_OPTIONS, 접촉/원거리/폭발(특수 A)/돌진 거리(특수 B, charge 우선), **적용/저장** |
-| 피드백 UI 변경 | 체력바 설정, target indicator, attack range ring, floating damage, hit flash |
+| 피드백 UI 변경 | 체력바 설정, 상태이상 아이콘(`StatusEffectIcons`) 유무, target indicator, attack range ring, floating damage/status text, hit flash |
 | 변종 이동 FX | `mob_speed_trail.tscn`을 변종 씬에만 인스턴스. AI·피해·풀 로직은 `mob.gd`에 넣지 않음. `trail_color`는 `slime_tint`와 맞출 것 |
 | 상태이상 변경 | `StatusEffectCatalog`, `Mob.apply_weapon_damage()`, DoT 피해 통계, 풀 reset, F6 테스트 아레나 |
 

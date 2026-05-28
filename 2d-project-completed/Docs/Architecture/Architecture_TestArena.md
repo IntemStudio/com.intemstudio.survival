@@ -22,7 +22,7 @@
 | 보조손 튜닝 | `block_min/max`, `armor_min/max`, `weapon_damage_mult`, `power` SpinBox, **적용/저장**, `user://test_arena_gear_snapshots.cfg` (`power`는 피해·범위에 합산 1회 softcap) |
 | 상태이상 튜닝 | `duration/tick/배율` SpinBox, **적용/저장**, `user://test_arena_status_effect_snapshots.cfg` |
 | SpinBox 값 확정 | LineEdit 직접 입력 → **적용** 또는 **저장**(`spin.apply()`), Enter·포커스 이탈 시에도 반영 |
-| 패널 UI | 몹/무기/상태이상 탭, 고정 너비 탭 바(행당 최대 4칸) |
+| 패널 UI | 상위 탭(몹/무기/장비/상태이상) + 무기 하위 탭(주무기/보조무기), 고정 너비 탭 바(행당 최대 4칸) |
 | 인벤·일시정지 | `InventoryGameBridge`, `PauseMenu` 오버레이 |
 
 ### Out of Scope
@@ -78,13 +78,15 @@ test_arena.gd (Coordinator)
 1. `_ready`: 스냅샷 로드 → 패널 컨트롤러 `configure()` 의존성 주입 → 옵션 빌드/탭 세팅/튜닝 UI 세팅 → signal connect 순서로 부트스트랩한다. 상태이상 저장 스냅샷은 카탈로그에 자동 반영하고, `use_inventory_loadout`이면 `apply_inventory_loadout_to_player()`를 지연 호출한다.
 2. **몹 탭(`TestArenaMobPanelController`):** 타입 선택 → 설명 BBCode → 전투 튜닝 스핀(색: 기본/저장/세션) → **적용** 또는 **저장**. `spawn_test_mob()`는 코디네이터에 남아 씬 계약을 유지한다. **특수 A** — 사망 폭발(범위·피해·지연). **특수 B** — 돌진 거리(사망 폭발 스핀 숨김, `charge_attack_enabled` 우선).
 3. **무기 탭(`TestArenaWeaponPanelController`):** 필터·선택 → 설명 BBCode(`omit`으로 튜닝 중 필드 숨김) → Equip → 인벤 활성 weapon 슬롯 교체 → `build_tuned_weapon()` 적용 후 `Gun` 갱신.
-4. **장비 탭(`TestArenaGearPanelController`):** 보조손/방어구 선택 → Equip → 인벤 활성 슬롯 교체 → loadout 재적용. 양손 무기면 `inventory.error.offhand_blocked`로 거절.
-5. **보조손 상태이상 진입**(`%OffhandStatusOption`, `%EditOffhandStatusButton`): 장비 탭에서 `grant_on_hit`를 읽기 전용으로 고르고, 버튼으로 상태이상 탭으로 이동해 자동 선택한다(장비 탭에서 상태이상 수치 직접 수정 금지).
-6. **보조손/방어구 튜닝(`TestArenaGearPanelController`)**: 선택 장비 `stat_modifiers` 중 지원 필드만 SpinBox 표시. **적용**·**저장**·**초기화** → `user://test_arena_gear_snapshots.cfg`. 변경 즉시 `apply_inventory_loadout_to_player()` 반영, `power`는 합산 1회 softcap.
-7. **무기 튜닝(`TestArenaWeaponPanelController`)**: `CORE_FIELD_DEFS` + 유형별 사거리/발사체 수 + `FIELD_DEFS_*` SpinBox. 스핀 변경 시 세션 반영(±·Enter). **적용**·**저장**·**초기화** → `user://test_arena_weapon_snapshots.cfg`. 장착 중이면 즉시 반영.
-8. **상태이상 튜닝(`TestArenaStatusEffectController`)**: `duration_seconds`, `max_stacks`, `damage_taken_mult`, `move_speed_mult`, DoT(`tick_damage_min/max`, `tick_interval`). **적용**·**저장**·**초기화** → `user://test_arena_status_effect_snapshots.cfg`. 적용 시 활성 몹 동일 상태이상 tick profile을 재계산하되, **남은 지속시간은 유지**한다.
-9. movement: `ProjectileMovementOption` — 옵션이 2개 이상일 때만 행 표시.
-10. 인벤(I)·전투 세트 Tab은 `InventoryGameBridge`와 동일 계약.
+4. **무기 하위 탭(`WeaponSubTab`)**: `주무기`(무기 필터/선택/설명/무기 튜닝)와 `보조무기`(보조손 선택/설명/상태이상 진입/보조손 튜닝)로 분리한다.
+5. **장비 탭(`TestArenaGearPanelController`)**: 방어구(helmet/armor/gloves/boots/accessory) 선택 → Equip → 인벤 활성 슬롯 교체 → loadout 재적용.
+6. **보조무기 잠금 UX**: `use_inventory_loadout == false` 또는 인벤 미연결이면 무기 하위 탭 제목을 `보조무기(잠금)`으로 바꾸고 안내 문구를 노출한다. 보조손 장착/튜닝 버튼은 비활성화한다.
+7. **보조손 상태이상 진입/복귀**(`%OffhandStatusOption`, `%EditOffhandStatusButton`): 보조손 상태이상 후보(`grant_on_hit` + `grant_orbital`로 연결된 궤도 무기의 `status_effects`)를 읽기 전용으로 고르고 상태이상 탭으로 이동해 자동 선택한다. 상태이상 **적용/저장/초기화** 후에는 `무기 > 보조무기`로 자동 복귀하며 보조손/상태이상 선택 컨텍스트를 복원한다.
+8. **보조손/방어구 튜닝(`TestArenaGearPanelController`)**: 선택 장비 `stat_modifiers` 중 지원 필드만 SpinBox 표시. **적용**·**저장**·**초기화** → `user://test_arena_gear_snapshots.cfg`. 변경 즉시 `apply_inventory_loadout_to_player()` 반영, `power`는 합산 1회 softcap.
+9. **무기 튜닝(`TestArenaWeaponPanelController`)**: `CORE_FIELD_DEFS` + 유형별 사거리/발사체 수 + `FIELD_DEFS_*` SpinBox. 스핀 변경 시 세션 반영(±·Enter). **적용**·**저장**·**초기화** → `user://test_arena_weapon_snapshots.cfg`. 장착 중이면 즉시 반영.
+10. **상태이상 튜닝(`TestArenaStatusEffectController`)**: `duration_seconds`, `max_stacks`, `damage_taken_mult`, `move_speed_mult`, DoT(`tick_damage_min/max`, `tick_interval`). **적용**·**저장**·**초기화** → `user://test_arena_status_effect_snapshots.cfg`. 적용 시 활성 몹 동일 상태이상 tick profile을 재계산하되, **남은 지속시간은 유지**한다.
+11. movement: `ProjectileMovementOption` — 옵션이 2개 이상일 때만 행 표시.
+12. 인벤(I)·전투 세트 Tab은 `InventoryGameBridge`와 동일 계약.
 
 ### 무기 튜닝 필드 (`TestArenaWeaponSnapshot`)
 
@@ -143,6 +145,9 @@ override가 0이거나 세션에 없으면 `range_type` 표(`MELEE_RANGE_BY_TYPE
 | `_equip_weapon` / `_apply_tuning_live`는 스냅샷 적용 후 `Player`에 반영. | 인벤 ID와 튜닝 수치 분리 |
 | 보조 스냅샷 반영은 `ItemRegistry.set_gear_modifier_resolver(Callable(TestArenaGearSnapshot, "resolve_modifiers"))` 경로로만 한다. | F6 전용 오버라이드와 F5 카탈로그 원본 분리 |
 | 보조 min/max 튜닝 저장 시 `block_min ≤ block_max`, `armor_min ≤ armor_max`를 유지하도록 clamp한다. | 역전 범위 저장으로 전투 계산(`randi_range`)이 깨지는 것을 방지 |
+| 보조손 상태이상 힌트는 `grant_on_hit`뿐 아니라 `grant_orbital`이 가리키는 무기의 `status_effects`도 포함해 표시한다. | 오브/동료형 보조손의 실제 전투 상태이상과 UI 안내를 일치 |
+| 무기 탭은 `WeaponSubTab` 하위 탭(주무기/보조무기)을 유지하고, 잠금 상태는 탭 제목 `보조무기(잠금)`으로 표현한다. | 탭 인덱스를 고정해 코드/QA 복잡도를 낮추면서 잠금 상태를 명확히 안내 |
+| 상태이상 탭에서 보조손 경로로 진입한 경우, 상태이상 **적용/저장/초기화** 후 `무기 > 보조무기`로 복귀하며 선택 컨텍스트를 복원한다. | 탭 왕복 중 대상 분실로 인한 UX 단절과 오조작을 방지 |
 | `melee_range_override` / `projectile_range_override`는 F6 튜닝·스냅샷 전용. F5 카탈로그 `.tres`는 0 유지. | 메인 밸런스와 QA 오버라이드 분리 |
 | 무기 설명 omit은 `get_field_defs()`와 동일 property 키. | GUI와 BBCode 중복 방지 |
 | 몹 튜닝 라벨·스핀은 `%Mob*Label` 등 고유 이름 필수. | 누락 시 `_ready`에서 get_node 실패 |
@@ -167,12 +172,14 @@ override가 0이거나 세션에 없으면 `range_type` 표(`MELEE_RANGE_BY_TYPE
 | 보조 GUI 착용/튜닝 | `try_force_equip_offhand_on_active_set`, `%OffhandTuning*`, `TestArenaGearSnapshot.get_field_defs`, `set_gear_modifier_resolver` |
 | 튜닝 UI 공통화 | `test_arena_tuning_ui.gd` (`create_tuning_row`, `wire_spin_box_text_commit`, `commit_spin_box_pending`) 사용 유지 |
 | 무기 튜닝 필드 | `CORE_FIELD_DEFS`, `get_range_field_def`, `get_projectile_spawn_field_def`, 타입별 `FIELD_DEFS_*`, `get_tuning_spin_display_value` |
+| 무기 하위 탭/잠금 UX | `%WeaponSubTab`, `WEAPON_SUB_TAB_INDEX_*`, `_refresh_weapon_sub_tab_lock_state`, `%OffhandDisabledHintLabel` |
+| 상태이상 탭 왕복 복원 | `_on_edit_offhand_status_button_pressed`, `_restore_offhand_context_from_status_tab`, `_pending_offhand_*` 상태값 |
 | 무기 설명 omit | `WeaponData.build_test_arena_info_bbcode`, `_get_weapon_omit_properties` |
 | 상태이상 탭 | `%StatusEffectOption`, `%StatusEffectTuning*`, `TestArenaStatusEffectSnapshot`, poison 잠금 UX |
 | 탭 추가 | `TestPanelsTab` 자식 + `TabBarHost.rebuild_tabs()`, 5번째부터 둘째 줄 |
 | 공격 예고·돌진 레인 | `mob.gd` windup(`_charge_windup_remaining`) → 이동, `ScenePool` prewarm, `pool_reset` |
 
-**최소 검증 (F6):** Special A — 처치 후 **지연 링 예고** → burst·피해·범위(튜닝 반영). Special B — GUI **돌진 거리** 튜닝, 트리거 거리 내 **레인 예고 → 대기 후 돌진** → 종료 범위 피해·저체력 자폭. 무기 Equip → 인벤 weapon, **피해·APS·사거리·발사체 수** 스핀 즉시 반영·**적용/저장**(직접 입력 포함), movement·타입별 스핀, 몹 튜닝 **적용/저장**, 탭 4등분 레이아웃.
+**최소 검증 (F6):** Special A — 처치 후 **지연 링 예고** → burst·피해·범위(튜닝 반영). Special B — GUI **돌진 거리** 튜닝, 트리거 거리 내 **레인 예고 → 대기 후 돌진** → 종료 범위 피해·저체력 자폭. 무기 Equip → 인벤 weapon, **피해·APS·사거리·발사체 수** 스핀 즉시 반영·**적용/저장**(직접 입력 포함), movement·타입별 스핀, 몹 튜닝 **적용/저장**, 상위 탭 + 무기 하위 탭(주무기/보조무기) 레이아웃, `use_inventory_loadout == false`에서 `보조무기(잠금)`/안내/버튼 비활성, 상태이상 탭 왕복 후 보조무기 컨텍스트 복원.
 
 ## Verification Note (Step6)
 
