@@ -76,7 +76,7 @@ func _sync_physics_layers() -> void:
 
 # 접촉 DPS Area 감시 — 게임 시작 전·무기 획득 중에는 끕니다.
 func set_contact_damage_enabled(enabled: bool) -> void:
-	var was_monitoring := %HurtBox.monitoring
+	var was_monitoring: bool = %HurtBox.monitoring
 	%HurtBox.monitoring = enabled
 	if enabled and not was_monitoring:
 		_refill_stamina_to_max()

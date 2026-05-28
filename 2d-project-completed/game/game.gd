@@ -9,6 +9,16 @@ const EQUIPMENT_DROP_SCENE := preload("res://effects/equipment_drop/equipment_dr
 const DEFAULT_BALANCE_TABLE := preload("res://game/balance/default_balance_table.tres")
 const DEFAULT_BALANCE_TIMELINE := preload("res://game/balance/default_balance_timeline.tres")
 const RUN_CLEAR_CURVE_MINUTES := 30.0
+const REWARD_FLOW_MODE_WEAPON := &"weapon"
+const REWARD_FLOW_MODE_ARENA_GEAR := &"arena_gear"
+const ARENA_GEAR_REWARD_SLOTS: Array[StringName] = [
+	EquipSlots.HELMET,
+	EquipSlots.ARMOR,
+	EquipSlots.GLOVES,
+	EquipSlots.BOOTS,
+	EquipSlots.OFFHAND,
+	EquipSlots.ACCESSORY,
+]
 const ARENA_CHEST_RADIUS := 240.0
 const ARENA_CHEST_SPECIFIC_PRICE := 120
 const ARENA_CHEST_ALL_PRICE := 90
@@ -41,6 +51,9 @@ var _pending_weapon_selects := 0
 var _passive_run_state := PassiveRunState.new()
 var _weapon_run_state := WeaponRunState.new()
 var _last_reward_title_key: StringName = &"weapon_select.level_up"
+var _reward_flow_mode: StringName = REWARD_FLOW_MODE_WEAPON
+var _arena_gear_reward_slot: StringName = &""
+var _arena_gear_reward_wave := 0
 var _weapon_damage := WeaponDamageTracker.new()
 var _timeline_fired_keys: Dictionary = {}
 var _density_event_mult := 1.0
@@ -117,16 +130,29 @@ func is_chest_purchase_open() -> bool:
 
 
 func show_weapon_select(title_key: StringName = &"weapon_select.level_up") -> bool:
-	return show_reward_select(title_key)
+	return _show_reward_select_by_mode(REWARD_FLOW_MODE_WEAPON, title_key)
 
 
 func show_reward_select(title_key: StringName = &"weapon_select.level_up") -> bool:
+	return _show_reward_select_by_mode(REWARD_FLOW_MODE_WEAPON, title_key)
+
+
+func show_arena_gear_select(title_key: StringName = &"gear_select.arena_wave_clear") -> bool:
+	return _show_reward_select_by_mode(REWARD_FLOW_MODE_ARENA_GEAR, title_key)
+
+
+func _show_reward_select_by_mode(flow_mode: StringName, title_key: StringName) -> bool:
 	if _weapon_select_menu == null:
 		push_error("Game: WeaponSelectMenu node missing.")
 		return false
 	_last_reward_title_key = title_key
-	var wave_number := _get_current_wave_number_for_rewards()
-	var choices := _roll_reward_choices(wave_number)
+	_reward_flow_mode = flow_mode
+	var choices: Array = []
+	match flow_mode:
+		REWARD_FLOW_MODE_ARENA_GEAR:
+			choices = _roll_arena_gear_reward_choices(_get_current_wave_number_for_rewards())
+		_:
+			choices = _roll_reward_choices(_get_current_wave_number_for_rewards())
 	if choices.is_empty():
 		_consume_pending_weapon_select()
 		return false
@@ -149,7 +175,12 @@ func show_reward_select(title_key: StringName = &"weapon_select.level_up") -> bo
 func reroll_reward_choices() -> void:
 	if _weapon_select_menu == null:
 		return
-	var choices := _roll_reward_choices(_get_current_wave_number_for_rewards())
+	var choices: Array = []
+	match _reward_flow_mode:
+		REWARD_FLOW_MODE_ARENA_GEAR:
+			choices = _roll_arena_gear_reward_choices(_get_current_wave_number_for_rewards())
+		_:
+			choices = _roll_reward_choices(_get_current_wave_number_for_rewards())
 	if choices.is_empty():
 		return
 	_weapon_select_menu.present_reward_choices(
@@ -178,6 +209,8 @@ func on_reward_chosen(choice: RewardChoice) -> void:
 		on_weapon_upgrade_chosen(choice.weapon)
 	elif choice.is_passive():
 		on_passive_chosen(choice.passive)
+	elif choice.is_gear():
+		on_gear_chosen(choice.gear, choice.gear_slot)
 
 
 func on_passive_chosen(passive: PassiveData) -> void:
@@ -233,6 +266,85 @@ func _roll_reward_choices(wave_number: int) -> Array:
 		if not choices.is_empty():
 			return choices
 	return []
+
+
+func _roll_arena_gear_reward_choices(wave_number: int) -> Array:
+	if not use_inventory_loadout:
+		return []
+	var service := _get_inventory_service()
+	if service == null:
+		return []
+	var reward_slot := _arena_gear_reward_slot
+	if _arena_gear_reward_wave != wave_number or reward_slot == &"":
+		reward_slot = _roll_arena_gear_reward_slot(service)
+	if reward_slot == &"":
+		return []
+	_arena_gear_reward_slot = reward_slot
+	_arena_gear_reward_wave = wave_number
+	var target_rarity := _roll_rarity_for_wave(wave_number)
+	var choices: Array = []
+	var used_item_ids: Dictionary = {}
+	for _i in RewardPool.CHOICE_COUNT:
+		var choice := _pick_arena_gear_choice(service, reward_slot, target_rarity, used_item_ids)
+		if choice == null:
+			break
+		choices.append(choice)
+		used_item_ids[choice.gear.get_unique_key()] = true
+	return choices
+
+
+func _roll_arena_gear_reward_slot(service: InventoryService) -> StringName:
+	var available_slots: Array[StringName] = []
+	var active_weapon_id := service.loadout.get_set_item_id(service.loadout.active_set_index, EquipSlots.WEAPON)
+	var offhand_blocked := service.registry.is_offhand_blocked_by_weapon(active_weapon_id)
+	for slot_key in ARENA_GEAR_REWARD_SLOTS:
+		if slot_key == EquipSlots.OFFHAND and offhand_blocked:
+			continue
+		if not _has_any_arena_gear_slot_candidate(service, slot_key):
+			continue
+		available_slots.append(slot_key)
+	if available_slots.is_empty():
+		return &""
+	return available_slots[_chest_rng.randi_range(0, available_slots.size() - 1)]
+
+
+func _has_any_arena_gear_slot_candidate(service: InventoryService, slot_key: StringName) -> bool:
+	for rarity in ItemRewardPicker.RARITY_ORDER:
+		if not ItemRewardPicker.collect_candidates(
+			service.registry,
+			service.loadout,
+			slot_key,
+			rarity
+		).is_empty():
+			return true
+	return false
+
+
+func _pick_arena_gear_choice(
+	service: InventoryService,
+	slot_key: StringName,
+	target_rarity: String,
+	used_item_ids: Dictionary
+) -> RewardChoice:
+	for rarity in ItemRewardPicker.get_rarity_fallback_chain(target_rarity):
+		var candidates := ItemRewardPicker.collect_candidates(
+			service.registry,
+			service.loadout,
+			slot_key,
+			rarity
+		)
+		var valid_choices: Array[RewardChoice] = []
+		for item_id in candidates:
+			if used_item_ids.has(item_id):
+				continue
+			var gear := service.registry.resolve_gear(item_id)
+			if gear == null:
+				continue
+			valid_choices.append(RewardChoice.from_gear(gear, slot_key))
+		if valid_choices.is_empty():
+			continue
+		return valid_choices[_chest_rng.randi_range(0, valid_choices.size() - 1)]
+	return null
 
 
 func _get_upgrade_eligible_weapons() -> Array[WeaponData]:
@@ -293,6 +405,30 @@ func on_weapon_chosen(weapon: WeaponData) -> void:
 	_finish_reward_flow(true, weapon)
 
 
+func on_gear_chosen(gear: GearData, slot_key: StringName) -> void:
+	if _weapon_select_menu == null or gear == null or slot_key == &"":
+		return
+	if not use_inventory_loadout:
+		_finish_reward_flow(false)
+		return
+	var service := _get_inventory_service()
+	if service == null:
+		_show_weapon_reward_error(InventoryService.ERROR_UNKNOWN_ITEM)
+		return
+	var err: StringName = InventoryService.ERROR_INVALID_SLOT
+	var gear_id := gear.get_unique_key()
+	if slot_key == EquipSlots.OFFHAND:
+		err = service.try_force_equip_offhand_on_active_set(gear_id)
+	else:
+		err = service.try_force_equip_shared_armor_slot(gear_id, slot_key)
+	if not err.is_empty():
+		_show_weapon_reward_error(err)
+		return
+	_refresh_inventory_after_reward()
+	apply_inventory_loadout_to_player()
+	_finish_reward_flow(false)
+
+
 # 보상 선택 UI를 닫고 게임 흐름을 재개합니다.
 func _finish_reward_flow(weapon_acquired: bool, weapon: WeaponData = null) -> void:
 	_weapon_select_menu.on_menu_closed()
@@ -305,6 +441,9 @@ func _finish_reward_flow(weapon_acquired: bool, weapon: WeaponData = null) -> vo
 		else:
 			%Player.add_weapon.call_deferred(weapon)
 
+	_reward_flow_mode = REWARD_FLOW_MODE_WEAPON
+	_arena_gear_reward_slot = &""
+	_arena_gear_reward_wave = 0
 	_ensure_game_started()
 	_consume_pending_weapon_select()
 	if _arena_enable_teleporter_after_weapon_select:
@@ -851,7 +990,7 @@ func _on_arena_wave_completed(wave_number: int) -> void:
 	_pending_arena_chest_reward_wave = wave_number
 	var next_wave_message := "Wave %d 클리어 · 텔레포터로 다음 웨이브 시작" % wave_number
 	_queue_arena_teleporter_after_weapon_select(next_wave_message)
-	if not show_reward_select(&"weapon_select.arena_wave_clear"):
+	if not show_arena_gear_select(&"gear_select.arena_wave_clear"):
 		_show_pending_arena_chest_reward()
 		_enable_pending_arena_teleporter()
 

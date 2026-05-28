@@ -1,0 +1,33 @@
+---
+description: Godot GDScript typing safety and inference guardrails
+alwaysApply: true
+---
+
+# Godot GDScript Typing Safety
+
+Use explicit types to avoid parser/type-inference instability in Godot 4.x GDScript.
+
+## Must
+
+- Prefer explicit variable types (`var value: bool = ...`) when the right-hand side may be `Variant` or node-typed.
+- Add explicit return types to helper functions whenever possible (`-> bool`, `-> StringName`, etc.).
+- Normalize node types before property access when type inference is ambiguous (for example, cache `%HurtBox` as `Area2D`).
+- Convert `Dictionary.get()` / metadata / dynamic array values to typed locals before passing them deeper into logic.
+
+## Must not
+
+- Do not use `:=` with node property reads like `%Node.property` unless the node variable is already strongly typed.
+- Do not use `:=` directly with `Dictionary.get(...)`, `Object.get(...)`, `get_meta(...)`, or other dynamic-return APIs.
+- Do not rely on implicit typing at API boundaries (scene nodes, dictionaries, resources loaded dynamically).
+
+## Allowed shorthand (`:=`) cases
+
+- Numeric/string/vector/color literals and constants with obvious static type.
+- Constructors with clear static type (`Vector2.ZERO`, `Color.WHITE`, `CharacterStats.new()`).
+- Values returned by functions with explicit return type and stable API contract.
+
+## Review checklist
+
+- Any new `:=` has a statically obvious right-hand-side type.
+- Any new scene node property access from `%Node` is typed or cast where needed.
+- Any new dictionary/metadata extraction is normalized to typed locals before use.

@@ -20,15 +20,15 @@ static func refresh_ui(
 	reset_button: Button,
 	spin_rows: Array[Dictionary],
 	get_selected_gear: Callable,
-	is_equipped: Callable,
-	on_value_changed: Callable,
-	on_spin_tree_entered: Callable,
-	on_spin_step_pressed: Callable,
+	_is_equipped: Callable,
+	on_value_changed_cb: Callable,
+	on_spin_tree_entered_cb: Callable,
+	on_spin_step_pressed_cb: Callable,
 	empty_message: String,
 	unsupported_message: String,
 	gear_snapshots: TestArenaGearSnapshot,
 	set_refreshing: Callable,
-	refresh_status_only: Callable,
+	refresh_status_only_cb: Callable,
 	button_size: Vector2,
 	button_font_size: int,
 	spin_min_height: float
@@ -59,16 +59,16 @@ static func refresh_ui(
 			catalog_gear,
 			field_def,
 			tuned_mods,
-			on_value_changed,
-			on_spin_tree_entered,
-			on_spin_step_pressed,
+			on_value_changed_cb,
+			on_spin_tree_entered_cb,
+			on_spin_step_pressed_cb,
 			gear_snapshots,
 			button_size,
 			button_font_size,
 			spin_min_height
 		)
 	set_refreshing.call(false)
-	refresh_status_only.call(catalog_gear)
+	refresh_status_only_cb.call(catalog_gear)
 	save_button.disabled = false
 	reset_button.disabled = false
 
@@ -79,9 +79,9 @@ static func add_row(
 	catalog_gear: GearData,
 	field_def: Dictionary,
 	tuned_modifiers: Dictionary,
-	on_value_changed: Callable,
-	on_spin_tree_entered: Callable,
-	on_spin_step_pressed: Callable,
+	on_value_changed_cb: Callable,
+	on_spin_tree_entered_cb: Callable,
+	on_spin_step_pressed_cb: Callable,
 	gear_snapshots: TestArenaGearSnapshot,
 	button_size: Vector2,
 	button_font_size: int,
@@ -93,10 +93,10 @@ static func add_row(
 		fields,
 		field_def,
 		initial_value,
-		on_value_changed.bind(catalog_gear, property),
-		on_spin_tree_entered.bind(catalog_gear, property),
+		on_value_changed_cb.bind(catalog_gear, property),
+		on_spin_tree_entered_cb.bind(catalog_gear, property),
 		func(spin: SpinBox, direction: int) -> void:
-			on_spin_step_pressed.call(spin, catalog_gear, property, direction),
+			on_spin_step_pressed_cb.call(spin, catalog_gear, property, direction),
 		button_size,
 		button_font_size,
 		spin_min_height
@@ -108,7 +108,7 @@ static func on_spin_tree_entered(
 	spin: SpinBox,
 	catalog_gear: GearData,
 	property: String,
-	on_value_changed: Callable,
+	on_value_changed_cb: Callable,
 	on_tuning_spin_tree_entered: Callable,
 	wire_spin_box_text_commit: Callable
 ) -> void:
@@ -116,7 +116,7 @@ static func on_spin_tree_entered(
 	wire_spin_box_text_commit.call(
 		spin,
 		func(new_value: float) -> void:
-			on_value_changed.call(new_value, catalog_gear, property)
+			on_value_changed_cb.call(new_value, catalog_gear, property)
 	)
 
 
@@ -125,11 +125,11 @@ static func on_spin_step_pressed(
 	catalog_gear: GearData,
 	property: String,
 	direction: int,
-	on_value_changed: Callable,
-	sync_spin_display: Callable
+	on_value_changed_cb: Callable,
+	sync_spin_display_cb: Callable
 ) -> void:
-	on_value_changed.call(spin.value + spin.step * float(direction), catalog_gear, property)
-	sync_spin_display.call(property, catalog_gear)
+	on_value_changed_cb.call(spin.value + spin.step * float(direction), catalog_gear, property)
+	sync_spin_display_cb.call(property, catalog_gear)
 
 
 static func on_value_changed(
@@ -139,14 +139,14 @@ static func on_value_changed(
 	is_refreshing: Callable,
 	store_value: Callable,
 	apply_live: Callable,
-	sync_spin_display: Callable,
+	sync_spin_display_cb: Callable,
 	refresh_status: Callable
 ) -> void:
 	if is_refreshing.call() or catalog_gear == null:
 		return
 	store_value.call(catalog_gear, property, new_value)
 	apply_live.call(catalog_gear)
-	sync_spin_display.call(property, catalog_gear)
+	sync_spin_display_cb.call(property, catalog_gear)
 	refresh_status.call(catalog_gear)
 
 

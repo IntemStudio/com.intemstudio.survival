@@ -21,15 +21,14 @@ func _ready() -> void:
 	_tab_container.tabs_visible = false
 	_build_row_hosts()
 	rebuild_tabs()
-	resized.connect(_update_tab_button_widths)
 	_tab_container.tab_changed.connect(_on_tab_container_changed)
 
 
 func rebuild_tabs() -> void:
 	if _tab_container == null:
 		return
-	_clear_tab_buttons()
 	_tab_buttons.clear()
+	_clear_tab_buttons()
 
 	var tab_count := _tab_container.get_tab_count()
 	for tab_index in tab_count:
@@ -41,7 +40,10 @@ func rebuild_tabs() -> void:
 			_row1.add_child(button)
 
 	_row1.visible = tab_count > MAX_TABS_PER_ROW
-	_update_tab_button_widths()
+	var row0_used := mini(tab_count, MAX_TABS_PER_ROW)
+	var row1_used := maxi(tab_count - MAX_TABS_PER_ROW, 0)
+	_fill_row_placeholders(_row0, row0_used)
+	_fill_row_placeholders(_row1, row1_used)
 	_sync_selected_tab_visual()
 
 
@@ -85,16 +87,20 @@ func _sync_selected_tab_visual() -> void:
 		return
 	var current := _tab_container.current_tab
 	for tab_index in _tab_buttons.size():
-		_tab_buttons[tab_index].button_pressed = tab_index == current
+		var button := _tab_buttons[tab_index]
+		if not is_instance_valid(button):
+			continue
+		button.button_pressed = tab_index == current
 
 
-func _update_tab_button_widths() -> void:
-	var host_width := size.x
-	if host_width <= 0.0:
-		return
-	var tab_width := host_width / float(MAX_TABS_PER_ROW)
-	for button in _tab_buttons:
-		button.custom_minimum_size = Vector2(tab_width, TAB_BAR_ROW_HEIGHT)
+func _fill_row_placeholders(row: HBoxContainer, used_count: int) -> void:
+	var clamped_used := clampi(used_count, 0, MAX_TABS_PER_ROW)
+	var placeholder_count := MAX_TABS_PER_ROW - clamped_used
+	for _index in placeholder_count:
+		var spacer := Control.new()
+		spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(spacer)
 
 
 func _clear_tab_buttons() -> void:

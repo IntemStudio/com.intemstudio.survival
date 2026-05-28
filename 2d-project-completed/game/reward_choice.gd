@@ -3,11 +3,13 @@ extends RefCounted
 
 ## 무기·무기 강화·패시브 보상 선택지 1개.
 
-enum Kind { WEAPON, WEAPON_UPGRADE, PASSIVE }
+enum Kind { WEAPON, WEAPON_UPGRADE, PASSIVE, GEAR }
 
 var kind: Kind = Kind.WEAPON
 var weapon: WeaponData = null
 var passive: PassiveData = null
+var gear: GearData = null
+var gear_slot: StringName = &""
 var passive_target_level: int = 1
 var weapon_from_level: int = 1
 var weapon_target_level: int = 1
@@ -41,6 +43,14 @@ static func from_passive(passive_data: PassiveData, target_level: int) -> Reward
 	return choice
 
 
+static func from_gear(gear_data: GearData, slot_key: StringName) -> RewardChoice:
+	var choice := RewardChoice.new()
+	choice.kind = Kind.GEAR
+	choice.gear = gear_data
+	choice.gear_slot = slot_key
+	return choice
+
+
 func is_weapon() -> bool:
 	return kind == Kind.WEAPON and weapon != null
 
@@ -53,6 +63,10 @@ func is_passive() -> bool:
 	return kind == Kind.PASSIVE and passive != null
 
 
+func is_gear() -> bool:
+	return kind == Kind.GEAR and gear != null
+
+
 func get_choice_label() -> String:
 	if is_weapon():
 		return weapon.get_select_label()
@@ -60,6 +74,8 @@ func get_choice_label() -> String:
 		return _format_weapon_level_label(weapon_from_level, weapon_target_level)
 	if is_passive():
 		return passive.get_select_label(passive_target_level)
+	if is_gear():
+		return "%s: %s" % [UiLocale.t(StringName("slot.%s" % String(gear_slot))), gear.get_display_name_localized()]
 	return "?"
 
 
@@ -70,6 +86,9 @@ func get_detail_bbcode(current_passive_level: int = 0, current_weapon_level: int
 		return _build_weapon_upgrade_tooltip(current_weapon_level)
 	if is_passive():
 		return passive.build_select_tooltip_bbcode(current_passive_level, passive_target_level)
+	if is_gear():
+		var slot_label := UiLocale.t(StringName("slot.%s" % String(gear_slot)))
+		return GearStatDisplay.build_gear_tooltip(gear, slot_label)
 	return ""
 
 

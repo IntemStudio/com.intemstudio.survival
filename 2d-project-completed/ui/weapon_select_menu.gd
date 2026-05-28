@@ -17,6 +17,7 @@ const WEAPON_TYPE_BUTTON_COLORS := {
 const DEFAULT_BUTTON_COLOR := Color(0.28, 0.28, 0.32, 1)
 const PASSIVE_BUTTON_COLOR := Color(0.42, 0.26, 0.58, 1)
 const WEAPON_UPGRADE_BUTTON_COLOR := Color(0.72, 0.52, 0.14, 1)
+const GEAR_BUTTON_COLOR := Color(0.28, 0.46, 0.68, 1)
 const CHOICE_FONT_COLOR := Color(0.95, 0.95, 0.98, 1)
 const AUTO_GAUGE_DIM_ALPHA := 0.42
 const AUTO_GAUGE_FILL_ALPHA := 0.92
@@ -363,6 +364,8 @@ func _update_button_labels() -> void:
 					_apply_choice_button_style(button, choice.weapon)
 				elif choice.is_weapon_upgrade():
 					_apply_weapon_upgrade_button_style(button)
+				elif choice.is_gear():
+					_apply_gear_button_style(button)
 				else:
 					_apply_passive_button_style(button)
 			else:
@@ -505,6 +508,8 @@ func _get_reward_choice_highlight_color(index: int) -> Color:
 			return DEFAULT_BUTTON_COLOR
 		if choice.is_passive():
 			return PASSIVE_BUTTON_COLOR
+		if choice.is_gear():
+			return GEAR_BUTTON_COLOR
 		if choice.is_weapon_upgrade():
 			return WEAPON_UPGRADE_BUTTON_COLOR
 		if choice.weapon != null:
@@ -561,6 +566,8 @@ func _refresh_choice_button_styles() -> void:
 				_apply_choice_button_style(button, choice.weapon)
 			elif choice.is_weapon_upgrade():
 				_apply_weapon_upgrade_button_style(button)
+			elif choice.is_gear():
+				_apply_gear_button_style(button)
 			else:
 				_apply_passive_button_style(button)
 		else:
@@ -741,6 +748,16 @@ func _apply_passive_button_style(button: Button) -> void:
 
 func _apply_weapon_upgrade_button_style(button: Button) -> void:
 	var state_styles: Dictionary = _build_button_state_styles(WEAPON_UPGRADE_BUTTON_COLOR)
+	button.add_theme_stylebox_override("normal", state_styles["normal"])
+	button.add_theme_stylebox_override("hover", state_styles["hover"])
+	button.add_theme_stylebox_override("pressed", state_styles["pressed"])
+	button.add_theme_stylebox_override("disabled", state_styles["disabled"])
+	button.add_theme_stylebox_override("focus", state_styles["hover"])
+	_apply_choice_button_font_colors(button)
+
+
+func _apply_gear_button_style(button: Button) -> void:
+	var state_styles: Dictionary = _build_button_state_styles(GEAR_BUTTON_COLOR)
 	button.add_theme_stylebox_override("normal", state_styles["normal"])
 	button.add_theme_stylebox_override("hover", state_styles["hover"])
 	button.add_theme_stylebox_override("pressed", state_styles["pressed"])

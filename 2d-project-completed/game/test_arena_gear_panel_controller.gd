@@ -4,7 +4,7 @@ extends RefCounted
 ## 테스트 아레나 장비 패널(보조손/방어구 선택·장착·튜닝 UI) 제어 컨트롤러.
 
 const GearCatalog = preload("res://inventory/gear_catalog.gd")
-const GearStatDisplay = preload("res://inventory/gear_stat_display.gd")
+const GearStatDisplayScript = preload("res://inventory/gear_stat_display.gd")
 const TestArenaGearTuningUiUtil = preload("res://game/test_arena_gear_tuning_ui.gd")
 
 var _gear_snapshots: TestArenaGearSnapshot
@@ -205,7 +205,7 @@ func setup_offhand_section_visibility(enabled: bool) -> void:
 		return
 	_update_offhand_description()
 	_refresh_offhand_status_hint()
-	_refresh_offhand_tuning_ui()
+	refresh_offhand_tuning_ui()
 
 
 func setup_armor_gear_section_visibility(enabled: bool) -> void:
@@ -220,7 +220,7 @@ func setup_armor_gear_section_visibility(enabled: bool) -> void:
 	if not enabled:
 		return
 	_update_armor_gear_description()
-	_refresh_armor_gear_tuning_ui()
+	refresh_armor_gear_tuning_ui()
 
 
 func on_equip_offhand_button_pressed() -> void:
@@ -240,7 +240,7 @@ func on_equip_armor_button_pressed() -> void:
 func on_offhand_option_selected() -> void:
 	_update_offhand_description()
 	_refresh_offhand_status_hint()
-	_refresh_offhand_tuning_ui()
+	refresh_offhand_tuning_ui()
 
 
 func on_armor_slot_filter_selected() -> void:
@@ -256,12 +256,12 @@ func on_armor_slot_filter_selected() -> void:
 			)
 	_refresh_armor_gear_option_list(preserve_key)
 	_update_armor_gear_description()
-	_refresh_armor_gear_tuning_ui()
+	refresh_armor_gear_tuning_ui()
 
 
 func on_armor_gear_option_selected() -> void:
 	_update_armor_gear_description()
-	_refresh_armor_gear_tuning_ui()
+	refresh_armor_gear_tuning_ui()
 
 
 func setup_offhand_gear_tuning_ui() -> void:
@@ -396,7 +396,7 @@ func _refresh_armor_gear_option_list(preserve_key: String = "", rebuild_tuning: 
 	_armor_gear_option.select(selected_index)
 	_update_armor_gear_description()
 	if rebuild_tuning:
-		_refresh_armor_gear_tuning_ui()
+		refresh_armor_gear_tuning_ui()
 
 
 func _refresh_offhand_option_list(preserve_key: String = "") -> void:
@@ -440,7 +440,7 @@ func _equip_offhand_from_gui(gear: GearData) -> void:
 	_refresh_offhand_option_list(gear_id)
 	_update_status.call("보조손 장착: %s" % gear.get_display_name_localized())
 	_equipped_offhand_id = gear_id
-	_refresh_offhand_tuning_ui()
+	refresh_offhand_tuning_ui()
 
 
 func _equip_armor_gear_from_gui(gear: GearData) -> void:
@@ -475,7 +475,7 @@ func _equip_armor_gear_from_gui(gear: GearData) -> void:
 	_refresh_armor_gear_option_list(gear_id)
 	var slot_label: String = _armor_slot_labels_ko.get(slot_key, EquipSlots.slot_key_to_string(slot_key))
 	_update_status.call("%s 장착: %s" % [slot_label, gear.get_display_name_localized()])
-	_refresh_armor_gear_tuning_ui()
+	refresh_armor_gear_tuning_ui()
 
 
 func _update_offhand_description() -> void:
@@ -485,7 +485,7 @@ func _update_offhand_description() -> void:
 	if gear:
 		var tuned := _gear_snapshots.build_tuned_gear(gear)
 		var slot_label := UiLocale.t(&"slot.offhand")
-		_offhand_desc_label.text = GearStatDisplay.build_gear_tooltip(tuned, slot_label)
+		_offhand_desc_label.text = GearStatDisplayScript.build_gear_tooltip(tuned, slot_label)
 	else:
 		_offhand_desc_label.text = "보조손 목록이 비어 있습니다."
 
@@ -498,7 +498,7 @@ func _update_armor_gear_description() -> void:
 	var gear := _get_selected_armor_gear()
 	if gear:
 		var tuned := _gear_snapshots.build_tuned_gear(gear)
-		_armor_gear_desc_label.text = GearStatDisplay.build_gear_tooltip(tuned, slot_label)
+		_armor_gear_desc_label.text = GearStatDisplayScript.build_gear_tooltip(tuned, slot_label)
 	else:
 		_armor_gear_desc_label.text = "%s 목록이 비어 있습니다." % slot_label
 
@@ -552,9 +552,9 @@ func _get_selected_offhand_status_ids() -> Array[StringName]:
 				continue
 			result.append(status_id)
 		return result
-	var status_id := StringName(String(raw_tags).strip_edges())
-	if status_id != &"" and StatusEffectCatalog.has_status(status_id):
-		result.append(status_id)
+	var single_status_id := StringName(String(raw_tags).strip_edges())
+	if single_status_id != &"" and StatusEffectCatalog.has_status(single_status_id):
+		result.append(single_status_id)
 	return result
 
 
