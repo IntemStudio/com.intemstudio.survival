@@ -6,16 +6,16 @@
 
 **문서 상태:** 1차 인프라 + P1 Resolver 확장 + P2 특수몹 사망 burst 완료. `AttackEntity`·`TargetAttack`·`chain_on_end`는 2차.
 
-### QA (공격 시스템 — F6)
+### QA (공격 시스템)
 
 | 확인 | 항목 |
 |------|------|
-| [ ] | revolver, 연금, king bible, club(근접), ranged mob |
-| [ ] | 자동공격 G / 조준 F |
-| [ ] | Special A 처치 — 지연 링 예고 → 플레이어 피해·폭발 연출(반경 튜닝 반영) |
-| [ ] | CLI smoke 스크립트(저장소에 있으면) 또는 에디터 파싱 확인 |
+| [ ] | **CLI:** [`scripts/verify/run_smoke.ps1`](../../scripts/verify/run_smoke.ps1) — 파싱·헤드리스 로드·정적 검사·gdUnit4 `test/` (F6 전투 QA **대체 아님**) |
+| [ ] | **F6:** revolver, 연금, king bible, club(근접), ranged mob |
+| [ ] | **F6:** 자동공격 G / 조준 F |
+| [ ] | **F6:** Special A 처치 — 지연 링 예고 → 플레이어 피해·폭발 연출(반경 튜닝 반영) |
 
-*참고: 현재 저장소에는 `scripts/verify/run_smoke.ps1`가 없을 수 있으므로, 없으면 에디터/F6 수동 검증을 기준으로 기록한다.*
+CLI 실행·옵션: [`AGENTS.md` § 변경 후 확인](../../AGENTS.md). 공격·무기 회귀는 F6 `test_arena.tscn`에서 수동 확인한다.
 
 ### 1차 인프라 구현 경로 (현재)
 

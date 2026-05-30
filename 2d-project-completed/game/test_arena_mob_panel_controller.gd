@@ -3,6 +3,9 @@ extends RefCounted
 
 ## 테스트 아레나 몹 패널(선택/설명/전투 튜닝 UI) 제어 컨트롤러.
 
+const CHASE_MODE_LABELS: Array[String] = ["직선 추격", "포위 추격"]
+const CHASE_MODE_PROPERTY := "chase_mode"
+
 var _mob_snapshots: TestArenaMobSnapshot
 var _update_status: Callable
 var _get_test_mob_hp_multiplier: Callable
@@ -41,6 +44,8 @@ var _mob_charge_section: Control
 var _mob_charge_spins: Array[SpinBox] = []
 var _mob_charge_step_buttons: Array[Button] = []
 var _mob_charge_field_labels: Array[Label] = []
+var _mob_chase_mode_label: Label
+var _mob_chase_mode_option: OptionButton
 
 
 func configure(
@@ -74,7 +79,9 @@ func configure(
 	mob_charge_section: Control,
 	mob_charge_spins: Array[SpinBox],
 	mob_charge_step_buttons: Array[Button],
-	mob_charge_field_labels: Array[Label]
+	mob_charge_field_labels: Array[Label],
+	mob_chase_mode_label: Label,
+	mob_chase_mode_option: OptionButton
 ) -> void:
 	_mob_snapshots = mob_snapshots
 	_update_status = update_status
@@ -107,6 +114,8 @@ func configure(
 	_mob_charge_spins = mob_charge_spins
 	_mob_charge_step_buttons = mob_charge_step_buttons
 	_mob_charge_field_labels = mob_charge_field_labels
+	_mob_chase_mode_label = mob_chase_mode_label
+	_mob_chase_mode_option = mob_chase_mode_option
 
 
 func setup_mob_type_option() -> void:
@@ -157,6 +166,8 @@ func setup_mob_combat_tuning_ui() -> void:
 	_mob_charge_spins[0].tree_entered.connect(_on_mob_charge_spin_tree_entered.bind(0, _mob_charge_spins[0]), CONNECT_ONE_SHOT)
 	_mob_charge_step_buttons[0].pressed.connect(_on_mob_charge_step_pressed.bind(0, -1))
 	_mob_charge_step_buttons[1].pressed.connect(_on_mob_charge_step_pressed.bind(0, 1))
+	_mob_chase_mode_option.item_selected.connect(_on_mob_chase_mode_selected)
+	_populate_mob_chase_mode_dropdown()
 	refresh_mob_combat_tuning_ui()
 
 
@@ -167,6 +178,8 @@ func on_apply_mob_combat_tuning_pressed() -> void:
 	_commit_and_apply_mob_tuning_from_spins()
 	var label: String = _mob_options[_mob_type_option.selected]["label"]
 	_update_status.call("몹 전투 튜닝 적용: %s" % label)
+	refresh_mob_combat_tuning_ui()
+	update_mob_description()
 
 
 func on_save_mob_combat_tuning_pressed() -> void:
@@ -175,8 +188,10 @@ func on_save_mob_combat_tuning_pressed() -> void:
 		return
 	_commit_and_apply_mob_tuning_from_spins()
 	var scene_id := TestArenaMobSnapshot.get_scene_id(scene)
-	_mob_snapshots.save_mob(scene_id)
 	var label: String = _mob_options[_mob_type_option.selected]["label"]
+	if not _mob_snapshots.save_mob(scene_id):
+		_update_status.call(_format_mob_persistence_failure("저장", label))
+		return
 	_update_status.call("몹 전투 스냅샷 저장: %s" % label)
 	_apply_mob_tuning_live.call(scene)
 	refresh_mob_combat_tuning_ui()
@@ -189,7 +204,7 @@ func on_reset_mob_combat_tuning_pressed() -> void:
 	var scene_id := TestArenaMobSnapshot.get_scene_id(scene)
 	_mob_snapshots.reset_mob(scene_id)
 	var label: String = _mob_options[_mob_type_option.selected]["label"]
-	_update_status.call("몹 전투 스냅샷 초기화: %s" % label)
+	_update_status.call("몹 전투 튜닝 되돌리기: %s" % label)
 	_apply_mob_tuning_live.call(scene)
 	refresh_mob_combat_tuning_ui()
 	update_mob_description()
@@ -217,6 +232,7 @@ func build_mob_info_bbcode(scene: PackedScene) -> String:
 		lines.append(role_hint)
 	lines.append("체력: %d (프리팹) → %d (F6 스폰)" % [mob.base_max_health, test_hp])
 	lines.append("이동 속도: %.0f~%.0f" % [mob.speed_min, mob.speed_max])
+	lines.append("추격 방식: %s" % _get_chase_mode_label(int(mob.chase_mode)))
 	if not mob.movement_enabled:
 		lines.append("[color=#a9a9b0]이동 없음[/color]")
 	if not mob.combat_enabled:
@@ -255,6 +271,7 @@ func refresh_mob_combat_tuning_ui() -> void:
 		_set_mob_combat_tuning_enabled(false)
 		_set_mob_death_burst_tuning_enabled(false)
 		_set_mob_charge_tuning_enabled(false)
+		_set_mob_action_buttons_enabled(false, false, false)
 		return
 	_mob_combat_field_defs = _mob_snapshots.get_field_defs(scene)
 	_mob_tuning_ui_refreshing = true
@@ -266,9 +283,11 @@ func refresh_mob_combat_tuning_ui() -> void:
 	_mob_tuning_ui_refreshing = false
 	_refresh_mob_death_burst_tuning_ui(scene)
 	_refresh_mob_charge_tuning_ui(scene)
+	_sync_mob_chase_mode_dropdown(scene)
 	_refresh_mob_tuning_field_styles(scene)
 	_refresh_mob_combat_tuning_status_only(scene)
 	_set_mob_combat_tuning_enabled(true)
+	_refresh_mob_action_buttons(scene)
 
 
 func _set_mob_combat_tuning_enabled(enabled: bool) -> void:
@@ -276,9 +295,59 @@ func _set_mob_combat_tuning_enabled(enabled: bool) -> void:
 		spin.editable = enabled
 	for button in _mob_combat_step_buttons:
 		button.disabled = not enabled
-	_apply_mob_combat_tuning_button.disabled = not enabled
-	_save_mob_combat_tuning_button.disabled = not enabled
-	_reset_mob_combat_tuning_button.disabled = not enabled
+	if _mob_chase_mode_option:
+		_mob_chase_mode_option.disabled = not enabled
+	if not enabled:
+		_set_mob_action_buttons_enabled(false, false, false)
+
+
+func _set_mob_action_buttons_enabled(
+	apply_enabled: bool,
+	save_enabled: bool,
+	reset_enabled: bool
+) -> void:
+	_apply_mob_combat_tuning_button.disabled = not apply_enabled
+	_save_mob_combat_tuning_button.disabled = not save_enabled
+	_reset_mob_combat_tuning_button.disabled = not reset_enabled
+
+
+# 스핀 미반영·세션 여부에 따라 적용/저장/되돌리기 버튼을 켭니다.
+func _refresh_mob_action_buttons(scene: PackedScene) -> void:
+	if scene == null or not _mob_snapshots.supports_combat_tuning(scene):
+		_set_mob_action_buttons_enabled(false, false, false)
+		return
+	var scene_id := TestArenaMobSnapshot.get_scene_id(scene)
+	var has_session := _mob_snapshots.has_unsaved_session_changes(scene_id)
+	var has_pending := _has_pending_spin_changes(scene)
+	_set_mob_action_buttons_enabled(
+		has_pending,
+		has_pending or has_session,
+		has_pending or has_session
+	)
+
+
+func _has_pending_spin_changes(scene: PackedScene) -> bool:
+	for spin_index in _mob_combat_field_defs.size():
+		if not _spin_matches_tuned_value(scene, _mob_combat_spins[spin_index], _mob_combat_field_defs[spin_index]):
+			return true
+	for burst_index in _mob_death_burst_field_defs.size():
+		if not _spin_matches_tuned_value(
+			scene, _mob_death_burst_spins[burst_index], _mob_death_burst_field_defs[burst_index]
+		):
+			return true
+	for charge_index in _mob_charge_field_defs.size():
+		if not _spin_matches_tuned_value(
+			scene, _mob_charge_spins[charge_index], _mob_charge_field_defs[charge_index]
+		):
+			return true
+	if not _chase_mode_matches_tuned_value(scene):
+		return true
+	return false
+
+
+func _spin_matches_tuned_value(scene: PackedScene, spin: SpinBox, field_def: Dictionary) -> bool:
+	var property: String = field_def["property"]
+	return is_equal_approx(spin.value, _mob_snapshots.get_tuned_value(scene, property))
 
 
 func _set_mob_death_burst_tuning_enabled(enabled: bool) -> void:
@@ -309,14 +378,20 @@ func _configure_mob_combat_spin(spin: SpinBox, field_def: Dictionary) -> void:
 func _apply_mob_tuning_field_style(label: Label, spin: SpinBox, scene: PackedScene, field_def: Dictionary) -> void:
 	var property: String = field_def["property"]
 	var base_label: String = str(field_def.get("label", property))
-	var state := _mob_snapshots.get_property_tuning_state(scene, property)
+	var tuned_value := _mob_snapshots.get_tuned_value(scene, property)
+	var is_pending := not is_equal_approx(spin.value, tuned_value)
 	var color := _mob_tuning_color_default
 	var suffix := ""
-	if state == TestArenaMobSnapshot.TUNING_STATE_SAVED:
-		color = _mob_tuning_color_saved
-	elif state == TestArenaMobSnapshot.TUNING_STATE_SESSION:
+	if is_pending:
 		color = _mob_tuning_color_session
 		suffix = " *"
+	else:
+		var state := _mob_snapshots.get_property_tuning_state(scene, property)
+		if state == TestArenaMobSnapshot.TUNING_STATE_SAVED:
+			color = _mob_tuning_color_saved
+		elif state == TestArenaMobSnapshot.TUNING_STATE_SESSION:
+			color = _mob_tuning_color_session
+			suffix = " *"
 	label.text = base_label + suffix
 	label.add_theme_color_override("font_color", color)
 	spin.add_theme_color_override("font_color", color)
@@ -332,6 +407,87 @@ func _refresh_mob_tuning_field_styles(scene: PackedScene) -> void:
 		_apply_mob_tuning_field_style(_mob_death_burst_field_labels[i], _mob_death_burst_spins[i], scene, _mob_death_burst_field_defs[i])
 	for i in mini(_mob_charge_field_labels.size(), _mob_charge_field_defs.size()):
 		_apply_mob_tuning_field_style(_mob_charge_field_labels[i], _mob_charge_spins[i], scene, _mob_charge_field_defs[i])
+	_refresh_mob_chase_mode_field_style(scene)
+
+
+func _refresh_mob_chase_mode_field_style(scene: PackedScene) -> void:
+	if _mob_chase_mode_label == null or _mob_chase_mode_option == null:
+		return
+	var tuned_index := clampi(
+		int(_mob_snapshots.get_tuned_value(scene, CHASE_MODE_PROPERTY)),
+		0,
+		CHASE_MODE_LABELS.size() - 1
+	)
+	var is_pending := _mob_chase_mode_option.selected != tuned_index
+	var color := _mob_tuning_color_default
+	var suffix := ""
+	if is_pending:
+		color = _mob_tuning_color_session
+		suffix = " *"
+	else:
+		var state := _mob_snapshots.get_property_tuning_state(scene, CHASE_MODE_PROPERTY)
+		if state == TestArenaMobSnapshot.TUNING_STATE_SAVED:
+			color = _mob_tuning_color_saved
+		elif state == TestArenaMobSnapshot.TUNING_STATE_SESSION:
+			color = _mob_tuning_color_session
+			suffix = " *"
+	_mob_chase_mode_label.text = "추격 방식" + suffix
+	_mob_chase_mode_label.add_theme_color_override("font_color", color)
+	_mob_chase_mode_option.add_theme_color_override("font_color", color)
+
+
+func _populate_mob_chase_mode_dropdown() -> void:
+	if _mob_chase_mode_option == null:
+		return
+	_mob_chase_mode_option.clear()
+	for label in CHASE_MODE_LABELS:
+		_mob_chase_mode_option.add_item(label)
+
+
+func _sync_mob_chase_mode_dropdown(scene: PackedScene) -> void:
+	if _mob_chase_mode_option == null or scene == null:
+		return
+	if _mob_chase_mode_option.get_item_count() != CHASE_MODE_LABELS.size():
+		_populate_mob_chase_mode_dropdown()
+	var select_index := clampi(
+		int(_mob_snapshots.get_tuned_value(scene, CHASE_MODE_PROPERTY)),
+		0,
+		CHASE_MODE_LABELS.size() - 1
+	)
+	_mob_tuning_ui_refreshing = true
+	_mob_chase_mode_option.select(select_index)
+	_mob_tuning_ui_refreshing = false
+
+
+func _chase_mode_matches_tuned_value(scene: PackedScene) -> bool:
+	if _mob_chase_mode_option == null:
+		return true
+	var expected := clampi(
+		int(_mob_snapshots.get_tuned_value(scene, CHASE_MODE_PROPERTY)),
+		0,
+		CHASE_MODE_LABELS.size() - 1
+	)
+	return _mob_chase_mode_option.selected == expected
+
+
+func _get_chase_mode_label(mode_index: int) -> String:
+	var index := clampi(mode_index, 0, CHASE_MODE_LABELS.size() - 1)
+	return CHASE_MODE_LABELS[index]
+
+
+func on_mob_chase_mode_selected(index: int) -> void:
+	_on_mob_chase_mode_selected(index)
+
+
+func _on_mob_chase_mode_selected(index: int) -> void:
+	if _mob_tuning_ui_refreshing:
+		return
+	var scene := get_selected_mob_scene(null)
+	if scene == null or index < 0 or index >= CHASE_MODE_LABELS.size():
+		return
+	_refresh_mob_chase_mode_field_style(scene)
+	_refresh_mob_combat_tuning_status_only(scene)
+	_refresh_mob_action_buttons(scene)
 
 
 func _refresh_mob_death_burst_tuning_ui(scene: PackedScene) -> void:
@@ -386,22 +542,35 @@ func _on_mob_charge_spin_tree_entered(charge_index: int, spin: SpinBox) -> void:
 		_on_mob_charge_spin_changed(charge_index, new_value))
 
 
+func _commit_mob_tuning_to_session(scene: PackedScene) -> void:
+	if scene == null:
+		return
+	var scene_id := TestArenaMobSnapshot.get_scene_id(scene)
+	for spin_index in _mob_combat_field_defs.size():
+		var spin: SpinBox = _mob_combat_spins[spin_index]
+		_commit_spin_box_pending.call(spin)
+		var property: String = _mob_combat_field_defs[spin_index]["property"]
+		_mob_snapshots.set_session_value(scene_id, property, spin.value)
+	for burst_index in _mob_death_burst_field_defs.size():
+		var burst_spin: SpinBox = _mob_death_burst_spins[burst_index]
+		_commit_spin_box_pending.call(burst_spin)
+		var burst_property: String = _mob_death_burst_field_defs[burst_index]["property"]
+		_mob_snapshots.set_session_value(scene_id, burst_property, burst_spin.value)
+	for charge_index in _mob_charge_field_defs.size():
+		var charge_spin: SpinBox = _mob_charge_spins[charge_index]
+		_commit_spin_box_pending.call(charge_spin)
+		var charge_property: String = _mob_charge_field_defs[charge_index]["property"]
+		_mob_snapshots.set_session_value(scene_id, charge_property, charge_spin.value)
+	if _mob_chase_mode_option != null:
+		_mob_snapshots.set_session_value(scene_id, CHASE_MODE_PROPERTY, _mob_chase_mode_option.selected)
+
+
 func _commit_and_apply_mob_tuning_from_spins() -> void:
 	var scene := get_selected_mob_scene(null)
 	if scene == null:
 		return
-	for spin_index in _mob_combat_field_defs.size():
-		var spin: SpinBox = _mob_combat_spins[spin_index]
-		_commit_spin_box_pending.call(spin)
-		_on_mob_combat_spin_changed(spin_index, spin.value)
-	for burst_index in _mob_death_burst_field_defs.size():
-		var burst_spin: SpinBox = _mob_death_burst_spins[burst_index]
-		_commit_spin_box_pending.call(burst_spin)
-		_on_mob_death_burst_spin_changed(burst_index, burst_spin.value)
-	for charge_index in _mob_charge_field_defs.size():
-		var charge_spin: SpinBox = _mob_charge_spins[charge_index]
-		_commit_spin_box_pending.call(charge_spin)
-		_on_mob_charge_spin_changed(charge_index, charge_spin.value)
+	_commit_mob_tuning_to_session(scene)
+	_apply_mob_tuning_live.call(scene)
 
 
 func _on_mob_combat_step_pressed(spin_index: int, direction: int) -> void:
@@ -417,14 +586,14 @@ func _on_mob_combat_spin_changed(spin_index: int, new_value: float) -> void:
 	var scene := get_selected_mob_scene(null)
 	if scene == null or spin_index < 0 or spin_index >= _mob_combat_field_defs.size():
 		return
-	var property: String = _mob_combat_field_defs[spin_index]["property"]
-	var scene_id := TestArenaMobSnapshot.get_scene_id(scene)
-	_mob_snapshots.set_session_value(scene_id, property, new_value)
-	_apply_mob_tuning_live.call(scene)
-	_sync_mob_combat_spin_display(spin_index, scene)
-	_apply_mob_tuning_field_style(_mob_combat_field_labels[spin_index], _mob_combat_spins[spin_index], scene, _mob_combat_field_defs[spin_index])
-	update_mob_description()
+	var spin: SpinBox = _mob_combat_spins[spin_index]
+	if not is_equal_approx(spin.value, new_value):
+		_mob_tuning_ui_refreshing = true
+		spin.value = new_value
+		_mob_tuning_ui_refreshing = false
+	_apply_mob_tuning_field_style(_mob_combat_field_labels[spin_index], spin, scene, _mob_combat_field_defs[spin_index])
 	_refresh_mob_combat_tuning_status_only(scene)
+	_refresh_mob_action_buttons(scene)
 
 
 func _on_mob_death_burst_step_pressed(burst_index: int, direction: int) -> void:
@@ -440,23 +609,14 @@ func _on_mob_death_burst_spin_changed(burst_index: int, new_value: float) -> voi
 	var scene := get_selected_mob_scene(null)
 	if scene == null or burst_index < 0 or burst_index >= _mob_death_burst_field_defs.size():
 		return
-	var property: String = _mob_death_burst_field_defs[burst_index]["property"]
-	var scene_id := TestArenaMobSnapshot.get_scene_id(scene)
-	_mob_snapshots.set_session_value(scene_id, property, new_value)
-	_apply_mob_tuning_live.call(scene)
-	_sync_mob_death_burst_spin_display(burst_index, scene)
-	_apply_mob_tuning_field_style(_mob_death_burst_field_labels[burst_index], _mob_death_burst_spins[burst_index], scene, _mob_death_burst_field_defs[burst_index])
-	update_mob_description()
+	var spin: SpinBox = _mob_death_burst_spins[burst_index]
+	if not is_equal_approx(spin.value, new_value):
+		_mob_tuning_ui_refreshing = true
+		spin.value = new_value
+		_mob_tuning_ui_refreshing = false
+	_apply_mob_tuning_field_style(_mob_death_burst_field_labels[burst_index], spin, scene, _mob_death_burst_field_defs[burst_index])
 	_refresh_mob_combat_tuning_status_only(scene)
-
-
-func _sync_mob_death_burst_spin_display(burst_index: int, scene: PackedScene) -> void:
-	if burst_index < 0 or burst_index >= _mob_death_burst_spins.size() or burst_index >= _mob_death_burst_field_defs.size():
-		return
-	var property: String = _mob_death_burst_field_defs[burst_index]["property"]
-	_mob_tuning_ui_refreshing = true
-	_mob_death_burst_spins[burst_index].value = _mob_snapshots.get_tuned_value(scene, property)
-	_mob_tuning_ui_refreshing = false
+	_refresh_mob_action_buttons(scene)
 
 
 func _on_mob_charge_step_pressed(charge_index: int, direction: int) -> void:
@@ -472,32 +632,26 @@ func _on_mob_charge_spin_changed(charge_index: int, new_value: float) -> void:
 	var scene := get_selected_mob_scene(null)
 	if scene == null or charge_index < 0 or charge_index >= _mob_charge_field_defs.size():
 		return
-	var property: String = _mob_charge_field_defs[charge_index]["property"]
-	var scene_id := TestArenaMobSnapshot.get_scene_id(scene)
-	_mob_snapshots.set_session_value(scene_id, property, new_value)
-	_apply_mob_tuning_live.call(scene)
-	_sync_mob_charge_spin_display(charge_index, scene)
-	_apply_mob_tuning_field_style(_mob_charge_field_labels[charge_index], _mob_charge_spins[charge_index], scene, _mob_charge_field_defs[charge_index])
-	update_mob_description()
+	var spin: SpinBox = _mob_charge_spins[charge_index]
+	if not is_equal_approx(spin.value, new_value):
+		_mob_tuning_ui_refreshing = true
+		spin.value = new_value
+		_mob_tuning_ui_refreshing = false
+	_apply_mob_tuning_field_style(_mob_charge_field_labels[charge_index], spin, scene, _mob_charge_field_defs[charge_index])
 	_refresh_mob_combat_tuning_status_only(scene)
+	_refresh_mob_action_buttons(scene)
 
 
-func _sync_mob_charge_spin_display(charge_index: int, scene: PackedScene) -> void:
-	if charge_index < 0 or charge_index >= _mob_charge_spins.size() or charge_index >= _mob_charge_field_defs.size():
-		return
-	var property: String = _mob_charge_field_defs[charge_index]["property"]
-	_mob_tuning_ui_refreshing = true
-	_mob_charge_spins[charge_index].value = _mob_snapshots.get_tuned_value(scene, property)
-	_mob_tuning_ui_refreshing = false
-
-
-func _sync_mob_combat_spin_display(spin_index: int, scene: PackedScene) -> void:
-	if spin_index < 0 or spin_index >= _mob_combat_spins.size() or spin_index >= _mob_combat_field_defs.size():
-		return
-	var property: String = _mob_combat_field_defs[spin_index]["property"]
-	_mob_tuning_ui_refreshing = true
-	_mob_combat_spins[spin_index].value = _mob_snapshots.get_tuned_value(scene, property)
-	_mob_tuning_ui_refreshing = false
+func _format_mob_persistence_failure(action_label: String, mob_label: String) -> String:
+	if not DevTuningPersistence.can_write_project_resources():
+		return (
+			"몹 튜닝 %s 실패(%s) — Godot 에디터에서 실행할 때만 res://game/tuning/mobs/에 저장할 수 있습니다."
+			% [action_label, mob_label]
+		)
+	var detail := DevTuningStore.get_last_persistence_error()
+	if detail.is_empty():
+		detail = "알 수 없는 오류"
+	return "몹 튜닝 %s 실패(%s): %s" % [action_label, mob_label, detail]
 
 
 func _refresh_mob_combat_tuning_status_only(scene: PackedScene) -> void:
@@ -505,10 +659,12 @@ func _refresh_mob_combat_tuning_status_only(scene: PackedScene) -> void:
 	var status_parts: PackedStringArray = []
 	if _mob_snapshots.has_saved_snapshot(scene_id):
 		status_parts.append("저장된 스냅샷 적용 중")
-	if not _mob_snapshots.get_session_overrides(scene_id).is_empty():
+	if _has_pending_spin_changes(scene):
+		status_parts.append("미적용 변경 있음")
+	elif not _mob_snapshots.get_session_overrides(scene_id).is_empty():
 		status_parts.append("미저장 변경 있음")
 	if _is_selected_scene_active.call(scene):
-		status_parts.append("스폰 중 — 값 변경 시 즉시 반영")
+		status_parts.append("스폰 중 — 적용 버튼으로 반영")
 	var legend := "색: 기본 · 저장 · 미저장*"
 	if status_parts.is_empty():
 		_mob_combat_tuning_status_label.text = "프리팹 기본값 — %s" % legend

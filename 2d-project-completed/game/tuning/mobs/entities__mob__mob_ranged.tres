@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="MobSceneTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://game/tuning/mob_scene_tuning.gd" id="1_u13md"]
+
+[resource]
+script = ExtResource("1_u13md")
+scene_path = "res://entities/mob/mob_ranged.tscn"
+overrides = {
+"chase_mode": 1,
+"ranged_cooldown": 1.5,
+"ranged_damage_max": 6,
+"ranged_damage_min": 6,
+"ranged_max_distance": 800.0
+}

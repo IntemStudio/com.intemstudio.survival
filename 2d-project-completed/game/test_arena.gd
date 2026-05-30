@@ -141,7 +141,7 @@ func _ready() -> void:
 	# 1) load: 스냅샷 복원/카탈로그 반영
 	_weapon_snapshots.load_from_disk()
 	_gear_snapshots.load_from_disk()
-	_mob_snapshots.load_from_disk()
+	DevTuningStore.reload_mob_authoring()
 	_status_effect_snapshots.load_from_disk()
 	# 컨트롤러는 옵션 빌드 전에 의존성 주입이 필요합니다.
 	_configure_weapon_panel_controller()
@@ -660,7 +660,9 @@ func _configure_mob_panel_controller() -> void:
 		%MobChargeSection,
 		_get_mob_charge_spins(),
 		_get_mob_charge_step_buttons(),
-		_get_mob_charge_field_labels()
+		_get_mob_charge_field_labels(),
+		%MobChaseModeLabel,
+		%MobChaseModeOption
 	)
 
 

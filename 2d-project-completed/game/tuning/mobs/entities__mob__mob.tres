@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="MobSceneTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://game/tuning/mob_scene_tuning.gd" id="1_itq85"]
+
+[resource]
+script = ExtResource("1_itq85")
+scene_path = "res://entities/mob/mob.tscn"
+overrides = {
+"attack_distance": 170.0,
+"chase_mode": 0,
+"contact_attack_damage": 6,
+"contact_attack_interval": 0.5
+}

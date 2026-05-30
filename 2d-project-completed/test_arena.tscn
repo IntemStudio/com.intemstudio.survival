@@ -292,6 +292,23 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "+"
 
+[node name="MobChaseModeRow" type="HBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MobChaseModeLabel" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseModeRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(88, 0)
+theme_override_font_sizes/font_size = 13
+text = "추격 방식"
+
+[node name="MobChaseModeOption" type="OptionButton" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseModeRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 48)
+
 [node name="MobDeathBurstSection" type="VBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -464,7 +481,7 @@ text = "저장"
 unique_name_in_owner = true
 custom_minimum_size = Vector2(100, 32)
 layout_mode = 2
-text = "초기화"
+text = "되돌리기"
 
 [node name="MobDescLabel" type="RichTextLabel" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox"]
 unique_name_in_owner = true

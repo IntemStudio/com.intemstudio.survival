@@ -6,7 +6,7 @@
 
 ## Overview
 
-플레이 몹은 대부분 `entities/mob/mob.gd`를 공유하고, 각 변종 씬은 export 값으로 속도, 체력, 색상, `mob_kind`, 원거리 공격 여부를 바꾼다. `Game.spawn_mob()`은 `MobSpawnSelector`가 고른 프리팹을 `ScenePool`에서 acquire하고, 현재 `BalancePhase.hp_multiplier`로 `initialize_spawn_health()`를 호출한다.
+플레이 몹은 대부분 `entities/mob/mob.gd`를 공유하고, 각 변종 씬은 export 값으로 속도, 체력, 색상, `mob_kind`, 원거리 공격 여부, `chase_mode`(직선/포위)를 바꾼다. `Game.spawn_mob()`은 `MobSpawnSelector`가 고른 프리팹을 `ScenePool`에서 acquire하고, 현재 `BalancePhase.hp_multiplier`로 `initialize_spawn_health()`를 호출한 뒤 **`DevTuningApplier.apply_mob_scene_tuning`**으로 F6에서 저장한 `res://game/tuning/mobs/*.tres` authoring을 적용한다.
 
 근접 몹은 플레이어 발밑 그림자 중심을 추적하고, standoff 거리 안에서 접촉 공격 주기 피해를 제공한다. 원거리 몹은 사거리 안에서 멈추고 머리 위 예고 마크를 띄운 뒤 `mob_projectile`을 발사한다. `charge_attack_enabled` 변종(특수 B)은 `charge_trigger_distance` 안에서 **경로 레인·`!` 예고**(`charge_lane_display_duration`) 후 직선 돌진하고, 종료 시 반경 피해를 1회 적용한다. `death_burst_enabled` 변종(특수 A 등)은 일반 사망 시 `death_burst_delay`만큼 지난 뒤 사망 위치에서 범위 피해를 주며(0이면 즉시), 지연 중에는 `death_burst_warning` 링이 커진다. 몹 상태이상은 `status/` 런타임 컨트롤러가 DoT, 받는 피해 배율, 이동속도 배율을 처리하고, 몹이 일반 사망하면 처치 수, XP, 골드, 낮은 확률 픽업을 만들고 풀로 반환된다.
 
@@ -16,7 +16,7 @@
 
 | 책임 | 설명 |
 |------|------|
-| 변종 데이터 | `mob_kind`, HP, 속도, tint, 이동/전투 활성 여부, 원거리 공격 export |
+| 변종 데이터 | `mob_kind`, HP, 속도, tint, 이동/전투 활성 여부, 원거리 공격 export, `chase_mode` |
 | 스폰 초기화 | 풀 acquire, 그룹 등록, 물리 레이어 적용, HP 배율 적용, 상태 초기화 |
 | 이동 | 플레이어 추적, standoff 거리 유지, 몹 분리, 플레이어 쪽 밀림 보정 |
 | 근접 피해 | 원거리 몹을 제외한 접촉형 몹의 범위 주기 피해와 HurtBox 초기 충돌 연동 |
@@ -42,7 +42,10 @@
 | `entities/mob/mob.gd` | 모든 플레이 몹의 공통 상태, 이동, 공격, 피격, 사망 로직 |
 | `entities/mob/chase/mob_chase_context.gd` | 추격 physics tick 입력 DTO (`target_offset`, `stop_distance`, `effective_speed`) |
 | `entities/mob/chase/mob_chase_strategy.gd` | 추격 전략 베이스 (`reset()`, `compute_desired_velocity()`) |
-| `entities/mob/chase/mob_chase_straight.gd` | 직선 추격 — standoff 밖 이동, 안에서 정지(현재 모든 변종 기본) |
+| `entities/mob/chase/mob_chase_straight.gd` | 직선 추격 — standoff 밖 이동, 안에서 정지 |
+| `entities/mob/chase/mob_chase_orbit.gd` | 포위 추격 — standoff 바깥 궤도 접근(`chase_mode=ORBIT`) |
+| `game/tuning/dev_tuning_applier.gd` | F5 스폰 시 authoring `.tres` overrides를 Mob export에 merge |
+| `game/tuning/dev_tuning_store.gd` | authoring `.tres` 로드·캐시 (`Game._ready` / F6 `_ready`에서 reload) |
 | `entities/mob/mob_*.tscn` | basic/fast/ranged/elite/special/boss/dummy 변종 export 설정 |
 | `entities/mob/mob_projectile.gd` | 원거리 몹 투사체, sweep 보정, 플레이어 피해 적용 |
 | `entities/mob/mob_attack_mark.gd` | 접촉·원거리·돌진 windup 중 머리 위 예고 `!` |
@@ -70,6 +73,7 @@ Game.spawn_mob()
   -> ScenePool.acquire(mob_scene)
   -> Mob.pool_on_acquire()
   -> Mob.initialize_spawn_health()
+  -> DevTuningApplier.apply_mob_scene_tuning()  # res://game/tuning/mobs/*.tres
   -> MobChaseStrategy.compute_desired_velocity(MobChaseContext)
   -> Mob movement / attack / damage
   -> Mob._die()
@@ -85,17 +89,18 @@ Game.spawn_mob()
 1. `Game.spawn_mob()`이 현재 phase로 몹 프리팹과 HP 배율을 결정한다.
 2. `ScenePool.acquire()`가 몹을 활성화하면 `pool_on_acquire()`가 물리 레이어, 그룹, 속도, 애니메이션, 공격 링, 상태를 초기화한다.
 3. `initialize_spawn_health()`가 `base_max_health * hp_multiplier`를 현재 HP와 최대 HP에 반영하고 체력바를 숨긴다.
-4. 매 physics tick에서 이동 가능 몹은 `_build_chase_context()`로 offset·standoff·effective_speed를 모은 뒤 `MobChaseStrategy`가 desired velocity를 반환한다. Mob은 `_apply_mob_separation()`·`_clamp_velocity_away_from_player()`를 적용한 뒤 `move_and_slide()`한다. standoff 안에서는 velocity 0(원거리 windup 조건은 기존과 동일). charge 분기는 chase 호출 **앞**에서 early return한다.
-4b. `mob_fast`의 `SpeedTrail`(`mob_speed_trail.tscn`)이 부모 `velocity`·풀 비활성 상태를 보고 Line2D 꼬리(≥70)와 파티클(≥140)을 켠다. 정지·풀 반환 시 자체 정리.
-5. 근접 몹은 `Player` 쪽 접촉 피해 루프가 `is_player_in_contact_attack_range()`와 `tick_contact_attack()`을 통해 주기 피해를 받는다.
-6. 원거리 몹은 사거리 안에서 windup을 시작하고, `mob_attack_mark`를 표시한 뒤 delay가 끝나면 `mob_projectile`을 발사한다.
-6b. 돌진 몹은 트리거 거리 안에서 `_begin_charge_attack` → `mob_charge_lane` 스폰·제자리 windup → `_start_charge_movement`로 가속 이동 → `charge_end_burst_*` 범위 피해·쿨다운.
-7. 무기/장판 피해는 `apply_weapon_damage()`로 들어와 상태이상 받는 피해 배율, HP 감소, hit flash, health bar, floating text, weapon damage 등록을 처리한다.
-8. 무기가 가진 `status_effects`는 `StatusEffectController`에 적용되고, 신규 적용 시에만 상태이상 플로팅 텍스트를 표시한다(갱신/중첩은 미표시).
-9. 매 physics tick마다 DoT/만료/둔화 배율을 갱신하고, 활성 상태 목록을 체력바 상단 `StatusEffectIcons`에 동기화한다.
-10. HP가 0 이하가 되면 `_request_die()`가 중복 사망을 막고 `_die()`를 deferred 호출한다.
-11. 일반 사망은 `died` 시그널, (선택) `schedule_mob_death_burst`, 연기, `Game.register_kill()`, `KillRewards`, XP/골드/자석/체력 픽업을 처리한 뒤 풀로 반환한다. 지연 폭발은 몹 풀 반환 후에도 사망 좌표에서 이어진다.
-12. 클리어 사망은 `_stage_clear_death`를 켜고 드랍·처치 집계 없이 풀로 반환한다.
+4. `DevTuningApplier.apply_mob_scene_tuning()`이 해당 씬의 authoring overrides(있을 때)를 merge해 전투 export·`chase_mode`를 덮어쓰고 `refresh_chase_strategy()`를 호출한다. F6 session은 F5에 없다.
+5. 매 physics tick에서 이동 가능 몹은 `_build_chase_context()`로 offset·standoff·effective_speed를 모은 뒤 `MobChaseStrategy`가 desired velocity를 반환한다. Mob은 `_apply_mob_separation()`·`_clamp_velocity_away_from_player()`를 적용한 뒤 `move_and_slide()`한다. standoff 안에서는 velocity 0(원거리 windup 조건은 기존과 동일). charge 분기는 chase 호출 **앞**에서 early return한다.
+5b. `mob_fast`의 `SpeedTrail`(`mob_speed_trail.tscn`)이 부모 `velocity`·풀 비활성 상태를 보고 Line2D 꼬리(≥70)와 파티클(≥140)을 켠다. 정지·풀 반환 시 자체 정리.
+6. 근접 몹은 `Player` 쪽 접촉 피해 루프가 `is_player_in_contact_attack_range()`와 `tick_contact_attack()`을 통해 주기 피해를 받는다.
+7. 원거리 몹은 사거리 안에서 windup을 시작하고, `mob_attack_mark`를 표시한 뒤 delay가 끝나면 `mob_projectile`을 발사한다.
+7b. 돌진 몹은 트리거 거리 안에서 `_begin_charge_attack` → `mob_charge_lane` 스폰·제자리 windup → `_start_charge_movement`로 가속 이동 → `charge_end_burst_*` 범위 피해·쿨다운.
+8. 무기/장판 피해는 `apply_weapon_damage()`로 들어와 상태이상 받는 피해 배율, HP 감소, hit flash, health bar, floating text, weapon damage 등록을 처리한다.
+9. 무기가 가진 `status_effects`는 `StatusEffectController`에 적용되고, 신규 적용 시에만 상태이상 플로팅 텍스트를 표시한다(갱신/중첩은 미표시).
+10. 매 physics tick마다 DoT/만료/둔화 배율을 갱신하고, 활성 상태 목록을 체력바 상단 `StatusEffectIcons`에 동기화한다.
+11. HP가 0 이하가 되면 `_request_die()`가 중복 사망을 막고 `_die()`를 deferred 호출한다.
+12. 일반 사망은 `died` 시그널, (선택) `schedule_mob_death_burst`, 연기, `Game.register_kill()`, `KillRewards`, XP/골드/자석/체력 픽업을 처리한 뒤 풀로 반환한다. 지연 폭발은 몹 풀 반환 후에도 사망 좌표에서 이어진다.
+13. 클리어 사망은 `_stage_clear_death`를 켜고 드랍·처치 집계 없이 풀로 반환한다.
 
 ### Editor / Data
 
@@ -118,6 +123,8 @@ Game.spawn_mob()
 | 일반 사망과 클리어 사망을 섞지 않는다. | 클리어 시 대량 드랍과 처치 수 인플레를 막는다. |
 | 풀링 대상은 `pool_reset()`에서 상태, 타이머, 예고 마크, 물리 레이어를 정리해야 한다. | 재사용 시 이전 몹의 상태가 새 몹에 남지 않게 한다. |
 | `pool_reset()`에서 `_chase_strategy.reset()`을 반드시 호출한다. | 풀 재사용 시 전략 내부 타이머·상태가 남지 않게 한다. |
+| `chase_mode` 변경 후 `refresh_chase_strategy()`로 전략 객체를 재생성한다. | F6 드롭다운·F5 authoring 적용 시 직선/포위 전략 불일치 방지 |
+| F5 authoring은 `initialize_spawn_health()` **이후**에만 적용한다. | HP 배율과 export 튜닝 책임 분리 |
 | 상태이상 DoT도 source `WeaponData`를 통해 `Game.register_weapon_damage()`에 기록해야 한다. | 게임오버·일시정지 피해 목록에서 DoT 피해 귀속이 누락되지 않게 한다. |
 | `StatusEffectIcons` 노드는 변종 씬에 없을 수 있으므로 null-safe로 접근한다. | `mob_fast.tscn`처럼 경량 변종 prewarm/pool_reset에서 null 참조를 방지한다. |
 | `mob_kind`를 바꾸면 보상, Wiki, 테스트 아레나 라벨을 함께 확인한다. | 보상과 UI가 다른 종류로 표시되는 것을 막는다. |
@@ -133,9 +140,10 @@ Game.spawn_mob()
 | 보스/특수 패턴 추가 | 공통 `mob.gd`에 무리하게 넣을지, 전용 스크립트로 분리할지 먼저 결정 |
 | 사망 보상 변경 | 일반 사망과 클리어 사망 분리, XP/골드 풀링, 자석/체력 저확률 드랍 |
 | 풀링 변경 | `ScenePool` prewarm, `pool_reset()`, `pool_on_acquire()`, `mob_attack_mark`·`mob_charge_lane` release |
-| F6 몹 튜닝 | `TestArenaMobSnapshot`, `test_arena.gd` MOB_OPTIONS, 접촉/원거리/폭발(특수 A)/돌진 거리(특수 B, charge 우선), **적용/저장** |
+| F6 몹 튜닝 | `TestArenaMobSnapshot`, `DevTuningStore` / `DevTuningApplier`, F6 `MOB_OPTIONS`, 접촉/원거리/폭발/돌진/`chase_mode` — [`Architecture_TestArena.md`](Architecture_TestArena.md) QA 표 |
+| F5 authoring 반영 | `game.gd` `spawn_mob()`, `DevTuningStore.reload_mob_authoring()` on `_ready`, `.tres` 변경 후 F5 재시작 |
 | 피드백 UI 변경 | 체력바 설정, 상태이상 아이콘(`StatusEffectIcons`) 유무, target indicator, attack range ring, floating damage/status text, hit flash |
 | 변종 이동 FX | `mob_speed_trail.tscn`을 변종 씬에만 인스턴스. AI·피해·풀 로직은 `mob.gd`에 넣지 않음. `trail_color`는 `slime_tint`와 맞출 것 |
 | 상태이상 변경 | `StatusEffectCatalog`, `Mob.apply_weapon_damage()`, DoT 피해 통계, 풀 reset, F6 테스트 아레나 |
 
-최소 검증은 F6 테스트 아레나에서 basic/fast/ranged/dummy를 각각 스폰하고, 이동·공격·피격·사망·리스폰·풀 반환이 정상인지 확인하는 것이다. fast는 달릴 때 꼬리·파티클이 보이고 정지·사망·풀 반환 시 사라지는지 추가로 본다. 메인 F5에서는 현재 밸런스 표에서 8분 이후 원거리 몹과 25분 보스 이벤트가 정상 스폰되는지도 확인한다.
+최소 검증은 F6 테스트 아레나에서 basic/fast/ranged/dummy를 각각 스폰하고, 이동·공격·피격·사망·리스폰·풀 반환이 정상인지 확인하는 것이다. fast는 달릴 때 꼬리·파티클이 보이고 정지·사망·풀 반환 시 사라지는지 추가로 본다. **F5:** F6에서 저장한 몹 authoring이 `spawn_mob()`에 반영되는지(M8~M9, [`Architecture_TestArena.md`](Architecture_TestArena.md)) 확인한다. 메인 F5에서는 현재 밸런스 표에서 8분 이후 원거리 몹과 25분 보스 이벤트가 정상 스폰되는지도 확인한다.

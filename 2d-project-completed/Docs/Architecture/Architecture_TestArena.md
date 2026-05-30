@@ -16,7 +16,7 @@
 | 책임 | 설명 |
 |------|------|
 | 몹 스폰·리스폰 | `MOB_OPTIONS` 씬 선택, `%MobSpawnPoint`(플레이어 스폰 기준 고정), 선택적 리스폰 |
-| 몹 전투 튜닝 | 접촉/원거리·**사망 폭발**(특수 A 등, 범위·피해·지연)·**돌진 거리**(특수 B 등) — `TestArenaMobSnapshot`, `user://test_arena_mob_snapshots.cfg` |
+| 몹 전투 튜닝 | 접촉/원거리·**사망 폭발**(특수 A)·**돌진 거리**(특수 B)·**추격 방식**(`chase_mode`) — 3계층(프리팹 baseline · `res://game/tuning/mobs/*.tres` authoring · F6 `_session`) |
 | 무기/보조 선택·착용 | 카탈로그 필터, 인벤 강제 장착, 튜닝 스냅샷 적용 |
 | 무기·발사체 튜닝 | 피해·APS·사거리·발사체 수 + movement·타입별 SpinBox, **적용/저장**, `user://test_arena_weapon_snapshots.cfg` |
 | 보조손 튜닝 | `block_min/max`, `armor_min/max`, `weapon_damage_mult`, `power` SpinBox, **적용/저장**, `user://test_arena_gear_snapshots.cfg` (`power`는 피해·범위에 합산 1회 softcap) |
@@ -41,13 +41,18 @@
 | `game/test_arena_status_effect_controller.gd` | 상태이상 탭 옵션/잠금 규칙(poison)·튜닝 UI·적용/저장/초기화 |
 | `game/test_arena_weapon_panel_controller.gd` | 무기 필터/옵션/설명, GUI 장착, 무기 튜닝 UI, 즉시 적용 |
 | `game/test_arena_gear_panel_controller.gd` | 보조손/방어구 옵션·장착·설명·튜닝 UI, 상태이상 탭 연계 |
-| `game/test_arena_mob_panel_controller.gd` | 몹 옵션/설명, 전투 튜닝 UI(기본/사망 폭발/돌진), 적용/저장/초기화 |
+| `game/test_arena_mob_panel_controller.gd` | 몹 옵션/설명, 전투 튜닝 UI(기본/사망 폭발/돌진/`chase_mode` 드롭다운), 적용/저장/되돌리기 |
+| `game/tuning/mob_scene_tuning.gd` | 몹 authoring Resource — `scene_path` + `overrides` Dictionary |
+| `game/tuning/dev_tuning_store.gd` | `res://game/tuning/mobs/*.tres` 로드·캐시·저장(몹 전용 API) |
+| `game/tuning/dev_tuning_applier.gd` | baseline+overrides 병합 후 Mob export 적용(F5/F6 공통) |
+| `game/tuning/dev_tuning_paths.gd` | 씬 경로 → `{encoded_scene_id}.tres` 파일명 인코딩 |
+| `game/tuning/dev_tuning_persistence.gd` | `ResourceSaver` — **Godot 에디터 실행에서만** `res://` 쓰기 |
 | `game/test_arena_weapon_snapshot.gd` | 무기 **공통·타입별** 튜닝 필드 def, movement, `user://` 스냅샷 |
 | `game/test_arena_gear_snapshot.gd` | 장비 `stat_modifiers` 튜닝 필드 def(막기·방어·무기피해·파워·부활·스태미나·피격무적 등), `user://` 스냅샷 |
 | `game/test_arena_status_effect_snapshot.gd` | 상태이상 튜닝 필드 def(지속·틱·배율), `user://` 스냅샷 |
 | `game/test_arena_tuning_ui.gd` | 무기/보조 공통 SpinBox 행 생성, +/- 버튼, Enter/포커스 이탈 commit 유틸 |
 | `weapons/data/weapon_data.gd` | `melee_range_override` / `projectile_range_override`(F6), `build_test_arena_info_bbcode` omit |
-| `game/test_arena_mob_snapshot.gd` | 몹 전투 수치 세션/저장, 튜닝 상태 색상 |
+| `game/test_arena_mob_snapshot.gd` | 몹 baseline·`_session`·authoring merge, 튜닝 상태 색상 |
 | `inventory/inventory_service.gd` | `try_force_equip_weapon_on_active_set()` / `try_force_equip_offhand_on_active_set()` — GUI 착용 시 기존 장비 삭제 후 슬롯 장착 |
 | `inventory/item_registry.gd` | `set_gear_modifier_resolver()` — F6에서 보조 튜닝 `stat_modifiers` 합산 경로 주입 |
 | `inventory/inventory_combat_bridge.gd` | 활성 weapon → `Player.add_weapon()` (F6는 스냅샷 튜닝 후 덮어씀) |
@@ -64,19 +69,20 @@ test_arena.gd (Coordinator)
   -> TestArenaGearPanelController
   -> TestArenaMobPanelController
   -> TestArenaMobSnapshot / TestArenaWeaponSnapshot / TestArenaGearSnapshot / TestArenaStatusEffectSnapshot
+  -> DevTuningStore.reload_mob_authoring() (_ready)
   -> InventoryService.try_force_equip_weapon_on_active_set / try_force_equip_offhand_on_active_set
   -> ItemRegistry.set_gear_modifier_resolver(Callable(TestArenaGearSnapshot, "resolve_modifiers"))
   -> StatusEffectCatalog + TestArenaStatusEffectSnapshot.apply_saved_to_catalog()
   -> apply_inventory_loadout_to_player
-  -> spawn_test_mob -> Mob + snapshot apply
+  -> spawn_test_mob -> DevTuningApplier.apply_merged_stats_to_mob (baseline+authoring+session)
 ```
 
 ## Flow
 
 ### Runtime
 
-1. `_ready`: 스냅샷 로드 → 패널 컨트롤러 `configure()` 의존성 주입 → 옵션 빌드/탭 세팅/튜닝 UI 세팅 → signal connect 순서로 부트스트랩한다. 상태이상 저장 스냅샷은 카탈로그에 자동 반영하고, `use_inventory_loadout`이면 `apply_inventory_loadout_to_player()`를 지연 호출한다.
-2. **몹 탭(`TestArenaMobPanelController`):** 타입 선택 → 설명 BBCode → 전투 튜닝 스핀(색: 기본/저장/세션) → **적용** 또는 **저장**. `spawn_test_mob()`는 코디네이터에 남아 씬 계약을 유지한다. **특수 A** — 사망 폭발(범위·피해·지연). **특수 B** — 돌진 거리(사망 폭발 스핀 숨김, `charge_attack_enabled` 우선).
+1. `_ready`: `DevTuningStore.reload_mob_authoring()` → 패널 컨트롤러 `configure()` 의존성 주입 → 옵션 빌드/탭 세팅/튜닝 UI 세팅 → signal connect 순서로 부트스트랩한다. 상태이상 저장 스냅샷은 카탈로그에 자동 반영하고, `use_inventory_loadout`이면 `apply_inventory_loadout_to_player()`를 지연 호출한다.
+2. **몹 탭(`TestArenaMobPanelController`):** 타입 선택 → 설명 BBCode(추격 방식 포함) → 전투 튜닝 스핀·**추격 방식** 드롭다운(색: 기본/저장/세션) → **적용**·**저장**·**되돌리기**. 스핀/드롭다운 변경은 `_session`만 갱신하고 스폰 중 몹에는 **적용** 또는 라이브 반영으로 즉시 반영한다. **저장**은 `_session`을 `res://game/tuning/mobs/{encoded_scene_id}.tres`에 merge한다. **특수 A** — 사망 폭발. **특수 B** — 돌진 거리(`charge_travel_distance` 가상 키). `spawn_test_mob()`는 코디네이터에 남아 씬 계약을 유지한다.
 3. **무기 탭(`TestArenaWeaponPanelController`):** 필터·선택 → 설명 BBCode(`omit`으로 튜닝 중 필드 숨김) → Equip → 인벤 활성 weapon 슬롯 교체 → `build_tuned_weapon()` 적용 후 `Gun` 갱신.
 4. **무기 하위 탭(`WeaponSubTab`)**: `주무기`(무기 필터/선택/설명/무기 튜닝)와 `보조무기`(보조손 선택/설명/상태이상 진입/보조손 튜닝)로 분리한다.
 5. **장비 탭(`TestArenaGearPanelController`)**: 방어구(helmet/armor/gloves/boots/accessory) 선택 → Equip → 인벤 활성 슬롯 교체 → loadout 재적용.
@@ -128,6 +134,30 @@ override가 0이거나 세션에 없으면 `range_type` 표(`MELEE_RANGE_BY_TYPE
 `poison`은 무기 source 우선 규칙 때문에 `duration/tick` 필드를 잠금 처리한다. 장비 탭/상태이상 탭 모두 규칙 안내 문구를 표시한다.
 저장된 상태이상 스냅샷은 F6 재실행 시 `_ready` 단계에서 카탈로그에 자동 반영된다.
 
+### 몹 튜닝 3계층 (`TestArenaMobSnapshot` + `DevTuningStore`)
+
+| 계층 | 저장 위치 | 수명 | F6 UI 색 |
+|------|-----------|------|----------|
+| **baseline** | 몹 프리팹 export | 씬 리소스 | 기본(회색) |
+| **authoring** | `res://game/tuning/mobs/{encoded_scene_id}.tres` | Git 추적, F5/F6 공통 | 저장(파랑) — baseline과 다른 키만 |
+| **session** | `TestArenaMobSnapshot._session` | F6 실행 중만(재실행 시 소멸) | 미저장(노랑) |
+
+- 파일명 예: `res://entities/mob/mob_elite.tscn` → `res://game/tuning/mobs/entities__mob__mob_elite.tres`
+- merge 순서: `baseline` → `authoring` → `session` (`DevTuningApplier.build_merged_stats`)
+- F5: `Game.spawn_mob()` → `initialize_spawn_health()` 직후 `DevTuningApplier.apply_mob_scene_tuning` (authoring만, session 없음)
+- 레거시 `user://test_arena_mob_snapshots.cfg`는 **자동 이전 없음** — 재튜닝 후 `.tres` 저장으로 대체
+
+| 구분 | 속성 | 비고 |
+|------|------|------|
+| 접촉 | `contact_attack_damage`, `attack_distance`, `contact_attack_interval` | 근접 몹 |
+| 원거리 | `ranged_damage`(가상→min/max), `ranged_max_distance`, `ranged_cooldown` | 원거리 몹 |
+| 사망 폭발 | `death_burst_radius`, `death_burst_damage`, `death_burst_delay` | 특수 A (`charge_attack_enabled`면 UI 숨김) |
+| 돌진 | `charge_travel_distance`(가상→`charge_duration`) | 특수 B |
+| 추격 | `chase_mode` (0=직선, 1=포위) | `%MobChaseModeOption` — 변경 시 `Mob.refresh_chase_strategy()` |
+
+**저장 제약:** exported 빌드(에디터 feature 없음)에서 **저장**은 no-op, 상태 라벨에 에디터 실행 안내. 무기/장비/상태이상은 아직 `user://` 스냅샷 유지(후속 PR).
+
+
 ### Editor
 
 1. UI 노드는 `TestUI/TestUILayout` FHD 좌표 + `UiViewportLayout`.
@@ -150,7 +180,10 @@ override가 0이거나 세션에 없으면 `range_type` 표(`MELEE_RANGE_BY_TYPE
 | 상태이상 탭에서 보조손 경로로 진입한 경우, 상태이상 **적용/저장/초기화** 후 `무기 > 보조무기`로 복귀하며 선택 컨텍스트를 복원한다. | 탭 왕복 중 대상 분실로 인한 UX 단절과 오조작을 방지 |
 | `melee_range_override` / `projectile_range_override`는 F6 튜닝·스냅샷 전용. F5 카탈로그 `.tres`는 0 유지. | 메인 밸런스와 QA 오버라이드 분리 |
 | 무기 설명 omit은 `get_field_defs()`와 동일 property 키. | GUI와 BBCode 중복 방지 |
-| 몹 튜닝 라벨·스핀은 `%Mob*Label` 등 고유 이름 필수. | 누락 시 `_ready`에서 get_node 실패 |
+| 몹 튜닝 라벨·스핀·추격 드롭다운은 `%Mob*Label`, `%MobChaseModeOption` 등 고유 이름 필수. | 누락 시 `_ready`에서 get_node 실패 |
+| 몹 authoring `.tres` 저장은 Godot **에디터 실행**(F6 플레이 포함)에서만 가능. | exported 빌드 Save는 의도적 no-op |
+| F6 **되돌리기**는 `_session`만 제거 — 저장된 `.tres`(authoring)는 유지. | authoring 삭제는 `DevTuningStore.delete_mob_authoring` 또는 파일 수동 삭제 |
+| `chase_mode` 런타임 변경 후 `Mob.refresh_chase_strategy()` 필수. | 스폰 후 드롭다운만 바꿀 때 전략 객체 미갱신 방지 |
 | `TabContainer.tabs_visible = false`, 탭 바는 `TabBarHost` 스크립트. | 4등분·줄바꿈 레이아웃 |
 | SpinBox에 숫자만 입력하고 **저장**만 누르면 반영되지 않을 수 있음. **적용**·Enter·포커스 이탈 또는 저장(내부에서 적용 선행). | Godot SpinBox LineEdit는 `value_changed`가 확정 후에만 발생 |
 | `charge_attack_enabled` 몹은 F6에서 **사망 폭발 튜닝 UI를 노출하지 않음**. | 특수 B는 돌진 거리·설명만; 사망 burst는 런타임 export 유지 |
@@ -165,8 +198,8 @@ override가 0이거나 세션에 없으면 `range_type` 표(`MELEE_RANGE_BY_TYPE
 |------|-----------|
 | 컨트롤러 의존성 주입 | `test_arena.gd` `_configure_*_controller`, `_ready` 호출 순서(로드→옵션→탭→UI→signal) 유지 |
 | 코디네이터 경계 | `spawn_test_mob`, `register_kill`, player death/respawn, pause/inventory bridge API가 `test_arena.gd`에 유지되는지 확인 |
-| 새 몹 F6 옵션 | `MOB_OPTIONS`, `TestArenaMobSnapshot.register_scene`, 필드 def, 설명 BBCode |
-| 몹 튜닝 필드 | `COMBAT_*` / `DEATH_BURST_*`(특수 A) / `CHARGE_*`(특수 B, `charge_travel_distance`→`charge_duration`), `supports_*_tuning` 우선 규칙, `%MobBurst*`·`%MobCharge*` 고유 이름 |
+| 새 몹 F6 옵션 | `MOB_OPTIONS`, `TestArenaMobSnapshot.register_scene`, 필드 def, 설명 BBCode, 필요 시 `game/tuning/mobs/` authoring |
+| 몹 튜닝 필드·저장 | `COMBAT_*` / `DEATH_BURST_*` / `CHARGE_*` / `chase_mode`, `DevTuningStore`·`DevTuningApplier`, `%MobBurst*`·`%MobCharge*`·`%MobChaseMode*` |
 | SpinBox·적용 버튼 | `_commit_spin_box_pending`, `%ApplyMobCombatTuningButton` / `%ApplyProjectileTuningButton` |
 | 무기 GUI 착용 | `try_force_equip_weapon_on_active_set`, 인벤 refresh, `apply_inventory_loadout_to_player` |
 | 보조 GUI 착용/튜닝 | `try_force_equip_offhand_on_active_set`, `%OffhandTuning*`, `TestArenaGearSnapshot.get_field_defs`, `set_gear_modifier_resolver` |
@@ -179,9 +212,34 @@ override가 0이거나 세션에 없으면 `range_type` 표(`MELEE_RANGE_BY_TYPE
 | 탭 추가 | `TestPanelsTab` 자식 + `TabBarHost.rebuild_tabs()`, 5번째부터 둘째 줄 |
 | 공격 예고·돌진 레인 | `mob.gd` windup(`_charge_windup_remaining`) → 이동, `ScenePool` prewarm, `pool_reset` |
 
-**최소 검증 (F6):** Special A — 처치 후 **지연 링 예고** → burst·피해·범위(튜닝 반영). Special B — GUI **돌진 거리** 튜닝, 트리거 거리 내 **레인 예고 → 대기 후 돌진** → 종료 범위 피해·저체력 자폭. 무기 Equip → 인벤 weapon, **피해·APS·사거리·발사체 수** 스핀 즉시 반영·**적용/저장**(직접 입력 포함), movement·타입별 스핀, 몹 튜닝 **적용/저장**, 상위 탭 + 무기 하위 탭(주무기/보조무기) 레이아웃, `use_inventory_loadout == false`에서 `보조무기(잠금)`/안내/버튼 비활성, 상태이상 탭 왕복 후 보조무기 컨텍스트 복원.
+**최소 검증 (F6):** Special A/B·fast·무기/보조/상태이상 — 기존 Change Guidelines 표 참고. **몹 authoring 영속화** — 아래 QA 체크리스트.
+
+## QA — 몹 튜닝 authoring (F6 / F5)
+
+Godot **에디터**에서 실행. Pass 열은 수동 확인 시 `[x]`.
+
+### F6 (`test_arena.tscn` → F6)
+
+| # | 확인 | Pass |
+|---|------|------|
+| M1 | 몹 선택 → 피해 스핀 변경 → **적용** 또는 라이브 반영 시 스폰 중 몹에 즉시 반영 | [ ] |
+| M2 | 저장 **없이** F6만 재실행 → 스핀 값이 **authoring 또는 프리팹 baseline**으로 복귀(session 소멸) | [ ] |
+| M3 | **추격 방식** 드롭다운 — elite/boss 등에서 **포위 추격** 선택 시 궤도 이동 체감(직선과 구분) | [ ] |
+| M4 | **저장** → `res://game/tuning/mobs/`에 `.tres` 생성·Git diff 확인 → F6 재실행 후에도 동일 수치·추격 유지 | [ ] |
+| M5 | **되돌리기** — 미저장(session) 변경만 취소, 저장된 authoring 값은 유지 | [ ] |
+| M6 | 라벨/드롭다운 색 — 기본(회색) · 저장(파랑) · 미저장(노랑) — 상태와 일치 | [ ] |
+| M7 | (선택) exported 빌드에서 **저장** 시 실패 안내, `res://` 미변경 | [ ] |
+
+### F5 (`survivors_game.tscn` → F5)
+
+| # | 확인 | Pass |
+|---|------|------|
+| M8 | F6에서 elite 등 **chase_mode·피해 저장** 후 F5 실행 → 스폰된 동일 변종에 동일 수치·추격 적용 | [ ] |
+| M9 | 확인 경로 — 아레나 모드 스폰 또는 서바이벌 8분+ 원거리/elite 스폰 구간 | [ ] |
+
+기록: `날짜 / Godot 버전 / 몹 scene_id / 이슈 한 줄`
 
 ## Verification Note (Step6)
 
-- 이번 단계 문서 갱신은 컨트롤러 분리 반영(`test_arena.gd` + `test_arena_*_controller.gd`) 기준으로 수행했다.
-- F6 플레이 수동 검증은 Godot 에디터 실행 환경에서 아래 항목을 체크한다: Mob/Weapon/Gear/StatusEffect 탭의 적용·저장·초기화, player death/respawn, spawn/respawn 루프, 탭 레이아웃.
+- 이번 단계 문서 갱신: 몹 튜닝 `user://` → `res://game/tuning/mobs/` authoring, 3계층(session/authoring/baseline), `chase_mode`, F5 `DevTuningApplier` hook.
+- F6 플레이 수동 검증은 Godot 에디터 실행 환경에서 위 **QA — 몹 튜닝 authoring** 표 + 기존 Mob/Weapon/Gear/StatusEffect 탭 항목을 체크한다.

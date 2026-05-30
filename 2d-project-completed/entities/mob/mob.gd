@@ -41,6 +41,17 @@ signal died
 @export var self_destruct_enabled := false
 @export var self_destruct_health_ratio := 0.2
 
+enum ChaseMode {
+	STRAIGHT,
+	ORBIT,
+}
+
+@export var chase_mode: ChaseMode = ChaseMode.STRAIGHT
+## 포위 추격 시 standoff 바깥 목표 궤도 반경(픽셀).
+@export var orbit_radius_buffer := 48.0
+## 포위 추격 시 직선 접근에서 접선 이동으로 블렌드하는 거리(픽셀).
+@export var orbit_approach_blend := 72.0
+
 var speed := 200.0
 var max_health := base_max_health
 var health := base_max_health
@@ -66,6 +77,7 @@ var _charge_cooldown_remaining := 0.0
 var _self_destruct_armed := false
 var _chase_strategy: MobChaseStrategy = MobChaseStraight.new()
 var _chase_context := MobChaseContext.new()
+var _orbit_clockwise := true
 
 const TARGET_INDICATOR_BASE_SCALE := Vector2(2.4, 2.4)
 const EXP_ORB_SCENE := preload("res://effects/exp_orb/exp_orb.tscn")
@@ -144,6 +156,7 @@ func pool_reset() -> void:
 func pool_on_acquire() -> void:
 	PhysicsLayers.apply_mob_body(self)
 	speed = randf_range(speed_min, speed_max)
+	_resolve_chase_strategy()
 	add_to_group("mobs")
 	%Slime.modulate = slime_tint
 	if movement_enabled:
@@ -487,7 +500,28 @@ func _build_chase_context(target_offset: Vector2) -> MobChaseContext:
 	_chase_context.target_offset = target_offset
 	_chase_context.stop_distance = _get_contact_standoff_distance()
 	_chase_context.effective_speed = _get_effective_speed()
+	_chase_context.orbit_clockwise = _orbit_clockwise
+	_chase_context.orbit_radius_buffer = orbit_radius_buffer
+	_chase_context.orbit_approach_blend = orbit_approach_blend
 	return _chase_context
+
+
+# chase_mode 변경 후 런타임에 추격 전략 객체를 다시 맞춥니다.
+func refresh_chase_strategy() -> void:
+	_resolve_chase_strategy()
+
+
+# 변종 export에 맞는 추격 전략을 고르고, 포위 방향 등 스폰별 상태를 초기화합니다.
+func _resolve_chase_strategy() -> void:
+	match chase_mode:
+		ChaseMode.ORBIT:
+			if not (_chase_strategy is MobChaseOrbit):
+				_chase_strategy = MobChaseOrbit.new()
+			_orbit_clockwise = randi() % 2 == 0
+		_:
+			if not (_chase_strategy is MobChaseStraight):
+				_chase_strategy = MobChaseStraight.new()
+	_chase_strategy.reset()
 
 
 # 접촉 공격 판정·범위 링에 쓰는 중심 간 거리(플레이어 global_position 기준).

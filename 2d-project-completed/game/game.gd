@@ -91,6 +91,7 @@ func _ready() -> void:
 		balance_table = DEFAULT_BALANCE_TABLE
 	if not balance_timeline:
 		balance_timeline = DEFAULT_BALANCE_TIMELINE
+	DevTuningStore.reload_mob_authoring()
 	_update_kill_count_hud()
 	$Timer.stop()
 	if %Player.has_method(&"set_weapon_run_state"):
@@ -957,6 +958,7 @@ func spawn_mob(
 	if health_multiplier > 0.0:
 		spawn_health_multiplier = health_multiplier
 	new_mob.initialize_spawn_health(spawn_health_multiplier)
+	DevTuningApplier.apply_mob_scene_tuning(new_mob, mob_scene)
 	return new_mob
 
 
