@@ -14,7 +14,7 @@ var _gd_scripteditor_context_menu: Variant
 func _enter_tree() -> void:
 
 	var inferred_declaration: int = ProjectSettings.get_setting("debug/gdscript/warnings/inferred_declaration")
-	var exclude_addons: bool = ProjectSettings.get_setting("debug/gdscript/warnings/exclude_addons")
+	var exclude_addons: bool = _is_addons_warning_excluded()
 	if !exclude_addons and inferred_declaration != 0:
 		printerr("GdUnit4: 'inferred_declaration' is set to Warning/Error!")
 		printerr("GdUnit4 is not 'inferred_declaration' save, you have to excluded addons (debug/gdscript/warnings/exclude_addons)")
@@ -70,6 +70,18 @@ func check_running_in_test_env() -> bool:
 	var args: PackedStringArray = OS.get_cmdline_args()
 	args.append_array(OS.get_cmdline_user_args())
 	return DisplayServer.get_name() == "headless" or args.has("--selftest") or args.has("--add") or args.has("-a") or args.has("--quit-after") or args.has("--import")
+
+
+func _is_addons_warning_excluded() -> bool:
+	if ProjectSettings.has_setting("debug/gdscript/warnings/exclude_addons"):
+		return ProjectSettings.get_setting("debug/gdscript/warnings/exclude_addons")
+	var rules: Dictionary = ProjectSettings.get_setting("debug/gdscript/warnings/directory_rules", {})
+	for key: Variant in rules.keys():
+		var normalized: String = str(key).trim_suffix("/")
+		if normalized == "res://addons":
+			return int(rules[key]) == 0
+	# Godot 4.6+ defaults to excluding addon warnings when unset.
+	return true
 
 
 func _add_context_menus() -> void:

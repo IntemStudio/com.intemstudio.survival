@@ -240,4 +240,6 @@ texture = ExtResource("2_ygydt")
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=1998800681]
 unique_name_in_owner = true
-libraries/ = SubResource("AnimationLibrary_j6cum")
+libraries = {
+"": SubResource("AnimationLibrary_j6cum")
+}

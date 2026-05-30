@@ -8,5 +8,5 @@ func reset() -> void:
 	pass
 
 
-func compute_desired_velocity(context: MobChaseContext) -> Vector2:
+func compute_desired_velocity(_context: MobChaseContext) -> Vector2:
 	return Vector2.ZERO

@@ -142,7 +142,7 @@
 
 ### Build
 
-- Godot 버전 고정.
+- Godot **4.5.2** 버전 고정 (`project.godot` `config/features` `4.5`).
 - `export_presets.cfg` 생성.
 - 배포용 프로젝트명, 아이콘, 실행 파일명 확정.
 - Debug/Release 빌드 차이 확인.

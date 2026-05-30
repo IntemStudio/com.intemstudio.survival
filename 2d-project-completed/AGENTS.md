@@ -30,7 +30,7 @@
 
 ## 프로젝트 개요
 
-Godot 4.6 기반 2D 뱀파이어 서바이버류. 로비에서 서바이벌/아레나 선택 → 무기·스폰·XP·레벨업 → 패배 또는 클리어.
+Godot 4.5.2 기반 2D 뱀파이어 서바이버류. 로비에서 서바이벌/아레나 선택 → 무기·스폰·XP·레벨업 → 패배 또는 클리어.
 
 - F5: `game_lobby.tscn` → `survivors_game.tscn` · 모드: `RunConfig` (`survival` / `arena`)
 - F6: `test_arena.tscn` (현재 씬 — 무기·몹 튜닝·인벤 연동, [`Architecture_TestArena.md`](Docs/Architecture/Architecture_TestArena.md))
