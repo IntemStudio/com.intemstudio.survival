@@ -64,6 +64,8 @@ var _charge_direction := Vector2.RIGHT
 var _charge_time_remaining := 0.0
 var _charge_cooldown_remaining := 0.0
 var _self_destruct_armed := false
+var _chase_strategy: MobChaseStrategy = MobChaseStraight.new()
+var _chase_context := MobChaseContext.new()
 
 const TARGET_INDICATOR_BASE_SCALE := Vector2(2.4, 2.4)
 const EXP_ORB_SCENE := preload("res://effects/exp_orb/exp_orb.tscn")
@@ -110,6 +112,7 @@ func pool_reset() -> void:
 		remove_from_group("mobs")
 	_nettles_timer = 0.0
 	_status_effects.clear()
+	_chase_strategy.reset()
 	_reset_status_effect_icons()
 	_is_dying = false
 	_stage_clear_death = false
@@ -305,8 +308,6 @@ func _physics_process(delta: float) -> void:
 			GroundShadowFootprint.get_combat_target_center(player as Node2D)
 			- get_footprint_global_center()
 		)
-		var distance: float = offset.length()
-		var stop_distance := _get_contact_standoff_distance()
 		var can_start_charge := (
 			charge_attack_enabled
 			and combat_enabled
@@ -324,10 +325,10 @@ func _physics_process(delta: float) -> void:
 			move_and_slide()
 			return
 
-		if distance > stop_distance:
-			velocity = offset / distance * _get_effective_speed()
-		else:
-			velocity = Vector2.ZERO
+		var chase_context := _build_chase_context(offset)
+		velocity = _chase_strategy.compute_desired_velocity(chase_context)
+		var at_standoff := chase_context.target_offset.length() <= chase_context.stop_distance
+		if at_standoff:
 			if (
 				ranged_attack_enabled
 				and combat_enabled
@@ -479,6 +480,14 @@ func _apply_mob_separation() -> void:
 
 func _get_effective_speed() -> float:
 	return speed * _status_effects.get_move_speed_mult()
+
+
+# ChaseStrategy에 넘길 physics tick 컨텍스트 — 필드 재사용으로 GC 할당을 줄입니다.
+func _build_chase_context(target_offset: Vector2) -> MobChaseContext:
+	_chase_context.target_offset = target_offset
+	_chase_context.stop_distance = _get_contact_standoff_distance()
+	_chase_context.effective_speed = _get_effective_speed()
+	return _chase_context
 
 
 # 접촉 공격 판정·범위 링에 쓰는 중심 간 거리(플레이어 global_position 기준).

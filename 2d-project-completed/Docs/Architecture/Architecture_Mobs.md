@@ -40,6 +40,9 @@
 | 타입/파일 | 역할 |
 |-----------|------|
 | `entities/mob/mob.gd` | 모든 플레이 몹의 공통 상태, 이동, 공격, 피격, 사망 로직 |
+| `entities/mob/chase/mob_chase_context.gd` | 추격 physics tick 입력 DTO (`target_offset`, `stop_distance`, `effective_speed`) |
+| `entities/mob/chase/mob_chase_strategy.gd` | 추격 전략 베이스 (`reset()`, `compute_desired_velocity()`) |
+| `entities/mob/chase/mob_chase_straight.gd` | 직선 추격 — standoff 밖 이동, 안에서 정지(현재 모든 변종 기본) |
 | `entities/mob/mob_*.tscn` | basic/fast/ranged/elite/special/boss/dummy 변종 export 설정 |
 | `entities/mob/mob_projectile.gd` | 원거리 몹 투사체, sweep 보정, 플레이어 피해 적용 |
 | `entities/mob/mob_attack_mark.gd` | 접촉·원거리·돌진 windup 중 머리 위 예고 `!` |
@@ -67,6 +70,7 @@ Game.spawn_mob()
   -> ScenePool.acquire(mob_scene)
   -> Mob.pool_on_acquire()
   -> Mob.initialize_spawn_health()
+  -> MobChaseStrategy.compute_desired_velocity(MobChaseContext)
   -> Mob movement / attack / damage
   -> Mob._die()
   -> Game.register_kill() + KillRewards
@@ -81,7 +85,7 @@ Game.spawn_mob()
 1. `Game.spawn_mob()`이 현재 phase로 몹 프리팹과 HP 배율을 결정한다.
 2. `ScenePool.acquire()`가 몹을 활성화하면 `pool_on_acquire()`가 물리 레이어, 그룹, 속도, 애니메이션, 공격 링, 상태를 초기화한다.
 3. `initialize_spawn_health()`가 `base_max_health * hp_multiplier`를 현재 HP와 최대 HP에 반영하고 체력바를 숨긴다.
-4. 매 physics tick에서 이동 가능 몹은 플레이어 발밑 중심을 향해 이동하되 standoff 거리 안에서는 멈춘다.
+4. 매 physics tick에서 이동 가능 몹은 `_build_chase_context()`로 offset·standoff·effective_speed를 모은 뒤 `MobChaseStrategy`가 desired velocity를 반환한다. Mob은 `_apply_mob_separation()`·`_clamp_velocity_away_from_player()`를 적용한 뒤 `move_and_slide()`한다. standoff 안에서는 velocity 0(원거리 windup 조건은 기존과 동일). charge 분기는 chase 호출 **앞**에서 early return한다.
 4b. `mob_fast`의 `SpeedTrail`(`mob_speed_trail.tscn`)이 부모 `velocity`·풀 비활성 상태를 보고 Line2D 꼬리(≥70)와 파티클(≥140)을 켠다. 정지·풀 반환 시 자체 정리.
 5. 근접 몹은 `Player` 쪽 접촉 피해 루프가 `is_player_in_contact_attack_range()`와 `tick_contact_attack()`을 통해 주기 피해를 받는다.
 6. 원거리 몹은 사거리 안에서 windup을 시작하고, `mob_attack_mark`를 표시한 뒤 delay가 끝나면 `mob_projectile`을 발사한다.
@@ -113,6 +117,7 @@ Game.spawn_mob()
 | 원거리 투사체는 sweep으로 이동 구간 충돌을 보강한다. | 빠른 탄이 플레이어를 통과하는 터널링을 줄인다. |
 | 일반 사망과 클리어 사망을 섞지 않는다. | 클리어 시 대량 드랍과 처치 수 인플레를 막는다. |
 | 풀링 대상은 `pool_reset()`에서 상태, 타이머, 예고 마크, 물리 레이어를 정리해야 한다. | 재사용 시 이전 몹의 상태가 새 몹에 남지 않게 한다. |
+| `pool_reset()`에서 `_chase_strategy.reset()`을 반드시 호출한다. | 풀 재사용 시 전략 내부 타이머·상태가 남지 않게 한다. |
 | 상태이상 DoT도 source `WeaponData`를 통해 `Game.register_weapon_damage()`에 기록해야 한다. | 게임오버·일시정지 피해 목록에서 DoT 피해 귀속이 누락되지 않게 한다. |
 | `StatusEffectIcons` 노드는 변종 씬에 없을 수 있으므로 null-safe로 접근한다. | `mob_fast.tscn`처럼 경량 변종 prewarm/pool_reset에서 null 참조를 방지한다. |
 | `mob_kind`를 바꾸면 보상, Wiki, 테스트 아레나 라벨을 함께 확인한다. | 보상과 UI가 다른 종류로 표시되는 것을 막는다. |
