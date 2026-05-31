@@ -67,8 +67,16 @@ enum ChaseMode {
 var speed := 200.0
 var max_health := base_max_health
 var health := base_max_health
+## overloading affix 방어막 placeholder — PR-C에서 사용.
+var elite_shield_hp := 0
+var _elite_pre_affix_contact_damage := 0
+var _elite_pre_affix_ranged_mid := 0
 
 var _nettles_timer := 0.0
+var _elite_affix_id: StringName = &""
+var _elite_runtime: EliteAffixRuntime = null
+var _elite_restore_slime_tint := Color.WHITE
+var _elite_affix_label: Label = null
 var _status_effects := StatusEffectController.new()
 var _is_targeted := false
 var _target_pulse := 0.0
@@ -99,6 +107,7 @@ var _orbit_clockwise := true
 const TARGET_INDICATOR_BASE_SCALE := Vector2(2.4, 2.4)
 const EXP_ORB_SCENE := preload("res://effects/exp_orb/exp_orb.tscn")
 const GOLD_COIN_SCENE := preload("res://effects/gold_coin/gold_coin.tscn")
+const EQUIPMENT_DROP_SCENE := preload("res://effects/equipment_drop/equipment_drop.tscn")
 const GOLD_DROP_OFFSET := Vector2(12.0, -8.0)
 const MOB_PROJECTILE_SCENE := preload("res://entities/mob/mob_projectile.tscn")
 const MOB_ATTACK_MARK_SCENE := preload("res://entities/mob/mob_attack_mark.tscn")
@@ -121,6 +130,9 @@ const STATUS_ICON_TEXT := {
 	&"chill": "CH",
 	&"frostbite": "FB"
 }
+const ELITE_AFFIX_LABEL_NODE_NAME := &"EliteAffixLabel"
+const ELITE_AFFIX_LABEL_HEIGHT := 18.0
+const ELITE_AFFIX_LABEL_GAP := 4.0
 
 @onready var player: Node2D = get_node("/root/Game/Player")
 @onready var _target_indicator: Node2D = %TargetIndicator
@@ -171,6 +183,7 @@ func pool_reset() -> void:
 	collision_mask = 0
 	if is_inside_tree():
 		global_position = POOL_STORAGE_POSITION
+	_reset_elite_affix()
 	if is_node_ready():
 		HitFlash.cancel(%Slime, slime_tint)
 		_target_indicator.visible = false
@@ -186,6 +199,7 @@ func pool_on_acquire() -> void:
 	speed = randf_range(speed_min, speed_max)
 	_resolve_chase_strategy()
 	add_to_group("mobs")
+	_elite_restore_slime_tint = slime_tint
 	%Slime.modulate = slime_tint
 	if movement_enabled:
 		%Slime.play_walk()
@@ -213,6 +227,154 @@ func pool_on_acquire() -> void:
 		_set_chase_skill_range_rings_visible(false)
 	_sync_body_collision_to_shadow()
 	set_physics_process(true)
+
+
+func get_elite_affix_id() -> StringName:
+	return _elite_affix_id
+
+
+func has_elite_affix() -> bool:
+	return not _elite_affix_id.is_empty()
+
+
+# affix stat 배율 적용 전 공격력 스냅샷 — glacial 사망 폭탄 등에 사용.
+func store_elite_pre_affix_attack_snapshot() -> void:
+	_elite_pre_affix_contact_damage = contact_attack_damage
+	if ranged_attack_enabled and ranged_damage_max > 0:
+		_elite_pre_affix_ranged_mid = roundi((ranged_damage_min + ranged_damage_max) * 0.5)
+	else:
+		_elite_pre_affix_ranged_mid = 0
+
+
+func get_elite_pre_affix_attack_damage() -> int:
+	if _elite_pre_affix_contact_damage > 0:
+		return _elite_pre_affix_contact_damage
+	return _elite_pre_affix_ranged_mid
+
+
+# affix id·noop runtime을 등록합니다 — stat·비주얼은 EliteAffixApplier가 선행 적용.
+func apply_elite_affix(affix_id: StringName) -> void:
+	if affix_id.is_empty():
+		return
+	_elite_affix_id = affix_id
+	elite_shield_hp = 0
+	_elite_runtime = EliteAffixRuntimeRegistry.create_runtime(affix_id)
+	if _elite_runtime != null:
+		_elite_runtime.begin(self)
+	if is_node_ready():
+		_sync_elite_affix_nameplate()
+	else:
+		ready.connect(_sync_elite_affix_nameplate, CONNECT_ONE_SHOT)
+
+
+# affix tint 적용 전 복원용 baseline을 저장합니다.
+func store_elite_affix_visual_baseline() -> void:
+	_elite_restore_slime_tint = slime_tint
+
+
+func _elite_tick(delta: float) -> void:
+	if _elite_runtime != null:
+		_elite_runtime.tick(delta, self)
+
+
+func _elite_on_hit_player(raw_damage: int) -> void:
+	if _elite_runtime != null:
+		_elite_runtime.on_hit_player(raw_damage, self)
+
+
+# 무기 적중 성공 시 유물 on-hit 효과를 Player 쪽 bridge로 위임합니다.
+func _notify_relic_weapon_hit(weapon: WeaponData, raw_damage: int) -> void:
+	if not is_instance_valid(player):
+		return
+	if player.has_method(&"notify_relic_weapon_hit_mob"):
+		player.call(&"notify_relic_weapon_hit_mob", self, weapon, raw_damage)
+
+
+func _reset_elite_affix() -> void:
+	if _elite_runtime != null:
+		_elite_runtime.reset()
+		_elite_runtime = null
+	_elite_affix_id = &""
+	elite_shield_hp = 0
+	_elite_pre_affix_contact_damage = 0
+	_elite_pre_affix_ranged_mid = 0
+	slime_tint = _elite_restore_slime_tint
+	_remove_elite_horn_child()
+	_hide_elite_affix_nameplate()
+
+
+func _sync_elite_affix_nameplate() -> void:
+	if _elite_affix_id.is_empty():
+		_hide_elite_affix_nameplate()
+		return
+	var data := EliteAffixCatalog.get_affix(_elite_affix_id)
+	if data == null:
+		_hide_elite_affix_nameplate()
+		return
+	var label := _ensure_elite_affix_label()
+	var display_text := data.display_prefix_ko.strip_edges()
+	if display_text.is_empty():
+		display_text = String(_elite_affix_id)
+	label.text = display_text
+	label.add_theme_color_override("font_color", data.tint)
+	label.add_theme_color_override("font_outline_color", Color(0.05, 0.05, 0.08, 0.9))
+	label.add_theme_constant_override("outline_size", 2)
+	_position_elite_affix_label()
+	label.visible = true
+
+
+func _ensure_elite_affix_label() -> Label:
+	if _elite_affix_label != null and is_instance_valid(_elite_affix_label):
+		return _elite_affix_label
+	var existing := get_node_or_null(String(ELITE_AFFIX_LABEL_NODE_NAME)) as Label
+	if existing != null:
+		_elite_affix_label = existing
+		return existing
+	var label := Label.new()
+	label.name = String(ELITE_AFFIX_LABEL_NODE_NAME)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.z_index = 102
+	label.add_theme_font_size_override("font_size", 12)
+	add_child(label)
+	_elite_affix_label = label
+	return label
+
+
+func _position_elite_affix_label() -> void:
+	if _elite_affix_label == null:
+		return
+	var left_x := -50.0
+	var width := 100.0
+	var top_y := -138.0
+	var bar := get_node_or_null("%HealthBar") as Control
+	if bar != null:
+		left_x = bar.offset_left
+		width = bar.offset_right - bar.offset_left
+		top_y = bar.offset_top - ELITE_AFFIX_LABEL_GAP - ELITE_AFFIX_LABEL_HEIGHT
+	if _status_effect_icons != null:
+		top_y = minf(
+			top_y,
+			_status_effect_icons.offset_top - ELITE_AFFIX_LABEL_GAP - ELITE_AFFIX_LABEL_HEIGHT
+		)
+	_elite_affix_label.position = Vector2(left_x, top_y)
+	_elite_affix_label.size = Vector2(width, ELITE_AFFIX_LABEL_HEIGHT)
+
+
+func _hide_elite_affix_nameplate() -> void:
+	if _elite_affix_label != null and is_instance_valid(_elite_affix_label):
+		_elite_affix_label.visible = false
+
+
+func _remove_elite_horn_child() -> void:
+	if not is_node_ready():
+		return
+	var slime := get_node_or_null("%Slime") as Node
+	if slime == null:
+		return
+	var horn := slime.get_node_or_null(String(EliteAffixIds.HORN_NODE_NAME))
+	if horn != null:
+		horn.free()
 
 
 func _sync_health_bar() -> void:
@@ -482,6 +644,7 @@ func _physics_process(delta: float) -> void:
 		_refresh_status_effect_icons()
 		_process_nettles(delta)
 		move_and_slide()
+		_elite_tick(delta)
 		_finalize_chase_skill_range_rings()
 		return
 
@@ -491,6 +654,7 @@ func _physics_process(delta: float) -> void:
 		_refresh_status_effect_icons()
 		_process_nettles(delta)
 		move_and_slide()
+		_elite_tick(delta)
 		_finalize_chase_skill_range_rings()
 		return
 
@@ -505,6 +669,7 @@ func _physics_process(delta: float) -> void:
 			_refresh_status_effect_icons()
 			_process_nettles(delta)
 			move_and_slide()
+			_elite_tick(delta)
 			_finalize_chase_skill_range_rings()
 			return
 
@@ -523,6 +688,7 @@ func _physics_process(delta: float) -> void:
 			_refresh_status_effect_icons()
 			_process_nettles(delta)
 			move_and_slide()
+			_elite_tick(delta)
 			_finalize_chase_skill_range_rings()
 			return
 
@@ -551,6 +717,7 @@ func _physics_process(delta: float) -> void:
 	_refresh_status_effect_icons()
 	_process_nettles(delta)
 	move_and_slide()
+	_elite_tick(delta)
 	_finalize_chase_skill_range_rings()
 
 
@@ -648,11 +815,25 @@ func _end_charge_attack() -> void:
 	_try_release_attack_mark()
 	velocity = Vector2.ZERO
 	if charge_end_burst_damage > 0 and charge_end_burst_radius > 0.0:
-		DamageResolver.apply_burst_damage_to_player_in_radius(
-			get_footprint_global_center(),
-			charge_end_burst_radius,
-			charge_end_burst_damage
-		)
+		var burst_origin := get_footprint_global_center()
+		if _try_apply_charge_end_burst_to_player(burst_origin):
+			_elite_on_hit_player(charge_end_burst_damage)
+
+
+# 돌진 종료 burst — 반경 내 플레이어 피격 성공 시 true(affix debuff snapshot용).
+func _try_apply_charge_end_burst_to_player(origin: Vector2) -> bool:
+	if not is_instance_valid(player):
+		return false
+	var player_center := GroundShadowFootprint.get_combat_target_center(player as Node2D)
+	if origin.distance_to(player_center) > charge_end_burst_radius:
+		return false
+	if not player.has_method(&"apply_mob_projectile_damage"):
+		return false
+	var skip_reason: String = DamageResolver.apply_mob_projectile_to_player(
+		player,
+		charge_end_burst_damage
+	)
+	return skip_reason.is_empty()
 
 
 # jump_chase_enabled일 때 추격 기술 인스턴스를 만들고 export 수치를 동기화합니다.
@@ -988,7 +1169,9 @@ func _complete_contact_telegraph() -> void:
 	if not is_player_in_contact_attack_range(player_center):
 		return
 	if player.has_method(&"apply_mob_projectile_damage"):
-		player.call(&"apply_mob_projectile_damage", contact_attack_damage)
+		var skip_reason: String = player.call(&"apply_mob_projectile_damage", contact_attack_damage) as String
+		if skip_reason.is_empty():
+			_elite_on_hit_player(contact_attack_damage)
 
 
 func _cancel_contact_telegraph() -> void:
@@ -1062,7 +1245,8 @@ func _fire_ranged_projectile(direction: Vector2) -> void:
 			damage,
 			ranged_projectile_speed,
 			ranged_max_distance,
-			slime_tint
+			slime_tint,
+			self
 		)
 
 	_ranged_cooldown_remaining = ranged_cooldown
@@ -1156,6 +1340,21 @@ func apply_weapon_damage(amount: int, weapon: WeaponData) -> void:
 	if final_amount <= 0:
 		return
 
+	if elite_shield_hp > 0:
+		var absorbed := mini(elite_shield_hp, final_amount)
+		elite_shield_hp -= absorbed
+		final_amount -= absorbed
+		if _elite_runtime != null:
+			_elite_runtime.on_took_damage(absorbed + final_amount, self)
+		if final_amount <= 0:
+			_play_hit_flash()
+			%Slime.play_hurt()
+			_reveal_health_bar()
+			_notify_relic_weapon_hit(weapon, amount)
+			return
+	elif _elite_runtime != null:
+		_elite_runtime.on_took_damage(final_amount, self)
+
 	_register_weapon_damage(weapon, final_amount)
 	_play_hit_flash()
 	%Slime.play_hurt()
@@ -1168,7 +1367,21 @@ func apply_weapon_damage(amount: int, weapon: WeaponData) -> void:
 	_apply_weapon_status_effects(weapon)
 	if is_instance_valid(player) and player.has_method(&"apply_loadout_on_hit"):
 		player.call(&"apply_loadout_on_hit", self, weapon)
+	_notify_relic_weapon_hit(weapon, amount)
 
+	if health <= 0:
+		_request_die()
+
+
+# 중립 AoE 피해 — 무기 귀속 없이 체력만 감소(glacial 사망 폭탄 연쇄 등).
+func take_neutral_burst_damage(amount: int) -> void:
+	if _is_dying or amount <= 0 or _is_chase_skill_attack_immune():
+		return
+	_play_hit_flash()
+	%Slime.play_hurt()
+	health -= amount
+	_reveal_health_bar()
+	FloatingDamageText.spawn_enemy_damage(global_position, amount)
 	if health <= 0:
 		_request_die()
 
@@ -1353,6 +1566,11 @@ func _die() -> void:
 		PoolUtil.release_node(self)
 		return
 
+	if _elite_runtime != null:
+		_elite_runtime.on_death(self)
+
+	_try_drop_elite_relic()
+
 	_trigger_death_burst()
 
 	var smoke_scene = preload("res://effects/smoke_explosion/smoke_explosion.tscn")
@@ -1407,5 +1625,34 @@ func _die() -> void:
 # 처치 보상 — Game 밸런스 시계가 있으면 현재 페이즈, 없으면 loot 1.0.
 func _compute_kill_rewards(game: Node) -> Dictionary:
 	if game and game.has_method(&"get_kill_rewards_for_mob"):
-		return game.get_kill_rewards_for_mob(mob_kind)
-	return KillRewards.compute(mob_kind, BalancePhase.new())
+		return game.get_kill_rewards_for_mob(mob_kind, get_elite_affix_id())
+	return KillRewards.compute(mob_kind, BalancePhase.new(), has_elite_affix())
+
+
+# affix 몹 처치 시 유물 드랍을 시도합니다.
+func _try_drop_elite_relic() -> void:
+	if not has_elite_affix():
+		return
+	var affix_data := EliteAffixCatalog.get_affix(_elite_affix_id)
+	if affix_data == null or not affix_data.drops_relic:
+		return
+	var relic_id := String(affix_data.relic_item_id).strip_edges()
+	if relic_id.is_empty():
+		return
+	var drop_rate := _query_relic_drop_rate()
+	if drop_rate <= 0.0 or randf() >= drop_rate:
+		return
+	var drop := EQUIPMENT_DROP_SCENE.instantiate() as EquipmentDrop
+	if drop == null:
+		return
+	get_parent().add_child(drop)
+	drop.global_position = global_position
+	drop.setup(relic_id)
+
+
+func _query_relic_drop_rate() -> float:
+	const DEFAULT_RELIC_DROP_RATE := 0.00025
+	var game := get_node_or_null("/root/Game")
+	if game and game.has_method(&"get_relic_drop_rate"):
+		return float(game.call(&"get_relic_drop_rate"))
+	return DEFAULT_RELIC_DROP_RATE

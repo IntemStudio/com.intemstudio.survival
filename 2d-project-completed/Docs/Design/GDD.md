@@ -181,6 +181,7 @@
 | 아레나 웨이브 modifier (위험 지대 / 안전 구역 / 회복 감소 / 엘리트 강화 중 일부) | MVP-lite | 상시 시스템 아님, 특정 웨이브만. 데모는 1~2종·소수 웨이브 배치 |
 | 서바이벌 30분 타임라인·밸런스 표 | MVP | 9·11·25·28분 이벤트 체감 목표 |
 | 몹: basic, fast, ranged, elite, special_a/b, boss | MVP | `special_a/b` 1차 기믹, 보스 패턴 후속 |
+| 몹 **엘리트 형태(affix)**·**엘리트 유물** | Later | [`Wiki/EliteForms.md`](../Wiki/EliteForms.md). 데모 MVP-lite 2~3 affix·유물 후속 |
 | 공격 시스템 (`AttackContext`, `DamageResolver` 등) | MVP | 발사체·근접·장판 통합 경로 |
 | F6 `test_arena` 무기·몹 검증 | MVP | F5와 목적 분리 유지 |
 | 게임오버·클리어 통계 (생존 시간·레벨·처치 수) | MVP | **부분** — 2주차 진행 중 |
@@ -210,6 +211,7 @@
 | 플레이 규칙·입력·데모 스코프 | [`Wiki/GameRules.md`](../Wiki/GameRules.md) |
 | 무기·발사체·전투 | [`Wiki/Weapons.md`](../Wiki/Weapons.md), [`Combat.md`](../Wiki/Combat.md), [`Projectiles.md`](../Wiki/Projectiles.md) |
 | 몹·밸런스 리듬 | [`Wiki/Mobs.md`](../Wiki/Mobs.md) |
+| 엘리트 형태·유물 | [`Wiki/EliteForms.md`](../Wiki/EliteForms.md) |
 | 성장·골드·상자 | [`Wiki/Progression.md`](../Wiki/Progression.md) |
 | 인벤토리 | [`Wiki/Items_Inventory.md`](../Wiki/Items_Inventory.md) |
 | 코드 구조·불변조건 | [`Architecture/`](../Architecture/README.md) |

@@ -18,7 +18,11 @@ const BASE_XP_BY_KIND: Dictionary = {
 
 
 # 페이즈 loot_multiplier × mob_kind 기본 XP로 처치 보상을 반환합니다.
-static func compute(mob_kind: StringName, phase: BalancePhase) -> Dictionary:
+static func compute(
+	mob_kind: StringName,
+	phase: BalancePhase,
+	has_elite_affix: bool = false
+) -> Dictionary:
 	var base_xp: int = int(BASE_XP_BY_KIND.get(mob_kind, BASE_XP_BY_KIND[&"basic"]))
 	if base_xp <= 0:
 		return {"xp": 0, "gold": 0}
@@ -28,5 +32,7 @@ static func compute(mob_kind: StringName, phase: BalancePhase) -> Dictionary:
 		loot_mult = maxf(phase.loot_multiplier, 0.01)
 
 	var xp := maxi(1, roundi(float(base_xp) * loot_mult))
+	if has_elite_affix:
+		xp = maxi(1, roundi(float(xp) * 1.5))
 	var gold := maxi(0, roundi(float(xp) * GOLD_PER_XP))
 	return {"xp": xp, "gold": gold}

@@ -3,6 +3,8 @@ extends InteractableArea
 
 ## 월드에 떨어진 장비 item_id를 상호작용으로 런 인벤토리에 획득합니다.
 
+const RelicDataScript := preload("res://inventory/relic_data.gd")
+
 const PROMPT_OFFSET := Vector2(-120.0, -72.0)
 const BASE_SCALE := Vector2(0.72, 0.72)
 
@@ -72,6 +74,10 @@ func _refresh_visuals() -> void:
 		var gear := resource as GearData
 		_sprite.texture = gear.texture if gear.texture != null else _sprite.texture
 		_item_display_name = gear.get_display_name_localized()
+	elif resource is RelicDataScript:
+		var relic := resource as RelicDataScript
+		_item_display_name = relic.get_display_name_localized()
+		_sprite.modulate = relic.tint
 	else:
 		_item_display_name = item_id
 	_sprite.scale = BASE_SCALE

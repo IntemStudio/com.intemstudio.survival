@@ -13,6 +13,7 @@ const TestArenaWeaponPanelControllerScript = preload("res://game/test_arena_weap
 const TestArenaGearPanelControllerScript = preload("res://game/test_arena_gear_panel_controller.gd")
 const TestArenaMobPanelControllerScript = preload("res://game/test_arena_mob_panel_controller.gd")
 const EQUIPMENT_DROP_SCENE := preload("res://effects/equipment_drop/equipment_drop.tscn")
+const RelicCombatBridgeScript = preload("res://inventory/relic_combat_bridge.gd")
 
 const START_WEAPON := preload("res://weapons/data/revolver.tres")
 const PLAYER_RESPAWN_DELAY := 3.0
@@ -36,6 +37,8 @@ const ARMOR_SLOT_LABELS_KO: Dictionary = {
 }
 const DUMMY_BASE_MAX_HEALTH := 500
 const NON_DUMMY_HP_VS_DUMMY_MULTIPLIER := 10.0
+## F6 QA — 1.0이면 affix 몹 처치 시 유물 100% 드랍(E4). F5에는 노출하지 않습니다.
+@export_range(0.0, 1.0, 0.0001) var relic_drop_debug_rate := 0.0
 const MOB_TUNING_COLOR_DEFAULT := Color(0.78, 0.78, 0.82, 1.0)
 const MOB_TUNING_COLOR_SAVED := Color(0.55, 0.75, 0.95, 1.0)
 const MOB_TUNING_COLOR_SESSION := Color(0.95, 0.82, 0.38, 1.0)
@@ -142,6 +145,7 @@ func _ready() -> void:
 	_weapon_snapshots.load_from_disk()
 	_gear_snapshots.load_from_disk()
 	DevTuningStore.reload_mob_authoring()
+	EliteFeatureFlags.affix_roll_enabled = false
 	_status_effect_snapshots.load_from_disk()
 	# 컨트롤러는 옵션 빌드 전에 의존성 주입이 필요합니다.
 	_configure_weapon_panel_controller()
@@ -171,6 +175,7 @@ func _ready() -> void:
 	call_deferred("_wire_gear_snapshot_to_registry")
 	_weapon_panel_controller.setup_projectile_tuning_ui()
 	_setup_mob_combat_tuning_ui()
+	_setup_mob_affix_option()
 	if not use_inventory_loadout:
 		_equip_weapon(START_WEAPON)
 	else:
@@ -206,8 +211,13 @@ func _ready() -> void:
 	%ResetStatusEffectTuningButton.pressed.connect(_on_reset_status_effect_tuning_pressed)
 	%Player.health_depleted.connect(_on_player_health_depleted)
 	%MobRespawnCheck.toggled.connect(_on_mob_respawn_toggled)
+	%MobAffixOption.item_selected.connect(_on_mob_affix_option_selected)
 	%EditOffhandStatusButton.pressed.connect(_on_edit_offhand_status_button_pressed)
 	_on_mob_respawn_toggled(%MobRespawnCheck.button_pressed)
+
+
+func _exit_tree() -> void:
+	EliteFeatureFlags.force_affix_id = &""
 
 
 # ===== Lifecycle/Pause/Inventory Bridge (Step0 boundary freeze) =====
@@ -284,6 +294,19 @@ func try_acquire_dropped_equipment_item(item_id: String) -> StringName:
 	return &""
 
 
+# F6 affix 유물 드랍 QA — relic_drop_debug_rate export.
+func get_relic_drop_rate() -> float:
+	return relic_drop_debug_rate
+
+
+# 몹 처치 XP·골드 — TestArena는 XP 0, affix 배율만 반영.
+func get_kill_rewards_for_mob(mob_kind: StringName, elite_affix_id: StringName = &"") -> Dictionary:
+	var has_elite_affix := not elite_affix_id.is_empty()
+	var rewards := KillRewards.compute(mob_kind, BalancePhase.new(), has_elite_affix)
+	rewards["xp"] = 0
+	return rewards
+
+
 # 인벤토리에서 버린 장비를 플레이어 앞에 월드 드롭으로 생성합니다.
 func can_drop_equipment_item(item_id: String) -> bool:
 	return not item_id.strip_edges().is_empty() and EQUIPMENT_DROP_SCENE != null
@@ -314,11 +337,13 @@ func _get_equipment_drop_position() -> Vector2:
 func apply_inventory_loadout_to_player() -> void:
 	if not use_inventory_loadout or _inventory_menu == null:
 		InventoryCombatBridge.clear_loadout_from_player(%Player)
+		RelicCombatBridgeScript.clear()
 		InventoryGameBridge.refresh_combat_set_hud(self, _inventory_menu)
 		return
 	var menu_service: InventoryService = _inventory_menu.get_service()
 	if menu_service == null:
 		InventoryCombatBridge.clear_loadout_from_player(%Player)
+		RelicCombatBridgeScript.clear()
 		InventoryGameBridge.refresh_combat_set_hud(self, _inventory_menu)
 		return
 	var weapon_id := InventoryCombatBridge.get_active_weapon_id(menu_service.loadout)
@@ -335,6 +360,7 @@ func apply_inventory_loadout_to_player() -> void:
 	)
 	if %Player.has_method(&"refresh_stats_from_loadout"):
 		%Player.refresh_stats_from_loadout(menu_service.registry, menu_service.loadout)
+	RelicCombatBridgeScript.refresh_from_bag(menu_service.loadout)
 	InventoryGameBridge.refresh_combat_set_hud(self, _inventory_menu)
 	if %ArmorGearRow.visible:
 		var selected_before := _gear_panel_controller.get_selected_armor_gear()
@@ -460,6 +486,30 @@ func _refresh_weapon_sub_tab_lock_state() -> void:
 
 func _setup_mob_type_option() -> void:
 	_mob_panel_controller.setup_mob_type_option()
+
+
+func _setup_mob_affix_option() -> void:
+	_mob_panel_controller.setup_mob_affix_option()
+	_sync_elite_force_affix_from_ui()
+
+
+func _on_mob_affix_option_selected(_index: int) -> void:
+	_sync_elite_force_affix_from_ui()
+	_mob_panel_controller.update_mob_affix_description()
+	_mob_panel_controller.update_mob_description()
+
+
+func _sync_elite_force_affix_from_ui() -> void:
+	EliteFeatureFlags.force_affix_id = _mob_panel_controller.get_selected_force_affix_id()
+
+
+func _build_test_elite_roll_context(mob: Mob, mob_scene: PackedScene) -> EliteAffixRollContext:
+	var context := EliteAffixRollContext.new()
+	context.mob_kind = mob.mob_kind
+	context.phase_minute = 0.0
+	context.is_boss = mob_scene == MobSpawnSelector.MOB_BOSS_SCENE
+	context.force_affix_id = _mob_panel_controller.get_selected_force_affix_id()
+	return context
 
 
 func _on_mob_type_option_selected(_index: int) -> void:
@@ -666,7 +716,9 @@ func _configure_mob_panel_controller() -> void:
 		_get_mob_chase_skill_step_buttons(),
 		_get_mob_chase_skill_field_labels(),
 		%MobChaseModeLabel,
-		%MobChaseModeOption
+		%MobChaseModeOption,
+		%MobAffixOption,
+		%MobAffixDescLabel
 	)
 
 
@@ -971,6 +1023,7 @@ func spawn_test_mob(scene: PackedScene) -> void:
 		return
 	mob.initialize_spawn_health(_get_test_mob_hp_multiplier(scene, mob))
 	_mob_snapshots.apply_to_mob(mob, scene)
+	EliteAffixSpawnHelper.apply_after_mob_ready(mob, _build_test_elite_roll_context(mob, scene))
 	if mob.is_node_ready():
 		mob.refresh_attack_range_ring()
 		mob.refresh_chase_skill_range_rings()
@@ -1042,6 +1095,8 @@ func _respawn_player() -> void:
 	player.reset_health_depleted_state()
 	if player.has_method(&"_refill_stamina_to_max"):
 		player.call(&"_refill_stamina_to_max")
+	if player.has_method(&"clear_player_debuffs"):
+		player.call(&"clear_player_debuffs")
 	_player_is_dead = false
 	_update_status("")
 

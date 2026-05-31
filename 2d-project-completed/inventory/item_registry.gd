@@ -7,9 +7,12 @@ const _RangedWeaponCatalog := preload("res://weapons/catalogs/ranged_weapon_cata
 const _MeleeWeaponCatalog := preload("res://weapons/catalogs/melee_weapon_catalog.gd")
 const _MagicWeaponCatalog := preload("res://weapons/catalogs/magic_weapon_catalog.gd")
 const _GearCatalog := preload("res://inventory/gear_catalog.gd")
+const _RelicCatalog := preload("res://inventory/relic_catalog.gd")
+const RelicDataScript := preload("res://inventory/relic_data.gd")
 
 var _weapons: Dictionary = {}
 var _gear: Dictionary = {}
+var _relics: Dictionary = {}
 ## F6 테스트 아레나 — (item_id, base stat_modifiers) → 적용할 Dictionary. 비어 있으면 카탈로그 값.
 var _gear_modifier_resolver: Callable = Callable()
 
@@ -17,6 +20,7 @@ var _gear_modifier_resolver: Callable = Callable()
 func clear() -> void:
 	_weapons.clear()
 	_gear.clear()
+	_relics.clear()
 
 
 func register_weapon(weapon: WeaponData) -> void:
@@ -39,6 +43,20 @@ func register_gear(gear: GearData) -> void:
 	_gear[key] = gear
 
 
+func register_relic(relic: RelicDataScript) -> void:
+	if relic == null:
+		return
+	var key := relic.get_unique_key()
+	if key.is_empty():
+		push_warning("ItemRegistry: relic without id skipped")
+		return
+	_relics[key] = relic
+
+
+func register_relics_from_catalog() -> void:
+	_RelicCatalog.register_all_to_registry(self)
+
+
 func register_weapons_from_catalogs() -> void:
 	for weapon in _RangedWeaponCatalog.get_all():
 		register_weapon(weapon)
@@ -56,6 +74,7 @@ func register_gear_from_catalog() -> void:
 func register_all_catalogs() -> void:
 	register_weapons_from_catalogs()
 	register_gear_from_catalog()
+	register_relics_from_catalog()
 
 
 # F6 장비 튜닝 스냅샷 — 합산 시 stat_modifiers 대체(메인 런은 설정하지 않음).
@@ -69,7 +88,15 @@ func clear_gear_modifier_resolver() -> void:
 
 func has_item(item_id: String) -> bool:
 	var key := item_id.strip_edges()
-	return _weapons.has(key) or _gear.has(key)
+	return _weapons.has(key) or _gear.has(key) or _relics.has(key)
+
+
+func is_relic_item(item_id: String) -> bool:
+	return _relics.has(item_id.strip_edges())
+
+
+func resolve_relic(item_id: String) -> RelicDataScript:
+	return _relics.get(item_id.strip_edges(), null)
 
 
 func resolve_weapon(item_id: String) -> WeaponData:
@@ -86,6 +113,8 @@ func resolve_gear_or_weapon(item_id: String) -> Resource:
 		return _weapons[key]
 	if _gear.has(key):
 		return _gear[key]
+	if _relics.has(key):
+		return _relics[key]
 	return null
 
 
@@ -94,6 +123,8 @@ func get_all_item_ids() -> Array[String]:
 	for key in _weapons.keys():
 		ids.append(String(key))
 	for key in _gear.keys():
+		ids.append(String(key))
+	for key in _relics.keys():
 		ids.append(String(key))
 	return ids
 
@@ -132,6 +163,9 @@ func get_item_rarity(item_id: String) -> String:
 	var gear := resolve_gear(key)
 	if gear != null:
 		return _normalize_rarity(gear.rarity)
+	var relic := resolve_relic(key)
+	if relic != null:
+		return _normalize_rarity(relic.rarity)
 	return "Common"
 
 
@@ -144,6 +178,8 @@ func is_two_handed_weapon(item_id: String) -> bool:
 func can_item_occupy_slot(item_id: String, slot_key: StringName) -> bool:
 	var key := item_id.strip_edges()
 	if key.is_empty() or not has_item(key):
+		return false
+	if is_relic_item(key):
 		return false
 	if not EquipSlots.is_valid_slot_key(slot_key):
 		return false

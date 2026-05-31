@@ -142,7 +142,13 @@ func spawn_area_circle(
 
 
 # 몹 일반 사망 시 플레이어 범위 피해 + 짧은 연출
-func spawn_mob_death_burst(burst_position: Vector2, radius: float, damage: int) -> void:
+func spawn_mob_death_burst(
+	burst_position: Vector2,
+	radius: float,
+	damage: int,
+	on_player_hit: Callable = Callable(),
+	neutral_burst: bool = false
+) -> void:
 	if damage <= 0 or radius <= 0.0:
 		return
 	var game := _get_game()
@@ -152,7 +158,20 @@ func spawn_mob_death_burst(burst_position: Vector2, radius: float, damage: int) 
 		visual.global_position = burst_position
 		if visual.has_method(&"setup"):
 			visual.setup(radius, DEATH_BURST_VISUAL_RADIUS_MULT)
-	DamageResolver.apply_burst_damage_to_player_in_radius(burst_position, radius, damage)
+	if neutral_burst:
+		DamageResolver.apply_neutral_burst_in_radius(
+			burst_position,
+			radius,
+			damage,
+			on_player_hit
+		)
+	else:
+		DamageResolver.apply_burst_damage_to_player_in_radius(
+			burst_position,
+			radius,
+			damage,
+			on_player_hit
+		)
 
 
 # 사망 폭발 — delay 초 후 피해·연출(0 이하면 즉시)
@@ -160,12 +179,14 @@ func schedule_mob_death_burst(
 	burst_position: Vector2,
 	radius: float,
 	damage: int,
-	delay: float
+	delay: float,
+	on_player_hit: Callable = Callable(),
+	neutral_burst: bool = false
 ) -> void:
 	if damage <= 0 or radius <= 0.0:
 		return
 	if delay <= 0.0:
-		spawn_mob_death_burst(burst_position, radius, damage)
+		spawn_mob_death_burst(burst_position, radius, damage, on_player_hit, neutral_burst)
 		return
 	var game := _get_game()
 	if game == null:
@@ -173,7 +194,13 @@ func schedule_mob_death_burst(
 		if tree:
 			tree.create_timer(delay).timeout.connect(
 				func() -> void:
-					spawn_mob_death_burst(burst_position, radius, damage),
+					spawn_mob_death_burst(
+						burst_position,
+						radius,
+						damage,
+						on_player_hit,
+						neutral_burst
+					),
 				CONNECT_ONE_SHOT
 			)
 		return
@@ -185,11 +212,23 @@ func schedule_mob_death_burst(
 			radius,
 			delay,
 			func() -> void:
-				spawn_mob_death_burst(burst_position, radius, damage)
+				spawn_mob_death_burst(
+					burst_position,
+					radius,
+					damage,
+					on_player_hit,
+					neutral_burst
+				)
 		)
 	else:
 		game.get_tree().create_timer(delay).timeout.connect(
 			func() -> void:
-				spawn_mob_death_burst(burst_position, radius, damage),
+				spawn_mob_death_burst(
+					burst_position,
+					radius,
+					damage,
+					on_player_hit,
+					neutral_burst
+				),
 			CONNECT_ONE_SHOT
 		)

@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="MobSceneTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://game/tuning/mob_scene_tuning.gd" id="1_fm2xe"]
+
+[resource]
+script = ExtResource("1_fm2xe")
+scene_path = "res://entities/mob/mob_elite.tscn"
+overrides = {
+"attack_distance": 300.0,
+"chase_distance": 0.0,
+"chase_mode": 1,
+"contact_attack_damage": 1,
+"contact_attack_interval": 1.0,
+"jump_chase_arc_height": 48.0,
+"jump_chase_cooldown": 1.6,
+"jump_chase_duration": 0.28,
+"jump_chase_enabled": false,
+"jump_chase_landing_burst_damage": 10,
+"jump_chase_landing_burst_radius": 70.0,
+"jump_chase_travel_distance": 140.0,
+"jump_chase_trigger_distance": 230.0,
+"jump_chase_windup_delay": 0.4
+}

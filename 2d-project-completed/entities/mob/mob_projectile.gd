@@ -6,6 +6,7 @@ const SPRITE_OFFSET := Vector2(-11.0, -1.0)
 const SWEEP_STEP_PX := 8.0
 
 var _player: CharacterBody2D
+var _source_mob: Mob
 var _direction := Vector2.RIGHT
 var _damage := 0
 var _speed := 520.0
@@ -21,6 +22,7 @@ func _ready() -> void:
 
 func pool_reset() -> void:
 	_player = null
+	_source_mob = null
 	_direction = Vector2.RIGHT
 	_damage = 0
 	_speed = 520.0
@@ -33,16 +35,18 @@ func pool_on_acquire() -> void:
 	_ensure_collision_config()
 
 
-# 몹 원거리 탄환: 방향·데미지·사거리 설정.
+# 몹 원거리 탄환: 방향·데미지·사거리·발사 몹(affix hook) 설정.
 func setup(
 	target_player: CharacterBody2D,
 	direction: Vector2,
 	damage: int,
 	speed: float,
 	max_range: float,
-	tint: Color
+	tint: Color,
+	source_mob: Mob = null
 ) -> void:
 	_player = target_player
+	_source_mob = source_mob
 	_direction = direction.normalized()
 	_damage = damage
 	_speed = speed
@@ -227,7 +231,10 @@ func _resolve_hit_skip_reason(body: Node) -> String:
 
 	if not damage_target.has_method(&"apply_mob_projectile_damage"):
 		return "player_missing_apply_mob_projectile_damage"
-	return DamageResolver.apply_mob_projectile_to_player(damage_target, _damage)
+	var skip_reason: String = DamageResolver.apply_mob_projectile_to_player(damage_target, _damage)
+	if skip_reason.is_empty() and _source_mob != null and is_instance_valid(_source_mob):
+		_source_mob._elite_on_hit_player(_damage)
+	return skip_reason
 
 
 func _get_game_player() -> CharacterBody2D:

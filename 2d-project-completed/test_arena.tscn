@@ -174,6 +174,33 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "Mob respawn (2s delay)"
 
+[node name="MobAffixLabel" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/OptionsPanel/OptionsRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Affix"
+
+[node name="MobAffixOption" type="OptionButton" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/OptionsPanel/OptionsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MobAffixDescPanel" type="PanelContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox"]
+layout_mode = 2
+
+[node name="MobAffixDescLabel" type="RichTextLabel" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobAffixDescPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 56)
+theme_override_colors/default_color = Color(0.82, 0.82, 0.88, 1)
+theme_override_font_sizes/normal_font_size = 13
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
+autowrap_mode = 3
+text = "[color=#a9a9b0]affix 없음 — 기본 stat만 적용해 스폰합니다.[/color]"
+
 [node name="MobCombatTuningPanel" type="PanelContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox"]
 layout_mode = 2
 

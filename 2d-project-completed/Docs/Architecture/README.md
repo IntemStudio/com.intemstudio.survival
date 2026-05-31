@@ -35,6 +35,7 @@
 | `Architecture_Passives.md` | LoadoutPassive·RunPassive·TimedBuff·WaveModifier 4층, `WeaponRunState`, `AccessorySynergy`, `PassiveResolver` | HUD, 이벤트 큐·확률 데이터(EA), GDD Enabler 정의 본문 |
 | `Architecture_GameLoop_Balance.md` | 로비 이후 런 시작, 스폰 타이머, `BalanceTable`, `BalanceTimeline`, 클리어/게임오버, 보상 호출 경로 | 출시 일정, 플레이테스트 TODO, 장기 난이도 아이디어 |
 | `Architecture_Mobs.md` | `mob.gd` 공통 계약, 변종 씬, 원거리 공격, 접촉 피해, 사망·보상·풀 반환, 보스/특수몹 확장 지점 | 몹 역할 기획, 등장 체감, 데모 콘텐츠 우선순위 |
+| `Architecture_EliteForms.md` | affix 롤·적용·runtime, `PlayerDebuffController`, relic 가방 보유, 드롭·XP 훅 | affix tier 스펙 본문, pity, DLC narrative |
 | `Architecture_TestArena.md` | F6 씬, 몹/무기/보조/상태이상 튜닝(적용/저장), 상태이상 탭 진입·자동 선택·저장 자동 반영, 사망 폭발 지연·예고 링, 인벤 GUI, 탭 UI | F5 웨이브·상자·밸런스 타임라인 |
 
 ## 포함하지 않을 문서

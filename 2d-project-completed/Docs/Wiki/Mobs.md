@@ -1,7 +1,7 @@
 # Wiki - Mobs
 
 **역할:** 몹 종류, 등장 시점, 전투 역할, 보스·특수몹 기획 상태를 정리합니다.  
-**관련:** [`Combat.md`](Combat.md), [`GameRules.md`](GameRules.md), [`../Architecture/Architecture_Mobs.md`](../Architecture/Architecture_Mobs.md), [`../Architecture/Architecture_StatusEffects.md`](../Architecture/Architecture_StatusEffects.md), [`../Architecture/Architecture_GameLoop_Balance.md`](../Architecture/Architecture_GameLoop_Balance.md), [`../Plan/Plan_Balance_VS_Curve_Alignment.md`](../Plan/Plan_Balance_VS_Curve_Alignment.md)
+**관련:** [`EliteForms.md`](EliteForms.md), [`Combat.md`](Combat.md), [`GameRules.md`](GameRules.md), [`../Architecture/Architecture_Mobs.md`](../Architecture/Architecture_Mobs.md), [`../Architecture/Architecture_StatusEffects.md`](../Architecture/Architecture_StatusEffects.md), [`../Architecture/Architecture_GameLoop_Balance.md`](../Architecture/Architecture_GameLoop_Balance.md), [`../Plan/Plan_Balance_VS_Curve_Alignment.md`](../Plan/Plan_Balance_VS_Curve_Alignment.md)
 
 ---
 
@@ -67,13 +67,21 @@
 - 예고 시간이 끝나면 플레이어 방향으로 투사체를 발사한다.
 - 투사체는 환경 또는 플레이어에 닿으면 사라진다.
 
-## 엘리트 / 특수몹 / 보스 정책
+## 엘리트 형태 (affix) — 목표 기획
+
+**상세:** [`EliteForms.md`](EliteForms.md) · **구현:** 미착수
+
+목표는 `mob_kind = elite` **독립 변종**이 아니라, basic/fast/ranged/boss 등에 **확률적으로 붙는 affix 레이어**입니다. 티어 1(불타는·과전하·빙하의·수리 중인·금빛) 스펙, **0.025% 엘리트 유물** 드랍, **가방 보유만으로** 유물 효과 적용 규칙은 EliteForms Wiki를 따릅니다.
+
+현재 플레이에 있는 `elite` 스폰(`elite_spawn_ratio`)은 **과도기**이며, affix 시스템 도입 후 통합·대체를 검토합니다.
+
+## 엘리트 / 특수몹 / 보스 정책 (현재 구현)
 
 현재 엘리트, 특수몹, 보스는 이름과 수치에 비해 고유 gameplay가 부족하다. 데모 전에는 아래처럼 최소 역할을 정한다.
 
 | 분류 | 데모 최소 목표 |
 |------|----------------|
-| elite | 일반몹보다 크고 단단하며, 등장 알림 또는 보상 차별화가 있다. |
+| elite | 일반몹보다 크고 단단하며, 등장 알림 또는 보상 차별화가 있다. → **후속:** [`EliteForms.md`](EliteForms.md) affix로 대체 |
 | special_a | 사망 위치에서 `death_burst_delay`(기본 3s) 후 반경 피해. 지연 동안 링이 커지며 예고. F6에서 범위·피해·지연 튜닝. 이동·공격 패턴 차별은 후속. |
 | special_b | `charge_trigger_distance` 안에서 **레인·`!` 예고**(`charge_lane_display_duration`, 기본 1s) 후 돌진, 종료 반경 피해. HP 임계 **자폭**. F6 GUI는 **돌진 거리** 튜닝(사망 폭발 스핀 숨김). |
 | boss | 25분에 등장하며, 고유 공격과 보상 또는 클리어 압박을 가진다. |
@@ -83,13 +91,13 @@
 - 몹 종류와 현재 진행 구간에 따라 XP와 골드 보상이 달라진다.
 - boss, elite, special은 기본 XP가 더 높다.
 - 더미는 테스트용이라 보상이 없다.
-- 엘리트/보스 전용 드랍 테이블과 오브 비주얼 차등은 후속이다.
+- 엘리트/보스 전용 드랍: **엘리트 유물 0.025%** — [`EliteForms.md`](EliteForms.md). 오브 비주얼 차등은 후속.
 
 ## 미정 / 후속
 
 - 몹 종류 값을 AI, 보상, UI 분기에 적극 사용할지 여부.
 - 위협도 지표를 피해, 스폰, 압박도 중 어디에 연결할지.
 - 보스 페이즈와 패턴 수.
-- 엘리트 등장 연출과 처치 보상.
+- 엘리트 등장 연출 — affix 상세는 [`EliteForms.md`](EliteForms.md) §미정.
 - 특수몹 A/B의 최종 정체성.
 - 동시 생존 몹 상한을 HUD 또는 디버그 UI에 표시할지 여부.

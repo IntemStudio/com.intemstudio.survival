@@ -91,9 +91,21 @@ func _update_aim_direction_line() -> void:
 	_aim_direction_line.visible = true
 
 
+# 동결 등으로 발사 입력이 잠긴 상태인지 확인합니다.
+func _is_attack_input_blocked() -> bool:
+	var player := _get_player()
+	if player and player.has_method("is_elite_debuff_frozen"):
+		return bool(player.call("is_elite_debuff_frozen"))
+	return false
+
+
 # 플레이어 자동 공격 토글(G)에 맞춰 타이머를 켜거나 끕니다.
 func refresh_auto_attack() -> void:
 	if not weapon or not is_inside_tree() or weapon.is_orbit_attack():
+		return
+	if _is_attack_input_blocked():
+		_shoot_timer.stop()
+		_burst_shots_remaining = 0
 		return
 	if _is_auto_attack_enabled():
 		if _shoot_timer.time_left <= 0.0 and not _is_manual_fire_pressed():
@@ -231,6 +243,8 @@ func _process(_delta: float) -> void:
 
 # 자동 공격 ON이면 타이머로 연속 발사합니다(마우스 불필요).
 func _handle_auto_attack() -> void:
+	if _is_attack_input_blocked():
+		return
 	if not weapon or weapon.is_orbit_attack():
 		return
 	if not _is_auto_attack_enabled() or _is_manual_fire_pressed():
@@ -249,6 +263,8 @@ func _handle_auto_attack() -> void:
 
 # 마우스 좌클릭을 누르고 있는 동안 공격 속도에 맞춰 발사합니다.
 func _handle_manual_fire_input() -> void:
+	if _is_attack_input_blocked():
+		return
 	if not weapon or weapon.is_orbit_attack():
 		return
 	if not _is_manual_fire_pressed():
@@ -271,6 +287,8 @@ func _is_manual_fire_pressed() -> bool:
 
 
 func shoot() -> void:
+	if _is_attack_input_blocked():
+		return
 	if not weapon:
 		return
 
@@ -495,6 +513,11 @@ func _exit_tree() -> void:
 
 func _on_timer_timeout() -> void:
 	if not weapon:
+		return
+
+	if _is_attack_input_blocked():
+		_shoot_timer.stop()
+		_burst_shots_remaining = 0
 		return
 
 	if weapon.is_orbit_attack():

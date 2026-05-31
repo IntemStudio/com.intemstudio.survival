@@ -51,6 +51,16 @@ var _mob_chase_skill_step_buttons: Array[Button] = []
 var _mob_chase_skill_field_labels: Array[Label] = []
 var _mob_chase_mode_label: Label
 var _mob_chase_mode_option: OptionButton
+var _mob_affix_option: OptionButton
+var _mob_affix_desc_label: RichTextLabel
+
+const MOB_AFFIX_OPTION_ENTRIES: Array[Dictionary] = [
+	{"label": "(none)", "affix_id": &""},
+	{"label": "blazing", "affix_id": EliteAffixIds.BLAZING},
+	{"label": "overloading", "affix_id": EliteAffixIds.OVERLOADING},
+	{"label": "glacial", "affix_id": EliteAffixIds.GLACIAL},
+	{"label": "mending", "affix_id": EliteAffixIds.MENDING},
+]
 
 
 func configure(
@@ -90,7 +100,9 @@ func configure(
 	mob_chase_skill_step_buttons: Array[Button],
 	mob_chase_skill_field_labels: Array[Label],
 	mob_chase_mode_label: Label,
-	mob_chase_mode_option: OptionButton
+	mob_chase_mode_option: OptionButton,
+	mob_affix_option: OptionButton,
+	mob_affix_desc_label: RichTextLabel
 ) -> void:
 	_mob_snapshots = mob_snapshots
 	_update_status = update_status
@@ -129,6 +141,8 @@ func configure(
 	_mob_chase_skill_field_labels = mob_chase_skill_field_labels
 	_mob_chase_mode_label = mob_chase_mode_label
 	_mob_chase_mode_option = mob_chase_mode_option
+	_mob_affix_option = mob_affix_option
+	_mob_affix_desc_label = mob_affix_desc_label
 
 
 func setup_mob_type_option() -> void:
@@ -137,6 +151,33 @@ func setup_mob_type_option() -> void:
 		_mob_type_option.add_item(entry["label"])
 	update_mob_description()
 	refresh_mob_combat_tuning_ui()
+
+
+func setup_mob_affix_option() -> void:
+	if _mob_affix_option == null:
+		return
+	_mob_affix_option.clear()
+	for entry in MOB_AFFIX_OPTION_ENTRIES:
+		_mob_affix_option.add_item(entry["label"])
+	_mob_affix_option.select(0)
+	update_mob_affix_description()
+
+
+func update_mob_affix_description() -> void:
+	if _mob_affix_desc_label == null:
+		return
+	_mob_affix_desc_label.text = EliteAffixCatalog.build_gui_description_bbcode(
+		get_selected_force_affix_id()
+	)
+
+
+func get_selected_force_affix_id() -> StringName:
+	if _mob_affix_option == null:
+		return &""
+	var index: int = _mob_affix_option.selected
+	if index < 0 or index >= MOB_AFFIX_OPTION_ENTRIES.size():
+		return &""
+	return MOB_AFFIX_OPTION_ENTRIES[index]["affix_id"] as StringName
 
 
 func on_mob_type_option_selected(_index: int) -> void:
@@ -303,6 +344,9 @@ func build_mob_info_bbcode(scene: PackedScene) -> String:
 		lines.append("처치 보상(기본): XP %d · 골드 %d" % [rewards["xp"], rewards["gold"]])
 	else:
 		lines.append("[color=#a9a9b0]처치 보상 없음[/color]")
+	var affix_id := get_selected_force_affix_id()
+	var affix_display := String(affix_id) if not affix_id.is_empty() else "-"
+	lines.append("Affix: %s" % affix_display)
 	mob.free()
 	return "\n".join(lines)
 

@@ -1,0 +1,26 @@
+---
+description: CLI smoke test — opt-in only; never auto-run or plan unless user asks
+alwaysApply: true
+---
+
+# CLI smoke test (opt-in)
+
+Reference: `scripts/verify/run_smoke.ps1`, `AGENTS.md` (Korean usage notes).
+
+## Must not (default)
+
+- Do **not** run `run_smoke.ps1` (or any gdUnit4 CLI smoke) unless the **user explicitly requests** it in the current task (e.g. "스모크 돌려줘", "run smoke", "commit 전 smoke").
+- Do **not** add smoke / `run_smoke.ps1` to task plans, todo lists, or "next steps" unless the user asked for smoke verification.
+- Do **not** treat smoke as an automatic post-change gate after implementing features, refactors, or bug fixes.
+- Do **not** run smoke in the background proactively "to verify" work.
+
+## When the user requests smoke
+
+- Run **one** foreground instance only (`parallel=locked`; never `-AllowParallel` from the agent).
+- Prefer foreground execution; avoid background terminals unless the user asked for background.
+- If a lock error appears (exit 2), wait for the other run or ask the user — do not start a parallel run.
+
+## Allowed without a smoke request
+
+- Editing `scripts/verify/run_smoke.ps1` when the task is about that script.
+- `-SelfTest` only when the task is specifically smoke-script infrastructure work.

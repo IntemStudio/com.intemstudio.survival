@@ -6,6 +6,7 @@ const ARENA_TELEPORTER_SCENE := preload("res://game/arena/arena_teleporter.tscn"
 const GOLD_CHEST_SCENE := preload("res://game/rewards/gold_chest.tscn")
 const CHEST_PURCHASE_MENU_SCENE := preload("res://ui/chest_purchase_menu.tscn")
 const EQUIPMENT_DROP_SCENE := preload("res://effects/equipment_drop/equipment_drop.tscn")
+const RelicCombatBridgeScript = preload("res://inventory/relic_combat_bridge.gd")
 const DEFAULT_BALANCE_TABLE := preload("res://game/balance/default_balance_table.tres")
 const DEFAULT_BALANCE_TIMELINE := preload("res://game/balance/default_balance_timeline.tres")
 const RUN_CLEAR_CURVE_MINUTES := 30.0
@@ -40,6 +41,10 @@ const ARENA_CHEST_CONFIGS := [
 @export_range(1, 500, 1) var max_alive_mobs := 100
 ## true면 획득 보상이 인벤토리에 자동 배치되고 활성 세트 weapon만 Player에 반영됩니다.
 @export var use_inventory_loadout := true
+## F5 서바이벌·아레나 affix 롤 활성화 — phase p_normal·보스 100% 테이블 적용.
+@export var elite_affix_roll_enabled := true
+
+const RELIC_DROP_RATE := 0.00025
 
 var _elapsed_seconds := 0.0
 var _last_spawn_density := -1.0
@@ -92,6 +97,7 @@ func _ready() -> void:
 	if not balance_timeline:
 		balance_timeline = DEFAULT_BALANCE_TIMELINE
 	DevTuningStore.reload_mob_authoring()
+	EliteFeatureFlags.affix_roll_enabled = elite_affix_roll_enabled
 	_update_kill_count_hud()
 	$Timer.stop()
 	if %Player.has_method(&"set_weapon_run_state"):
@@ -828,12 +834,18 @@ func get_current_balance_phase() -> BalancePhase:
 	return _query_balance_phase()
 
 
-# 몹 처치 XP·골드(예정) — KillRewards 단일 계산 경로.
-func get_kill_rewards_for_mob(mob_kind: StringName) -> Dictionary:
-	var rewards := KillRewards.compute(mob_kind, get_current_balance_phase())
+# 몹 처치 XP·골드 — KillRewards 단일 계산 경로.
+func get_kill_rewards_for_mob(mob_kind: StringName, elite_affix_id: StringName = &"") -> Dictionary:
+	var has_elite_affix := not elite_affix_id.is_empty()
+	var rewards := KillRewards.compute(mob_kind, get_current_balance_phase(), has_elite_affix)
 	if _is_arena_mode():
 		rewards["xp"] = 0
 	return rewards
+
+
+# 엘리트 유물 드랍 확률 — F5 기본 0.025%.
+func get_relic_drop_rate() -> float:
+	return RELIC_DROP_RATE
 
 
 func _query_balance_phase() -> BalancePhase:
@@ -959,7 +971,20 @@ func spawn_mob(
 		spawn_health_multiplier = health_multiplier
 	new_mob.initialize_spawn_health(spawn_health_multiplier)
 	DevTuningApplier.apply_mob_scene_tuning(new_mob, mob_scene)
+	EliteAffixSpawnHelper.apply_after_mob_ready(
+		new_mob,
+		_build_elite_roll_context(new_mob, mob_scene)
+	)
 	return new_mob
+
+
+func _build_elite_roll_context(mob: Mob, mob_scene: PackedScene) -> EliteAffixRollContext:
+	var context := EliteAffixRollContext.new()
+	context.mob_kind = mob.mob_kind
+	context.phase_minute = get_current_balance_phase().minute
+	context.is_boss = mob_scene == MobSpawnSelector.MOB_BOSS_SCENE
+	context.force_affix_id = EliteFeatureFlags.force_affix_id
+	return context
 
 
 func _on_timer_timeout():
@@ -1285,11 +1310,13 @@ func show_inventory_swap_toast(message: String) -> void:
 func apply_inventory_loadout_to_player() -> void:
 	if not use_inventory_loadout or _inventory_menu == null:
 		InventoryCombatBridge.clear_loadout_from_player(%Player)
+		RelicCombatBridgeScript.clear()
 		InventoryGameBridge.refresh_combat_set_hud(self, _inventory_menu)
 		return
 	var menu_service: InventoryService = _inventory_menu.get_service()
 	if menu_service == null:
 		InventoryCombatBridge.clear_loadout_from_player(%Player)
+		RelicCombatBridgeScript.clear()
 		InventoryGameBridge.refresh_combat_set_hud(self, _inventory_menu)
 		return
 	InventoryCombatBridge.apply_loadout_to_player(
@@ -1297,6 +1324,7 @@ func apply_inventory_loadout_to_player() -> void:
 		menu_service.registry,
 		menu_service.loadout
 	)
+	RelicCombatBridgeScript.refresh_from_bag(menu_service.loadout)
 	_sync_weapon_run_state_from_owned()
 	_refresh_passive_stats()
 	InventoryGameBridge.refresh_combat_set_hud(self, _inventory_menu)

@@ -1,6 +1,6 @@
 # Architecture — Buffs (버프)
 
-**진입:** [`AGENTS.md`](../../AGENTS.md) · 플레이어·대시: [`Architecture_Player.md`](Architecture_Player.md) · 패시브: [`Architecture_Passives.md`](Architecture_Passives.md) · 장비 연동: [`Architecture_Inventory.md`](Architecture_Inventory.md) · 런 루프: [`Architecture_GameLoop_Balance.md`](Architecture_GameLoop_Balance.md) · 무기: [`Architecture_Weapons.md`](Architecture_Weapons.md) · 몹 상태이상: [`Architecture_StatusEffects.md`](Architecture_StatusEffects.md)
+**진입:** [`AGENTS.md`](../../AGENTS.md) · 플레이어·대시: [`Architecture_Player.md`](Architecture_Player.md) · 패시브: [`Architecture_Passives.md`](Architecture_Passives.md) · 장비 연동: [`Architecture_Inventory.md`](Architecture_Inventory.md) · 엘리트 유물: [`Architecture_EliteForms.md`](Architecture_EliteForms.md) · 런 루프: [`Architecture_GameLoop_Balance.md`](Architecture_GameLoop_Balance.md) · 무기: [`Architecture_Weapons.md`](Architecture_Weapons.md) · 몹 상태이상: [`Architecture_StatusEffects.md`](Architecture_StatusEffects.md)
 
 버프 시스템의 데이터, 런타임 인스턴스, 지속시간 처리, 플레이어 스탯 반영 흐름을 정리한다. 영구 성장과 장착 장비 스탯은 이 문서의 `ActiveBuff` 대상이 아니며, 런 중 조건으로 켜졌다 꺼지는 효과만 버프 런타임 계층에서 관리한다.
 

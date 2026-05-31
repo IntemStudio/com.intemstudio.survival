@@ -29,7 +29,7 @@
 
 | 제외 | 비고 |
 |------|------|
-| 특수몹/보스 고유 패턴 설계 | 현재 문서는 확장 지점만 다루고, 기획은 Wiki/Backlog에서 결정한다. |
+| 특수몹/보스 고유 패턴 설계 | Wiki/Backlog. affix 레이어는 [`Architecture_EliteForms.md`](Architecture_EliteForms.md). |
 | 스폰 곡선과 등장 타이밍 | `Architecture_GameLoop_Balance.md` 범위다. |
 | 무기 피해 공식 | `Architecture_Weapons.md`와 인벤 loadout 스탯 경로에서 관리한다. |
 | 몹 아트·애니메이션 다양화 | 콘텐츠 폴리시로 관리한다. |

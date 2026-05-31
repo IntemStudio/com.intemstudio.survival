@@ -36,6 +36,7 @@
 | 퀵슬롯 4칸 | 선택 후속 작업으로 `BACKLOG.md`에서 관리한다. |
 | Rare 이상 장비 확장 | 11웨이브 이후, 하드 모드, 보스 보상 같은 후속 범위에서 다룬다. |
 | **죽음 거부(defy_death)** | 카탈로그·툴팁만 존재. lethal 전 생존은 2단계 후속. |
+| **엘리트 유물(relic)** | 가방 보유 적용 — [`Architecture_EliteForms.md`](Architecture_EliteForms.md), [`Wiki/EliteForms.md`](../Wiki/EliteForms.md). 일반 장비 “가방=무효”의 **예외**. |
 | 피격·대시 후 무적 런타임 | [`Architecture_Player.md`](Architecture_Player.md) — `invincibility_after_*` max 병합 후 `_gear_invincibility_remaining` |
 
 ## Key Types & Relationships

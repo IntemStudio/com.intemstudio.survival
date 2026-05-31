@@ -77,6 +77,7 @@
 - [`Architecture/Architecture_Passives.md`](Architecture/Architecture_Passives.md)
 - [`Architecture/Architecture_GameLoop_Balance.md`](Architecture/Architecture_GameLoop_Balance.md)
 - [`Architecture/Architecture_Mobs.md`](Architecture/Architecture_Mobs.md)
+- [`Architecture/Architecture_EliteForms.md`](Architecture/Architecture_EliteForms.md)
 - [`Architecture/Architecture_TestArena.md`](Architecture/Architecture_TestArena.md)
 - [`Agents/README.md`](Agents/README.md)
 - [`Agents/CoreConstraints.md`](Agents/CoreConstraints.md)

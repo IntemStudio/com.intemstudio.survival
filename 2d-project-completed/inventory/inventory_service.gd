@@ -195,6 +195,8 @@ func acquire_item(item_id: String) -> StringName:
 	var key := item_id.strip_edges()
 	if key.is_empty() or not registry.has_item(key):
 		return ERROR_UNKNOWN_ITEM
+	if registry.is_relic_item(key):
+		return acquire_relic(key)
 	if loadout.contains_item_id(key):
 		return &""
 
@@ -207,6 +209,14 @@ func acquire_item(item_id: String) -> StringName:
 		return _acquire_offhand_item(key)
 	if _is_shared_armor_slot(slot_key):
 		return _acquire_shared_armor_item(key, slot_key)
+	return _place_item_in_bag(key)
+
+
+# 유물은 가방 빈 칸에만 넣습니다 — 장착 슬롯 자동 배치 없음.
+func acquire_relic(item_id: String) -> StringName:
+	var key := item_id.strip_edges()
+	if key.is_empty() or not registry.is_relic_item(key):
+		return ERROR_UNKNOWN_ITEM
 	return _place_item_in_bag(key)
 
 
@@ -227,6 +237,8 @@ func try_equip_from_bag(bag_index: int, set_index: int, slot_key: StringName) ->
 		return ERROR_EMPTY
 	if not registry.has_item(item_id):
 		return ERROR_UNKNOWN_ITEM
+	if registry.is_relic_item(item_id):
+		return ERROR_INVALID_SLOT
 	if not registry.can_item_occupy_slot(item_id, slot_key):
 		return ERROR_INVALID_SLOT
 	if slot_key == EquipSlots.OFFHAND:
@@ -413,6 +425,8 @@ func try_equip_from_bag_smart(bag_index: int, armor_set_index: int) -> StringNam
 		return ERROR_EMPTY
 	if not registry.has_item(item_id):
 		return ERROR_UNKNOWN_ITEM
+	if registry.is_relic_item(item_id):
+		return ERROR_INVALID_SLOT
 
 	var slot_key := _resolve_equip_slot_for_item(item_id)
 	if slot_key.is_empty():

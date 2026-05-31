@@ -118,6 +118,15 @@ static func _ensure_cache() -> void:
 		Color(0.45, 0.8, 1.0)
 	))
 	_register(_create_move_speed_mult(
+		&"relic_chill",
+		"Relic Chill",
+		"유물 냉기",
+		CATEGORY_COLD,
+		0.6,
+		1.5,
+		Color(0.55, 0.9, 1.0)
+	))
+	_register(_create_move_speed_mult(
 		&"sticky_goo",
 		"Sticky Goo",
 		"끈적이",

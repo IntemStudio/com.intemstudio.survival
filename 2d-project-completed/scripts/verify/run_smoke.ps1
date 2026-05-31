@@ -5,6 +5,7 @@
 
 .DESCRIPTION
   Minimal CLI regression gate before commit/PR. Does not replace F6/F5 manual QA.
+  Agents: run only when the user explicitly requests smoke (.cursor/rules/godot-smoke-verify.mdc).
 
 .PARAMETER GodotBinary
   Godot executable path. Falls back to $env:GODOT_BIN, then known install paths.
@@ -30,6 +31,13 @@
 .PARAMETER SelfTest
   Run infrastructure self-tests only (quoting cases, runtime probe, env round-trip). No Godot smoke.
 
+.PARAMETER UnitTestTimeoutSeconds
+  gdUnit4 test/ step timeout in seconds. Default 600. 0 disables the timeout.
+  Invokes GdUnitCmdTool.gd with --headless (not runtest.cmd -d) to avoid debugger hang on errors.
+
+.PARAMETER AllowParallel
+  Skip the single-instance lock. For debugging only; do not use from agents or CI.
+
 .EXAMPLE
   .\scripts\verify\run_smoke.ps1
 
@@ -48,6 +56,8 @@ param(
     [switch] $RetryOnFailure,
     [switch] $SelfTest,
     [int] $QuitAfterFrames = 3,
+    [int] $UnitTestTimeoutSeconds = 600,
+    [switch] $AllowParallel,
     [string] $LogDir = ""
 )
 
@@ -77,6 +87,146 @@ if ([string]::IsNullOrWhiteSpace($LogDir)) {
 $script:StepResults = @()
 $script:ProcessArgumentListSupported = $null
 $script:NativeProcessModeUsed = "unknown"
+$script:SmokeRunLockHeld = $false
+
+function Test-SmokeProcessRunning {
+    param([int] $ProcessId)
+
+    if ($ProcessId -le 0) {
+        return $false
+    }
+
+    try {
+        $process = Get-Process -Id $ProcessId -ErrorAction Stop
+        return ($null -ne $process -and -not $process.HasExited)
+    }
+    catch {
+        return $false
+    }
+}
+
+function Get-SmokeRunLockInfo {
+    param([string] $LockPath)
+
+    if (-not (Test-Path -LiteralPath $LockPath)) {
+        return $null
+    }
+
+    $text = Get-Content -LiteralPath $LockPath -Raw -ErrorAction SilentlyContinue
+    if ([string]::IsNullOrWhiteSpace($text)) {
+        return $null
+    }
+
+    $info = @{}
+    foreach ($line in ($text -split "`r?`n")) {
+        if ($line -match '^(\w+)=(.*)$') {
+            $info[$Matches[1]] = $Matches[2].Trim()
+        }
+    }
+    return $info
+}
+
+function Write-SmokeRunLockBusyMessage {
+    param(
+        [string] $LockPath,
+        [hashtable] $LockInfo
+    )
+
+    $existingPid = 0
+    if ($null -ne $LockInfo -and $LockInfo.ContainsKey("pid")) {
+        [void][int]::TryParse([string]$LockInfo["pid"], [ref]$existingPid)
+    }
+    $started = if ($null -ne $LockInfo -and $LockInfo.ContainsKey("started")) { $LockInfo["started"] } else { "unknown" }
+
+    Write-Host "Smoke test already running (pid=$existingPid started=$started)." -ForegroundColor Yellow
+    Write-Host "  lock: $LockPath" -ForegroundColor DarkGray
+    Write-Host "  Parallel runs cause Godot lock contention and hangs. Wait for the other run, or stop that process." -ForegroundColor DarkGray
+}
+
+function Remove-StaleSmokeRunLock {
+    param([string] $LockPath)
+
+    if (-not (Test-Path -LiteralPath $LockPath)) {
+        return
+    }
+
+    $lockInfo = Get-SmokeRunLockInfo -LockPath $LockPath
+    $existingPid = 0
+    if ($null -ne $lockInfo -and $lockInfo.ContainsKey("pid")) {
+        [void][int]::TryParse([string]$lockInfo["pid"], [ref]$existingPid)
+    }
+
+    if (Test-SmokeProcessRunning -ProcessId $existingPid) {
+        Write-SmokeRunLockBusyMessage -LockPath $LockPath -LockInfo $lockInfo
+        exit 2
+    }
+
+    Remove-Item -LiteralPath $LockPath -Force -ErrorAction SilentlyContinue
+}
+
+function Enter-SmokeRunLock {
+    param(
+        [string] $LockPath,
+        [switch] $AllowParallel
+    )
+
+    if ($AllowParallel) {
+        return
+    }
+
+    $lockDir = Split-Path -Parent $LockPath
+    if (-not (Test-Path -LiteralPath $lockDir)) {
+        New-Item -ItemType Directory -Path $lockDir -Force | Out-Null
+    }
+
+    Remove-StaleSmokeRunLock -LockPath $LockPath
+
+    $lockContent = @(
+        "pid=$PID"
+        "started=$((Get-Date).ToUniversalTime().ToString('o'))"
+        "host=$env:COMPUTERNAME"
+    ) -join "`n"
+
+    for ($attempt = 0; $attempt -lt 2; $attempt++) {
+        try {
+            $stream = [IO.File]::Open(
+                $LockPath,
+                [IO.FileMode]::CreateNew,
+                [IO.FileAccess]::Write,
+                [IO.FileShare]::None
+            )
+            try {
+                $writer = New-Object System.IO.StreamWriter($stream, [System.Text.UTF8Encoding]::new($false))
+                $writer.Write($lockContent)
+                $writer.Flush()
+                $writer.Dispose()
+            }
+            finally {
+                $stream.Dispose()
+            }
+
+            $script:SmokeRunLockHeld = $true
+            return
+        }
+        catch [System.IO.IOException] {
+            Remove-StaleSmokeRunLock -LockPath $LockPath
+        }
+    }
+
+    Write-Host "Smoke test lock contention: could not acquire $LockPath" -ForegroundColor Yellow
+    exit 2
+}
+
+function Exit-SmokeRunLock {
+    param([string] $LockPath)
+
+    if (-not $script:SmokeRunLockHeld) {
+        return
+    }
+
+    Remove-Item -LiteralPath $LockPath -Force -ErrorAction SilentlyContinue
+    $script:SmokeRunLockHeld = $false
+}
 
 function New-SmokeStepResult {
     param(
@@ -681,14 +831,47 @@ function Restore-ProcessEnvSnapshot {
     }
 }
 
+function Stop-NativeProcessTree {
+    param([int] $ProcessId)
+
+    if ($ProcessId -le 0) {
+        return
+    }
+
+    # cmd / gdUnit4는 Godot 자식 프로세스를 띄우므로 /T로 트리 전체 종료
+    $null = Start-Process `
+        -FilePath (Join-Path $env:SystemRoot "System32\taskkill.exe") `
+        -ArgumentList @("/PID", "$ProcessId", "/T", "/F") `
+        -Wait `
+        -NoNewWindow `
+        -ErrorAction SilentlyContinue
+}
+
+function Wait-NativeProcessWithOptionalTimeout {
+    param(
+        [System.Diagnostics.Process] $Process,
+        [int] $TimeoutMs
+    )
+
+    if ($TimeoutMs -gt 0) {
+        return $Process.WaitForExit($TimeoutMs)
+    }
+
+    $Process.WaitForExit() | Out-Null
+    return $true
+}
+
 function Start-NativeProcessWithFileRedirect {
     param(
         [string] $FilePath,
         [string[]] $ArgumentList,
         [string] $WorkingDirectory,
         [string] $StdoutPath,
-        [string] $StderrPath
+        [string] $StderrPath,
+        [int] $TimeoutMs = 0
     )
+
+    $timedOut = $false
 
     if (Test-ProcessArgumentListSupported) {
         $script:NativeProcessModeUsed = "ArgumentList"
@@ -709,23 +892,55 @@ function Start-NativeProcessWithFileRedirect {
         [void]$process.Start()
         $stdoutTask = $process.StandardOutput.ReadToEndAsync()
         $stderrTask = $process.StandardError.ReadToEndAsync()
-        $process.WaitForExit()
+        $exited = Wait-NativeProcessWithOptionalTimeout -Process $process -TimeoutMs $TimeoutMs
+        if (-not $exited) {
+            $timedOut = $true
+            Stop-NativeProcessTree -ProcessId $process.Id
+            Wait-NativeProcessWithOptionalTimeout -Process $process -TimeoutMs 5000 | Out-Null
+        }
+
+        $stdoutTask.Wait(5000) | Out-Null
+        $stderrTask.Wait(5000) | Out-Null
         [System.IO.File]::WriteAllText($StdoutPath, $stdoutTask.Result, [System.Text.UTF8Encoding]::new($false))
         [System.IO.File]::WriteAllText($StderrPath, $stderrTask.Result, [System.Text.UTF8Encoding]::new($false))
-        return $process
+        return [PSCustomObject]@{
+            Process  = $process
+            TimedOut = $timedOut
+        }
     }
 
     $script:NativeProcessModeUsed = "EscapedArguments"
     $argString = Join-ProcessArguments -ArgumentList $ArgumentList
-    return Start-Process `
-        -FilePath $FilePath `
-        -ArgumentList $argString `
-        -WorkingDirectory $WorkingDirectory `
-        -Wait `
-        -PassThru `
-        -NoNewWindow `
-        -RedirectStandardOutput $StdoutPath `
-        -RedirectStandardError $StderrPath
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = $FilePath
+    $psi.Arguments = $argString
+    $psi.WorkingDirectory = $WorkingDirectory
+    $psi.UseShellExecute = $false
+    $psi.CreateNoWindow = $true
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $psi
+    [void]$process.Start()
+    $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+    $stderrTask = $process.StandardError.ReadToEndAsync()
+    $exited = Wait-NativeProcessWithOptionalTimeout -Process $process -TimeoutMs $TimeoutMs
+    if (-not $exited) {
+        $timedOut = $true
+        Stop-NativeProcessTree -ProcessId $process.Id
+        Wait-NativeProcessWithOptionalTimeout -Process $process -TimeoutMs 5000 | Out-Null
+    }
+
+    $stdoutTask.Wait(5000) | Out-Null
+    $stderrTask.Wait(5000) | Out-Null
+    [System.IO.File]::WriteAllText($StdoutPath, $stdoutTask.Result, [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText($StderrPath, $stderrTask.Result, [System.Text.UTF8Encoding]::new($false))
+
+    return [PSCustomObject]@{
+        Process  = $process
+        TimedOut = $timedOut
+    }
 }
 
 function Join-ProcessArguments {
@@ -743,11 +958,14 @@ function Invoke-NativeProcess {
         [string] $FilePath,
         [string[]] $ArgumentList = @(),
         [string] $WorkingDirectory = $ProjectRoot,
-        [hashtable] $Environment = @{}
+        [hashtable] $Environment = @{},
+        [int] $TimeoutSeconds = 0
     )
 
     $stdoutPath = [IO.Path]::GetTempFileName()
     $stderrPath = [IO.Path]::GetTempFileName()
+    $timedOut = $false
+    $process = $null
 
     try {
         $savedEnv = @{}
@@ -756,12 +974,16 @@ function Invoke-NativeProcess {
             Set-Item -Path ("Env:{0}" -f $key) -Value ([string]$Environment[$key])
         }
 
-        $process = Start-NativeProcessWithFileRedirect `
+        $timeoutMs = if ($TimeoutSeconds -gt 0) { $TimeoutSeconds * 1000 } else { 0 }
+        $runResult = Start-NativeProcessWithFileRedirect `
             -FilePath $FilePath `
             -ArgumentList $ArgumentList `
             -WorkingDirectory $WorkingDirectory `
             -StdoutPath $stdoutPath `
-            -StderrPath $stderrPath
+            -StderrPath $stderrPath `
+            -TimeoutMs $timeoutMs
+        $process = $runResult.Process
+        $timedOut = $runResult.TimedOut
     }
     finally {
         foreach ($key in $Environment.Keys) {
@@ -788,8 +1010,11 @@ function Invoke-NativeProcess {
 
     Remove-Item -LiteralPath $stdoutPath, $stderrPath -ErrorAction SilentlyContinue
 
+    $exitCode = if ($timedOut) { -1 } else { $process.ExitCode }
+
     return [PSCustomObject]@{
-        ExitCode = $process.ExitCode
+        ExitCode = $exitCode
+        TimedOut = $timedOut
         Output   = @($output | Where-Object { $_ -ne $null })
         StdOut   = $stdoutText
         StdErr   = $stderrText
@@ -1054,40 +1279,46 @@ function Test-StaticResources {
 }
 
 function Invoke-UnitTests {
-    param([string] $GodotExe)
+    param(
+        [string] $GodotExe,
+        [int] $TimeoutSeconds = 600
+    )
 
     Write-Host "[....] gdUnit4 test/" -ForegroundColor Cyan
-    $runtest = Join-Path $ProjectRoot "addons\gdUnit4\runtest.cmd"
-    if (-not (Test-Path -LiteralPath $runtest)) {
-        $result = New-SmokeStepResult -Name "gdUnit4 test/" -Passed $false -Detail "Missing: $runtest"
+    $cmdTool = Join-Path $ProjectRoot "addons\gdUnit4\bin\GdUnitCmdTool.gd"
+    if (-not (Test-Path -LiteralPath $cmdTool)) {
+        $result = New-SmokeStepResult -Name "gdUnit4 test/" -Passed $false -Detail "Missing: $cmdTool"
         Write-SmokeStepResult -Result $result
         return $result
     }
 
-    # gdUnit4 ships runtest.cmd; cmd.exe is one extra parsing layer (see -SelfTest for infra checks).
-    # Long-term: invoke GdUnitCmdTool.gd directly if gdUnit adds a PS-friendly entrypoint.
+    # runtest.cmd는 -d(디버그)로 실행되어 런타임 에러 시 debug> 프롬프트에서 hang — smoke는 headless 직접 호출
     $logPath = New-SmokeLogPath -StepName "gdUnit4_test"
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
-    $comSpec = Get-SafeEnvPath "ComSpec"
-    if (-not $comSpec) {
-        $comSpec = Join-Path $env:SystemRoot "System32\cmd.exe"
-    }
-
-    # cmd /c + 분리 ArgumentList: 배치 경로 quoting 문제 회피
     $run = Invoke-NativeProcess `
-        -FilePath $comSpec `
-        -ArgumentList @("/c", $runtest, "-a", "test") `
+        -FilePath $GodotExe `
+        -ArgumentList @(
+            "--path", ".",
+            "-s",
+            "--headless",
+            "res://addons/gdUnit4/bin/GdUnitCmdTool.gd",
+            "-a", "test",
+            "--ignoreHeadlessMode"
+        ) `
         -WorkingDirectory $ProjectRoot `
-        -Environment @{ GODOT_BIN = $GodotExe }
+        -TimeoutSeconds $TimeoutSeconds
 
     $stopwatch.Stop()
     Write-LogFile -Path $logPath -Lines @($run.Output)
     $run.Output | ForEach-Object { Write-Host $_ }
 
-    $passed = ($run.ExitCode -eq 0)
+    $passed = (-not $run.TimedOut -and $run.ExitCode -eq 0)
     $detail = ""
-    if (-not $passed) {
+    if ($run.TimedOut) {
+        $detail = "timeout after ${TimeoutSeconds}s (process tree killed)"
+    }
+    elseif (-not $passed) {
         $detail = "exit=$($run.ExitCode)"
     }
 
@@ -1122,10 +1353,15 @@ if ($SelfTest) {
 }
 
 $headlessAttempts = if ($RetryOnFailure) { 2 } else { 1 }
+$smokeRunLockPath = Join-Path $LogDir ".run_smoke.lock"
 
+Enter-SmokeRunLock -LockPath $smokeRunLockPath -AllowParallel:$AllowParallel
+try {
 Write-Host ""
 Write-Host "Smoke test - $ProjectRoot" -ForegroundColor White
-Write-Host "quit-after=$QuitAfterFrames full_static=$FullStaticChecks retry=$RetryOnFailure log_dir=$LogDir" -ForegroundColor DarkGray
+$unitTestTimeoutLabel = if ($UnitTestTimeoutSeconds -gt 0) { "$UnitTestTimeoutSeconds`s" } else { "disabled" }
+$parallelLabel = if ($AllowParallel) { "allowed" } else { "locked" }
+Write-Host "quit-after=$QuitAfterFrames full_static=$FullStaticChecks retry=$RetryOnFailure unit_test_timeout=$unitTestTimeoutLabel parallel=$parallelLabel log_dir=$LogDir" -ForegroundColor DarkGray
 Write-SmokeRuntimeBanner
 Write-Host ("=" * 60) -ForegroundColor DarkGray
 Write-Host ""
@@ -1148,7 +1384,7 @@ else {
 }
 
 if (-not $SkipUnitTests) {
-    Invoke-UnitTests -GodotExe $godotExe | Out-Null
+    Invoke-UnitTests -GodotExe $godotExe -TimeoutSeconds $UnitTestTimeoutSeconds | Out-Null
 }
 else {
     Write-SmokeSkip "gdUnit4 test/"
@@ -1164,3 +1400,7 @@ if ($anyFailed) {
 
 Write-Host "Smoke test PASSED" -ForegroundColor Green
 exit 0
+}
+finally {
+    Exit-SmokeRunLock -LockPath $smokeRunLockPath
+}

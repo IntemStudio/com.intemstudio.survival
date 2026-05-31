@@ -14,6 +14,7 @@
 | [`Weapons.md`](Weapons.md) | 무기 타입, 획득 UI, 자동 공격, 성장 갭 |
 | [`Projectiles.md`](Projectiles.md) | 발사체, movement, 장판, 궤도, 장애물 충돌 규칙 |
 | [`Mobs.md`](Mobs.md) | 몹 종류, 스폰 타임라인, 엘리트·보스·특수몹 정책 |
+| [`EliteForms.md`](EliteForms.md) | 엘리트 형태(affix), 티어 1 스펙, 엘리트 유물 드랍·보유 규칙 |
 | [`Progression.md`](Progression.md) | 경험치, 레벨업, 골드, 픽업, 메타 진행 |
 | [`Items_Inventory.md`](Items_Inventory.md) | 인벤토리, 장비 세트, 보조손, 메인/테스트 노출 정책 |
 

@@ -4,6 +4,8 @@ signal health_depleted
 signal leveled_up(new_level: int)
 
 const GUN_SCENE := preload("res://weapons/core/gun.tscn")
+const PlayerDebuffControllerScript = preload("res://elite/player_debuff_controller.gd")
+const RelicCombatBridgeScript = preload("res://inventory/relic_combat_bridge.gd")
 const DASH_SPEED := 1400.0
 const BASE_DASH_DURATION := 0.18
 const BASE_MOVE_SPEED := 600.0
@@ -43,6 +45,7 @@ var _loadout_registry: ItemRegistry
 var _loadout_state: PlayerLoadoutState
 var _grant_orbital_nodes: Array = []
 var _buff_controller := BuffController.new()
+var _debuff_controller = PlayerDebuffControllerScript.new()
 var _revive_remaining := 0
 var _revive_cap_granted := 0
 var _revive_invincible_remaining := 0.0
@@ -198,9 +201,9 @@ func is_auto_target_enabled() -> bool:
 	return auto_target_enabled
 
 
-# 기존 호출부 호환용.
+# 기존 호출부 호환용 — 동결 중에는 자동 공격·궤도 타격도 중단합니다.
 func is_auto_attack_enabled() -> bool:
-	return auto_attack_enabled
+	return auto_attack_enabled and not is_elite_debuff_frozen()
 
 
 # F키로 자동 타겟 on/off를 전환합니다.
@@ -390,6 +393,8 @@ func _sync_stamina_max() -> void:
 func _tick_stamina(delta: float) -> void:
 	if not %HurtBox.monitoring or get_tree().paused:
 		return
+	if _debuff_controller.blocks_stamina_regen():
+		return
 	_regen_idle_time += delta
 	var max_stamina := get_max_stamina()
 	if _stamina_current >= max_stamina:
@@ -447,7 +452,7 @@ func _apply_damage_taken(taken: int, add_to_contact_float: bool = false) -> void
 
 
 func get_move_speed() -> float:
-	return _stats.get_move_speed(BASE_MOVE_SPEED)
+	return _stats.get_move_speed(BASE_MOVE_SPEED) * _debuff_controller.get_move_speed_mult()
 
 
 func get_last_move_direction() -> Vector2:
@@ -608,6 +613,8 @@ func apply_mob_projectile_damage(amount: int) -> String:
 
 # 체력 회복 아이템 등에서 호출합니다.
 func heal_health(amount: float) -> void:
+	if _debuff_controller.blocks_healing():
+		return
 	var max_hp: float = get_max_health()
 	health = minf(health + amount, max_hp)
 	%HealthBar.value = health
@@ -729,12 +736,14 @@ func _is_combat_input_blocked() -> bool:
 		return true
 	if game.has_method("is_game_over") and game.call("is_game_over"):
 		return true
+	if is_elite_debuff_frozen():
+		return true
 	return false
 
 
-# 일시정지·전투 UI(무기 선택·인벤·상자 등) 중 새 대시 시작 불가.
+# 일시정지·전투 UI(무기 선택·인벤·상자 등)·동결 중 새 대시 시작 불가.
 func _is_dash_input_blocked() -> bool:
-	return get_tree().paused or _is_combat_input_blocked()
+	return get_tree().paused or _is_combat_input_blocked() or is_elite_debuff_frozen()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -793,7 +802,26 @@ func _process(delta: float) -> void:
 
 func _physics_process(delta: float) -> void:
 	_tick_active_buffs(delta)
+	_tick_player_debuffs(delta)
 	_tick_stamina(delta)
+	if is_elite_debuff_frozen():
+		velocity = Vector2.ZERO
+		move_and_slide()
+		if velocity.length_squared() > 0.0:
+			%HappyBoo.play_walk_animation()
+		else:
+			%HappyBoo.play_idle_animation()
+		_apply_contact_damage(delta)
+		_damage_float_timer -= delta
+		if _damage_float_accumulator > 0.0 and _damage_float_timer <= 0.0:
+			_play_hit_flash()
+			FloatingDamageText.spawn_player_damage(
+				global_position,
+				maxi(int(_damage_float_accumulator), 1)
+			)
+			_damage_float_accumulator = 0.0
+			_damage_float_timer = DAMAGE_FLOAT_INTERVAL
+		return
 	var speed := get_move_speed()
 	var direction := _get_move_direction()
 	if direction.length_squared() > 0.01:
@@ -844,6 +872,32 @@ func _tick_active_buffs(delta: float) -> void:
 	if get_tree().paused:
 		return
 	_buff_controller.tick_seconds(delta)
+
+
+func _tick_player_debuffs(delta: float) -> void:
+	if get_tree().paused:
+		return
+	_debuff_controller.tick(delta, self)
+	RelicCombatBridgeScript.tick(delta)
+
+
+# affix 몹 debuff를 적용합니다.
+func apply_elite_debuff(debuff_id: StringName, payload: Dictionary = {}) -> void:
+	_debuff_controller.apply(debuff_id, payload)
+
+
+# 유물 on-hit 효과 — Mob.apply_weapon_damage 성공 후 호출됩니다.
+func notify_relic_weapon_hit_mob(mob: Mob, weapon: WeaponData, raw_damage: int) -> void:
+	RelicCombatBridgeScript.on_weapon_hit_mob(mob, weapon, raw_damage)
+
+
+func is_elite_debuff_frozen() -> bool:
+	return _debuff_controller.is_frozen()
+
+
+# affix debuff·리스폰 시 초기화합니다.
+func clear_player_debuffs() -> void:
+	_debuff_controller.clear()
 
 
 func _tick_revive_invincibility(delta: float) -> void:
