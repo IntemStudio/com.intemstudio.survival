@@ -7,7 +7,16 @@ script = ExtResource("1_itq85")
 scene_path = "res://entities/mob/mob.tscn"
 overrides = {
 "attack_distance": 170.0,
+"chase_distance": 0.0,
 "chase_mode": 0,
 "contact_attack_damage": 6,
-"contact_attack_interval": 0.5
+"contact_attack_interval": 0.5,
+"jump_chase_cooldown": 1.6,
+"jump_chase_duration": 0.4,
+"jump_chase_enabled": true,
+"jump_chase_landing_burst_damage": 10,
+"jump_chase_landing_burst_radius": 70.0,
+"jump_chase_travel_distance": 200.0,
+"jump_chase_trigger_distance": 230.0,
+"jump_chase_windup_delay": 0.4
 }

@@ -4,6 +4,8 @@ class_name Mob
 signal died
 
 @export var attack_distance := 150.0
+## 추격 정지 거리. 0이면 attack_distance - CHASE_DEFAULT_INSET(공격 사거리보다 조금 가깝게).
+@export var chase_distance := 0.0
 @export var contact_attack_interval := 1.0
 @export var contact_attack_damage := 1
 @export var movement_enabled := true
@@ -38,6 +40,16 @@ signal died
 @export var charge_end_burst_damage := 10
 ## 돌진 시작 시 직선 구간·화살표 예고 표시 시간(초).
 @export var charge_lane_display_duration := 1.0
+@export var jump_chase_enabled := false
+@export var jump_chase_trigger_distance := 230.0
+@export var jump_chase_windup_delay := 0.4
+@export var jump_chase_travel_distance := 140.0
+@export var jump_chase_duration := 0.28
+@export var jump_chase_arc_height := 48.0
+@export var jump_chase_cooldown := 1.6
+## 완료 효과용 — 기술 본체(MobChaseSkillJump)와 분리된 튜닝 키.
+@export var jump_chase_landing_burst_radius := 68.0
+@export var jump_chase_landing_burst_damage := 10
 @export var self_destruct_enabled := false
 @export var self_destruct_health_ratio := 0.2
 
@@ -74,6 +86,11 @@ var _charge_windup_remaining := 0.0
 var _charge_direction := Vector2.RIGHT
 var _charge_time_remaining := 0.0
 var _charge_cooldown_remaining := 0.0
+var _chase_skill: MobChaseSkill = null
+var _chase_skill_cooldown_remaining := 0.0
+var _chase_skill_completion_effects: Array[MobChaseSkillEffect] = []
+var _chase_skill_invuln_pulse := 0.0
+var _chase_skill_invuln_visual_active := false
 var _self_destruct_armed := false
 var _chase_strategy: MobChaseStrategy = MobChaseStraight.new()
 var _chase_context := MobChaseContext.new()
@@ -88,8 +105,11 @@ const MOB_ATTACK_MARK_SCENE := preload("res://entities/mob/mob_attack_mark.tscn"
 const MOB_CHARGE_LANE_SCENE := preload("res://entities/mob/mob_charge_lane.tscn")
 const POOL_STORAGE_POSITION := Vector2(-50000.0, -50000.0)
 const CONTACT_STANDOFF_PADDING := 6.0
+const CHASE_DEFAULT_INSET := 24.0
 const ATTACK_RANGE_RING_TEXTURE := preload("res://art/shared/fx/circle.png")
 const MELEE_ATTACK_RANGE_RING_COLOR := Color(0.95, 0.4, 0.32, 0.28)
+const CHASE_SKILL_TRIGGER_RING_COLOR := Color(0.55, 0.82, 1.0, 0.22)
+const CHASE_SKILL_LANDING_RING_COLOR := Color(0.98, 0.62, 0.28, 0.3)
 const STATUS_ICON_DEFAULT_TEXT := "ST"
 const STATUS_ICON_TEXT := {
 	&"bleed": "BD",
@@ -105,6 +125,8 @@ const STATUS_ICON_TEXT := {
 @onready var player: Node2D = get_node("/root/Game/Player")
 @onready var _target_indicator: Node2D = %TargetIndicator
 @onready var _attack_range_ring: Sprite2D = get_node_or_null("AttackRangeRing")
+var _chase_skill_trigger_ring: Sprite2D
+var _chase_skill_landing_ring: Sprite2D
 @onready var _status_effect_icons: HBoxContainer = get_node_or_null("StatusEffectIcons") as HBoxContainer
 
 var _status_icon_signature := ""
@@ -138,6 +160,11 @@ func pool_reset() -> void:
 	_charge_direction = Vector2.RIGHT
 	_charge_time_remaining = 0.0
 	_charge_cooldown_remaining = 0.0
+	if _chase_skill != null:
+		_chase_skill.reset()
+	_chase_skill_cooldown_remaining = 0.0
+	_chase_skill_invuln_pulse = 0.0
+	_chase_skill_invuln_visual_active = false
 	_self_destruct_armed = false
 	velocity = Vector2.ZERO
 	collision_layer = 0
@@ -150,6 +177,7 @@ func pool_reset() -> void:
 		_target_indicator.scale = TARGET_INDICATOR_BASE_SCALE
 		_target_indicator.rotation = 0.0
 		_set_attack_range_ring_visible(false)
+		_set_chase_skill_range_rings_visible(false)
 		_hide_health_bar()
 
 
@@ -172,9 +200,17 @@ func pool_on_acquire() -> void:
 			)
 		if charge_attack_enabled:
 			_charge_cooldown_remaining = randf_range(0.0, maxf(charge_cooldown, 0.01) * 0.5)
+		if jump_chase_enabled:
+			_ensure_chase_skill()
+			_chase_skill_completion_effects = _build_jump_chase_completion_effects()
+			_chase_skill_cooldown_remaining = randf_range(
+				0.0, maxf(jump_chase_cooldown, 0.01) * 0.5
+			)
 		_sync_attack_range_ring()
+		_sync_chase_skill_range_rings()
 	else:
 		_set_attack_range_ring_visible(false)
+		_set_chase_skill_range_rings_visible(false)
 	_sync_body_collision_to_shadow()
 	set_physics_process(true)
 
@@ -215,7 +251,7 @@ func refresh_health_bar_visibility() -> void:
 		%HealthBar.visible = false
 
 
-# AttackRangeRing — 원거리는 attack_distance, 근거리는 접촉 정지 거리(standoff) 반경.
+# AttackRangeRing — 공격 사거리(attack_range) 반경.
 func _sync_attack_range_ring() -> void:
 	_ensure_attack_range_ring()
 	if not _attack_range_ring:
@@ -227,9 +263,7 @@ func _sync_attack_range_ring() -> void:
 	var tex_radius := maxf(tex.get_width(), tex.get_height()) * 0.5
 	if tex_radius <= 0.0:
 		return
-	var display_radius := attack_distance
-	if not ranged_attack_enabled:
-		display_radius = _get_contact_standoff_distance()
+	var display_radius := _get_attack_range_distance()
 	var ring_scale := display_radius / tex_radius
 	_attack_range_ring.scale = Vector2(ring_scale, ring_scale)
 	_set_attack_range_ring_visible(true)
@@ -273,6 +307,116 @@ func _set_attack_range_ring_visible(visible_state: bool) -> void:
 		)
 
 
+# 추격 기술 — 발동 거리·착지 burst 반경(기술 진행 중) 링.
+func _sync_chase_skill_range_rings() -> void:
+	if not _should_show_chase_skill_range_rings():
+		_set_chase_skill_range_rings_visible(false)
+		return
+	_sync_chase_skill_trigger_ring()
+	if (
+		_chase_skill != null
+		and _chase_skill.is_active()
+		and _chase_skill is MobChaseSkillJump
+	):
+		var jump_skill := _chase_skill as MobChaseSkillJump
+		_sync_chase_skill_landing_ring(
+			jump_skill.get_landing_footprint_global(),
+			jump_skill.get_landing_burst_radius()
+		)
+	else:
+		_set_chase_skill_landing_ring_visible(false)
+
+
+func refresh_chase_skill_range_rings() -> void:
+	if jump_chase_enabled and combat_enabled and movement_enabled:
+		_sync_chase_skill_range_rings()
+	else:
+		_set_chase_skill_range_rings_visible(false)
+
+
+func _should_show_chase_skill_range_rings() -> bool:
+	return (
+		jump_chase_enabled
+		and combat_enabled
+		and movement_enabled
+		and GameplaySettings.is_chase_skill_range_visible()
+	)
+
+
+func _sync_chase_skill_trigger_ring() -> void:
+	_ensure_chase_skill_trigger_ring()
+	var tex := _chase_skill_trigger_ring.texture
+	if tex == null:
+		_set_chase_skill_trigger_ring_visible(false)
+		return
+	var tex_radius := maxf(tex.get_width(), tex.get_height()) * 0.5
+	if tex_radius <= 0.0:
+		return
+	var ring_scale := maxf(jump_chase_trigger_distance, 0.0) / tex_radius
+	_chase_skill_trigger_ring.scale = Vector2(ring_scale, ring_scale)
+	_set_chase_skill_trigger_ring_visible(true)
+
+
+func _sync_chase_skill_landing_ring(global_center: Vector2, radius: float) -> void:
+	if radius <= 0.0:
+		_set_chase_skill_landing_ring_visible(false)
+		return
+	_ensure_chase_skill_landing_ring()
+	var tex := _chase_skill_landing_ring.texture
+	if tex == null:
+		_set_chase_skill_landing_ring_visible(false)
+		return
+	var tex_radius := maxf(tex.get_width(), tex.get_height()) * 0.5
+	if tex_radius <= 0.0:
+		return
+	var foot_offset := global_center - get_footprint_global_center()
+	_chase_skill_landing_ring.position = foot_offset
+	var ring_scale := radius / tex_radius
+	_chase_skill_landing_ring.scale = Vector2(ring_scale, ring_scale)
+	_set_chase_skill_landing_ring_visible(true)
+
+
+func _ensure_chase_skill_trigger_ring() -> void:
+	if _chase_skill_trigger_ring:
+		return
+	_chase_skill_trigger_ring = Sprite2D.new()
+	_chase_skill_trigger_ring.name = &"ChaseSkillTriggerRing"
+	_chase_skill_trigger_ring.z_index = -11
+	_chase_skill_trigger_ring.texture = ATTACK_RANGE_RING_TEXTURE
+	_chase_skill_trigger_ring.modulate = CHASE_SKILL_TRIGGER_RING_COLOR
+	add_child(_chase_skill_trigger_ring)
+
+
+func _ensure_chase_skill_landing_ring() -> void:
+	if _chase_skill_landing_ring:
+		return
+	_chase_skill_landing_ring = Sprite2D.new()
+	_chase_skill_landing_ring.name = &"ChaseSkillLandingRing"
+	_chase_skill_landing_ring.z_index = -9
+	_chase_skill_landing_ring.texture = ATTACK_RANGE_RING_TEXTURE
+	_chase_skill_landing_ring.modulate = CHASE_SKILL_LANDING_RING_COLOR
+	add_child(_chase_skill_landing_ring)
+
+
+func _set_chase_skill_range_rings_visible(visible_state: bool) -> void:
+	_set_chase_skill_trigger_ring_visible(visible_state)
+	_set_chase_skill_landing_ring_visible(false)
+
+
+func _set_chase_skill_trigger_ring_visible(visible_state: bool) -> void:
+	if _chase_skill_trigger_ring:
+		_chase_skill_trigger_ring.visible = (
+			visible_state and _should_show_chase_skill_range_rings()
+		)
+
+
+func _set_chase_skill_landing_ring_visible(visible_state: bool) -> void:
+	if _chase_skill_landing_ring:
+		_chase_skill_landing_ring.visible = (
+			visible_state and _should_show_chase_skill_range_rings()
+		)
+
+
 func set_targeted(active: bool) -> void:
 	_is_targeted = active
 	_target_indicator.visible = active
@@ -283,6 +427,7 @@ func set_targeted(active: bool) -> void:
 
 
 func _process(delta: float) -> void:
+	_update_chase_skill_invuln_visual(delta)
 	if not _is_targeted:
 		return
 	_target_pulse += delta * 8.0
@@ -291,11 +436,42 @@ func _process(delta: float) -> void:
 	_target_indicator.rotation = sin(_target_pulse * 0.65) * 0.12
 
 
+# 점프 추격 무적 구간 — 슬라임을 밝은 시안 톤·투명도로 맥동시켜 공격 무시를 표시합니다.
+func _update_chase_skill_invuln_visual(delta: float) -> void:
+	if not is_node_ready():
+		return
+	var slime := %Slime as CanvasItem
+	if slime == null:
+		return
+	if _is_chase_skill_attack_immune():
+		if not _chase_skill_invuln_visual_active:
+			HitFlash.cancel(slime, slime_tint)
+		_chase_skill_invuln_visual_active = true
+		_chase_skill_invuln_pulse += delta * 10.0
+		var wave := sin(_chase_skill_invuln_pulse) * 0.5 + 0.5
+		var alpha := lerpf(0.38, 0.92, wave)
+		var base := slime_tint
+		slime.modulate = Color(
+			lerpf(base.r, minf(base.r * 1.3 + 0.2, 1.0), wave),
+			lerpf(base.g, minf(base.g * 1.3 + 0.25, 1.0), wave),
+			lerpf(base.b, minf(base.b * 1.35 + 0.35, 1.0), wave),
+			base.a * alpha
+		)
+		return
+	if _chase_skill_invuln_visual_active:
+		_chase_skill_invuln_visual_active = false
+		_chase_skill_invuln_pulse = 0.0
+		HitFlash.cancel(slime, slime_tint)
+		slime.modulate = slime_tint
+
+
 func _physics_process(delta: float) -> void:
 	if ranged_attack_enabled and combat_enabled and _ranged_cooldown_remaining > 0.0:
 		_ranged_cooldown_remaining = maxf(_ranged_cooldown_remaining - delta, 0.0)
 	if charge_attack_enabled and _charge_cooldown_remaining > 0.0:
 		_charge_cooldown_remaining = maxf(_charge_cooldown_remaining - delta, 0.0)
+	if jump_chase_enabled and _chase_skill_cooldown_remaining > 0.0:
+		_chase_skill_cooldown_remaining = maxf(_chase_skill_cooldown_remaining - delta, 0.0)
 	_process_self_destruct()
 	if _is_dying:
 		return
@@ -306,6 +482,7 @@ func _physics_process(delta: float) -> void:
 		_refresh_status_effect_icons()
 		_process_nettles(delta)
 		move_and_slide()
+		_finalize_chase_skill_range_rings()
 		return
 
 	if _charge_active:
@@ -314,6 +491,7 @@ func _physics_process(delta: float) -> void:
 		_refresh_status_effect_icons()
 		_process_nettles(delta)
 		move_and_slide()
+		_finalize_chase_skill_range_rings()
 		return
 
 	if movement_enabled:
@@ -321,6 +499,15 @@ func _physics_process(delta: float) -> void:
 			GroundShadowFootprint.get_combat_target_center(player as Node2D)
 			- get_footprint_global_center()
 		)
+
+		if _process_chase_skill(delta, offset):
+			_status_effects.tick(delta, self)
+			_refresh_status_effect_icons()
+			_process_nettles(delta)
+			move_and_slide()
+			_finalize_chase_skill_range_rings()
+			return
+
 		var can_start_charge := (
 			charge_attack_enabled
 			and combat_enabled
@@ -336,12 +523,16 @@ func _physics_process(delta: float) -> void:
 			_refresh_status_effect_icons()
 			_process_nettles(delta)
 			move_and_slide()
+			_finalize_chase_skill_range_rings()
 			return
 
 		var chase_context := _build_chase_context(offset)
 		velocity = _chase_strategy.compute_desired_velocity(chase_context)
-		var at_standoff := chase_context.target_offset.length() <= chase_context.stop_distance
-		if at_standoff:
+		var attack_range := _get_attack_range_distance()
+		var in_attack_range := (
+			offset.length_squared() <= attack_range * attack_range
+		)
+		if in_attack_range:
 			if (
 				ranged_attack_enabled
 				and combat_enabled
@@ -360,6 +551,12 @@ func _physics_process(delta: float) -> void:
 	_refresh_status_effect_icons()
 	_process_nettles(delta)
 	move_and_slide()
+	_finalize_chase_skill_range_rings()
+
+
+func _finalize_chase_skill_range_rings() -> void:
+	if jump_chase_enabled:
+		_sync_chase_skill_range_rings()
 
 
 ## 돌진 시작 — 경로 예고 후 짧게 가속 이동, 도착 시 범위 피해.
@@ -458,6 +655,98 @@ func _end_charge_attack() -> void:
 		)
 
 
+# jump_chase_enabled일 때 추격 기술 인스턴스를 만들고 export 수치를 동기화합니다.
+func _ensure_chase_skill() -> void:
+	if _chase_skill == null:
+		_chase_skill = MobChaseSkillJump.new()
+	_sync_chase_skill_from_exports()
+
+
+func _sync_chase_skill_from_exports() -> void:
+	if _chase_skill is MobChaseSkillJump:
+		var jump_skill := _chase_skill as MobChaseSkillJump
+		jump_skill.windup_delay = jump_chase_windup_delay
+		jump_skill.travel_distance = jump_chase_travel_distance
+		jump_skill.duration = jump_chase_duration
+		jump_skill.arc_height = jump_chase_arc_height
+		jump_skill.cooldown = jump_chase_cooldown
+		jump_skill.landing_burst_radius = jump_chase_landing_burst_radius
+		jump_skill.landing_burst_damage = jump_chase_landing_burst_damage
+
+
+# 1차: 착지 burst만 하드코딩 — 2차 후보는 Resource 배열(completion_effects).
+func _build_jump_chase_completion_effects() -> Array[MobChaseSkillEffect]:
+	return [MobChaseSkillEffectLandingBurst.new()]
+
+
+func _is_chase_skill_active() -> bool:
+	return _chase_skill != null and _chase_skill.is_active()
+
+
+# 점프 추격 windup·이동 중 직접 공격(발사체·무기) 피해를 무시합니다. DoT tick은 별도 경로.
+func _is_chase_skill_attack_immune() -> bool:
+	return jump_chase_enabled and _is_chase_skill_active()
+
+
+func _can_start_chase_skill(target_offset: Vector2) -> bool:
+	if (
+		not jump_chase_enabled
+		or not combat_enabled
+		or not movement_enabled
+		or _chase_skill == null
+		or _chase_skill.is_active()
+		or _chase_skill_cooldown_remaining > 0.0
+	):
+		return false
+	if target_offset.length_squared() <= 0.01:
+		return false
+	if (
+		target_offset.length_squared()
+		> jump_chase_trigger_distance * jump_chase_trigger_distance
+	):
+		return false
+	if target_offset.length() <= _get_chase_stop_distance():
+		return false
+	if (
+		_ranged_windup_active
+		or _contact_windup_active
+		or _charge_active
+		or _charge_windup_remaining > 0.0
+	):
+		return false
+	return true
+
+
+## 추격 기술 진행·시작 — 돌진 다음, 일반 추격 전에 처리합니다(separation·clamp 스킵).
+func _process_chase_skill(delta: float, target_offset: Vector2) -> bool:
+	if not jump_chase_enabled:
+		return false
+	_ensure_chase_skill()
+	if _chase_skill == null:
+		return false
+	if _chase_skill.is_active():
+		var context: MobChaseSkillContext = _chase_skill.tick(self, delta)
+		if context != null:
+			_on_chase_skill_completed(context)
+		return true
+	if _can_start_chase_skill(target_offset):
+		_cancel_contact_telegraph()
+		_cancel_ranged_telegraph()
+		_chase_skill.begin(self, target_offset)
+		return true
+	return false
+
+
+## 기술 완료 — burst 등 completion effect만 적용하고 쿨다운을 시작합니다.
+func _on_chase_skill_completed(context: MobChaseSkillContext) -> void:
+	if context == null:
+		return
+	for effect in _chase_skill_completion_effects:
+		effect.apply(context)
+	_chase_skill_cooldown_remaining = maxf(jump_chase_cooldown, 0.01)
+	velocity = Vector2.ZERO
+
+
 ## 자폭 조건 — 체력 임계치에 도달하면 일반 사망 경로를 요청합니다.
 func _process_self_destruct() -> void:
 	if (
@@ -498,7 +787,7 @@ func _get_effective_speed() -> float:
 # ChaseStrategy에 넘길 physics tick 컨텍스트 — 필드 재사용으로 GC 할당을 줄입니다.
 func _build_chase_context(target_offset: Vector2) -> MobChaseContext:
 	_chase_context.target_offset = target_offset
-	_chase_context.stop_distance = _get_contact_standoff_distance()
+	_chase_context.stop_distance = _get_chase_stop_distance()
 	_chase_context.effective_speed = _get_effective_speed()
 	_chase_context.orbit_clockwise = _orbit_clockwise
 	_chase_context.orbit_radius_buffer = orbit_radius_buffer
@@ -524,11 +813,11 @@ func _resolve_chase_strategy() -> void:
 	_chase_strategy.reset()
 
 
-# 접촉 공격 판정·범위 링에 쓰는 중심 간 거리(플레이어 global_position 기준).
+# 접촉 공격 판정에 쓰는 중심 간 거리(플레이어 global_position 기준).
 func get_contact_attack_distance() -> float:
 	if not is_node_ready():
 		return attack_distance
-	return _get_contact_standoff_distance()
+	return _get_attack_range_distance()
 
 
 # 근접 접촉·범위 DPS — 원거리 몹은 발사체만 피해.
@@ -559,18 +848,36 @@ func tick_contact_attack(delta: float) -> int:
 	return 0
 
 
-# 발밑 그림자 충돌 박스·플레이어 HurtBox가 겹치지 않는 중심 간 최소 거리
-func _get_contact_standoff_distance() -> float:
+# 발밑 그림자·플레이어 HurtBox가 겹치지 않는 중심 간 최소 거리.
+func _get_shape_clear_distance() -> float:
 	var mob_half := GroundShadowFootprint.footprint_half_extents_from_visual(%Slime)
 	var player_half := Vector2.ZERO
 	if player.has_method(&"get_contact_hurtbox_half_extents"):
 		player_half = player.call(&"get_contact_hurtbox_half_extents") as Vector2
-	var shape_clear := GroundShadowFootprint.min_center_distance_no_overlap(
+	return GroundShadowFootprint.min_center_distance_no_overlap(
 		mob_half,
 		player_half,
 		CONTACT_STANDOFF_PADDING
 	)
-	return maxf(attack_distance, shape_clear)
+
+
+# chase_distance 미설정(0) 시 attack보다 CHASE_DEFAULT_INSET만큼 가깝게 추격합니다.
+func _get_effective_chase_distance() -> float:
+	if chase_distance > 0.0:
+		return chase_distance
+	return maxf(attack_distance - CHASE_DEFAULT_INSET, 0.0)
+
+
+# 공격(접촉·원거리 windup) 판정 거리.
+func _get_attack_range_distance() -> float:
+	return maxf(attack_distance, _get_shape_clear_distance())
+
+
+# 추격 정지 거리 — attack_range를 넘지 않아 멀리서 공격 대기하지 않습니다.
+func _get_chase_stop_distance() -> float:
+	var attack_range := _get_attack_range_distance()
+	var desired := maxf(_get_effective_chase_distance(), _get_shape_clear_distance())
+	return minf(desired, attack_range)
 
 
 # Slime 자식 GroundShadow 글로벌 스케일에 맞춰 몹 이동 충돌체를 맞춥니다.
@@ -590,7 +897,7 @@ func _clamp_velocity_away_from_player() -> void:
 		- get_footprint_global_center()
 	)
 	var distance := to_player.length()
-	var stop_distance := _get_contact_standoff_distance()
+	var stop_distance := _get_chase_stop_distance()
 	if distance >= stop_distance or distance < 0.01:
 		return
 	var toward := to_player / distance
@@ -643,7 +950,12 @@ func _cancel_ranged_telegraph() -> void:
 
 
 func _begin_contact_telegraph() -> void:
-	if _contact_windup_active or _charge_active or _charge_windup_remaining > 0.0:
+	if (
+		_contact_windup_active
+		or _charge_active
+		or _charge_windup_remaining > 0.0
+		or _is_chase_skill_active()
+	):
 		return
 	_cancel_ranged_telegraph()
 	_contact_windup_active = true
@@ -691,6 +1003,8 @@ func _cancel_all_attack_telegraphs() -> void:
 	_charge_windup_remaining = 0.0
 	_charge_time_remaining = 0.0
 	_charge_attack_mark_active = false
+	if _chase_skill != null:
+		_chase_skill.reset()
 	_release_attack_mark()
 
 
@@ -821,7 +1135,7 @@ func apply_status_tick_damage(
 
 
 func take_damage(amount: int) -> void:
-	if _is_dying or amount <= 0:
+	if _is_dying or amount <= 0 or _is_chase_skill_attack_immune():
 		return
 
 	_play_hit_flash()
@@ -835,7 +1149,7 @@ func take_damage(amount: int) -> void:
 
 
 func apply_weapon_damage(amount: int, weapon: WeaponData) -> void:
-	if _is_dying or amount <= 0 or not weapon:
+	if _is_dying or amount <= 0 or not weapon or _is_chase_skill_attack_immune():
 		return
 
 	var final_amount := _apply_damage_taken_mult(amount, weapon.damage_element)

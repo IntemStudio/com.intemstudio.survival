@@ -270,6 +270,7 @@ func pool_on_acquire() -> void
 | 5 | **자폭 공격** (Self-Destruct) | `self_destruct_*` export(HP 임계) | 임계 도달 시 `_request_die()` + 기존 사망 burst | 특수 몹 체력 임계 | 사망 처리 + `death_burst_*` 반경 피해 | **`mob_special_b`**: HP 임계 자폭(클리어 사망 제외) |
 | 6 | **사망 시 범위** (Death AoE / On-Death) | `death_burst_*` + `death_burst_delay` export | `schedule_mob_death_burst` → (지연) `death_burst_warning` + `spawn_mob_death_burst` | `Mob._die()` (일반 사망만) | `DamageResolver.apply_burst_damage_to_player_in_radius` | **`mob_special_a`**: 사망 위치에서 지연(기본 3s) 후 반경 피해. 몹은 즉시 풀 반환, 예고 링은 사망 좌표에 유지. `_stage_clear_death`에서는 미발동 |
 | 7 | **연쇄/복합** (Chained / Composite) | 선행 공격 + 후속 `AttackDefinition` 목록 | OnEnd/OnHit: `Projectile`→`Area`, `Target`→`Target` 체인 | 특정 무기·스킬, 보스 페이즈 | 전 과정 `DamageResolver`·통계 귀속 유지 | 연금: `concoction`→`AreaDamageZone`. 체인 번개·OnDeath 체인은 **미구현** |
+| 8 | **추격 기술(점프) + 착지 burst** | `jump_chase_*` export(발동 거리·windup·이동·쿨·burst 반경/피해) | `MobChaseSkillJump` — windup(`!`) → lerp 이동(전달) | `mob.gd` `_process_chase_skill` — 직선/포위 추격 **도중** 쿨다운 기술 | `MobChaseSkillEffectLandingBurst` → `DamageResolver.apply_burst_damage_to_player_in_radius` | **`mob_fast`**: `chase_mode=0` + `jump_chase_enabled`. burst 0이면 이동만 |
 
 ### 행동별 구현 메모
 
@@ -287,6 +288,8 @@ func pool_on_acquire() -> void
 
 **7. 연쇄/복합** — `chain_on_end: Array[Resource]`(목표) 또는 현행처럼 전달 스크립트 내 spawn. 연쇄마다 **새 `AttackContext`**(피해·origin 상속 규칙 문서화). DoT·장판도 source weapon 유지.
 
+**8. 추격 기술(점프) + 착지 burst** — `MobChaseSkillJump`가 windup·lerp 이동만 담당(전달). 착지 피해는 `_on_chase_skill_completed` → `MobChaseSkillEffectLandingBurst.apply` → `DamageResolver.apply_burst_damage_to_player_in_radius`. `chase_mode`와 분리 — STRAIGHT/ORBIT 추격 중에도 발동. F6 튜닝: `TestArenaMobSnapshot` **추격 기술** 섹션(`jump_chase_travel_distance`→`jump_chase_duration` 환산).
+
 ```text
 [행동 7 예시 — 연금]
 Trigger: Gun.shoot()
@@ -300,7 +303,7 @@ Trigger: Gun.shoot()
 | Attack Entity | 담당 행동 (#) |
 |---------------|----------------|
 | `TargetAttack` | 1 (목표), 4 (도착 접촉 옵션), 7 (체인) |
-| `AreaAttack` | 1 (짧은 범위 옵션), 2, 4 (도착), 5, 6, 7 |
+| `AreaAttack` | 1 (짧은 범위 옵션), 2, 4 (도착), 5, 6, 7, **8 (착지 burst)** |
 | `ProjectileAttack` | 3, 7 |
 | `OrbitAttack` | *(1차 행동 표 외 — 지속 궤도 무기, `Architecture_Projectiles` 참고)* |
 

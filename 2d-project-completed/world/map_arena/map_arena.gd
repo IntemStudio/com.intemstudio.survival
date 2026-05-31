@@ -82,7 +82,7 @@ const _PINE_TREE_SCENE := preload("res://world/trees/pine_tree.tscn")
 		player_clear_radius = maxf(value, 0.0)
 		_schedule_tree_rebuild()
 
-## 몹 스폰 시 플레이어 추가 이격 — 접촉 정지 거리(attack_distance)만큼 더 띄웁니다.
+## 몹 스폰 시 플레이어 추가 이격 — 공격 사거리(attack_distance)만큼 더 띄웁니다.
 @export var mob_spawn_player_clear_extra: float = 130.0:
 	set(value):
 		mob_spawn_player_clear_extra = maxf(value, 0.0)

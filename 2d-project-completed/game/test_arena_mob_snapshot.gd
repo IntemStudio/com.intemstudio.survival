@@ -5,13 +5,16 @@ extends RefCounted
 
 const CONTACT_FIELD_DEFS := [
 	{"property": "contact_attack_damage", "label": "피해량", "min": 0.0, "max": 999.0, "step": 1.0},
-	{"property": "attack_distance", "label": "사거리", "min": 10.0, "max": 2000.0, "step": 5.0},
+	{"property": "chase_distance", "label": "추격 거리", "min": 0.0, "max": 2000.0, "step": 5.0},
+	{"property": "attack_distance", "label": "공격 사거리", "min": 10.0, "max": 2000.0, "step": 5.0},
 	{"property": "contact_attack_interval", "label": "공격 간격", "min": 0.1, "max": 10.0, "step": 0.05},
 ]
 
 const RANGED_FIELD_DEFS := [
 	{"property": "ranged_damage", "label": "피해량", "min": 0.0, "max": 999.0, "step": 1.0, "virtual": true},
-	{"property": "ranged_max_distance", "label": "사거리", "min": 50.0, "max": 2000.0, "step": 10.0},
+	{"property": "chase_distance", "label": "추격 거리", "min": 0.0, "max": 2000.0, "step": 5.0},
+	{"property": "attack_distance", "label": "발사 사거리", "min": 10.0, "max": 2000.0, "step": 5.0},
+	{"property": "ranged_max_distance", "label": "탄환 사거리", "min": 50.0, "max": 2000.0, "step": 10.0},
 	{"property": "ranged_cooldown", "label": "공격 간격", "min": 0.1, "max": 10.0, "step": 0.05},
 ]
 
@@ -23,6 +26,7 @@ const DEATH_BURST_FIELD_DEFS := [
 
 const COMBAT_PROPERTIES: Array[String] = [
 	"contact_attack_damage",
+	"chase_distance",
 	"attack_distance",
 	"contact_attack_interval",
 	"ranged_damage_min",
@@ -44,6 +48,29 @@ const CHARGE_FIELD_DEFS := [
 const CHARGE_PROPERTIES: Array[String] = [
 	"charge_duration",
 	"charge_speed_mult",
+]
+
+const CHASE_SKILL_JUMP_FIELD_DEFS := [
+	{"property": "jump_chase_enabled", "label": "활성", "min": 0.0, "max": 1.0, "step": 1.0},
+	{"property": "jump_chase_trigger_distance", "label": "발동 거리", "min": 0.0, "max": 2000.0, "step": 5.0},
+	{"property": "jump_chase_windup_delay", "label": "예고(초)", "min": 0.0, "max": 5.0, "step": 0.05},
+	{"property": "jump_chase_travel_distance", "label": "점프 거리", "min": 20.0, "max": 900.0, "step": 10.0},
+	{"property": "jump_chase_arc_height", "label": "점프 높이", "min": 0.0, "max": 240.0, "step": 4.0},
+	{"property": "jump_chase_cooldown", "label": "쿨다운", "min": 0.1, "max": 30.0, "step": 0.1},
+	{"property": "jump_chase_landing_burst_radius", "label": "착지 범위", "min": 0.0, "max": 600.0, "step": 5.0},
+	{"property": "jump_chase_landing_burst_damage", "label": "착지 피해", "min": 0.0, "max": 999.0, "step": 1.0},
+]
+
+const CHASE_SKILL_JUMP_PROPERTIES: Array[String] = [
+	"jump_chase_enabled",
+	"jump_chase_trigger_distance",
+	"jump_chase_windup_delay",
+	"jump_chase_travel_distance",
+	"jump_chase_duration",
+	"jump_chase_arc_height",
+	"jump_chase_cooldown",
+	"jump_chase_landing_burst_radius",
+	"jump_chase_landing_burst_damage",
 ]
 
 const TUNING_STATE_DEFAULT := &"default"
@@ -108,6 +135,16 @@ func supports_charge_tuning(scene: PackedScene) -> bool:
 	return not scene_id.is_empty() and _has_charge_attack.get(scene_id, false)
 
 
+func get_chase_skill_field_defs(scene: PackedScene) -> Array:
+	if not supports_chase_skill_tuning(scene):
+		return []
+	return CHASE_SKILL_JUMP_FIELD_DEFS.duplicate()
+
+
+func supports_chase_skill_tuning(scene: PackedScene) -> bool:
+	return supports_combat_tuning(scene)
+
+
 func supports_combat_tuning(scene: PackedScene) -> bool:
 	return not get_scene_id(scene).is_empty() and _baselines.has(get_scene_id(scene))
 
@@ -133,6 +170,10 @@ func get_tuned_value(scene: PackedScene, property: String) -> float:
 		return float(stats.get("ranged_damage_min", 0))
 	if property == "charge_travel_distance":
 		return _charge_travel_distance_from_stats(stats)
+	if property == "jump_chase_travel_distance":
+		return float(stats.get("jump_chase_travel_distance", 0.0))
+	if property == "jump_chase_enabled":
+		return 1.0 if bool(stats.get("jump_chase_enabled", false)) else 0.0
 	if property == "chase_mode":
 		return float(stats.get("chase_mode", 0))
 	return float(stats.get(property, 0.0))
@@ -174,10 +215,24 @@ func set_session_value(scene_id: String, property: String, value: Variant) -> vo
 		_apply_overrides(stats, _session.get(scene_id, {}))
 		_session[scene_id]["charge_duration"] = _charge_duration_for_distance(stats, float(value))
 		return
+	if property == "jump_chase_travel_distance":
+		var stats: Dictionary = _baselines[scene_id].duplicate()
+		_apply_overrides(stats, DevTuningStore.get_mob_authoring(scene_id))
+		_apply_overrides(stats, _session.get(scene_id, {}))
+		var travel_distance := float(value)
+		_session[scene_id]["jump_chase_travel_distance"] = travel_distance
+		_session[scene_id]["jump_chase_duration"] = _jump_chase_duration_for_distance(
+			stats,
+			travel_distance
+		)
+		return
+	if property == "jump_chase_enabled":
+		_session[scene_id]["jump_chase_enabled"] = int(roundf(float(value))) != 0
+		return
 	if property == "chase_mode":
 		_session[scene_id]["chase_mode"] = int(value)
 		return
-	if property in ["contact_attack_damage", "death_burst_damage"]:
+	if property in ["contact_attack_damage", "death_burst_damage", "jump_chase_landing_burst_damage"]:
 		_session[scene_id][property] = int(roundf(float(value)))
 		return
 	_session[scene_id][property] = value
@@ -223,6 +278,8 @@ func _capture_stats(mob: Mob) -> Dictionary:
 			stats[prop] = mob.get(prop)
 		stats["speed_min"] = mob.speed_min
 		stats["speed_max"] = mob.speed_max
+	for prop in CHASE_SKILL_JUMP_PROPERTIES:
+		stats[prop] = mob.get(prop)
 	stats["chase_mode"] = int(mob.chase_mode)
 	return stats
 
@@ -249,12 +306,26 @@ static func _charge_duration_for_distance(stats: Dictionary, distance: float) ->
 	return maxf(distance / maxf(denom, 0.01), 0.01)
 
 
+static func _jump_chase_travel_speed(stats: Dictionary) -> float:
+	var distance := maxf(float(stats.get("jump_chase_travel_distance", 1.0)), 0.01)
+	var duration := maxf(float(stats.get("jump_chase_duration", 0.01)), 0.01)
+	return distance / duration
+
+
+static func _jump_chase_duration_for_distance(stats: Dictionary, distance: float) -> float:
+	return maxf(float(distance) / maxf(_jump_chase_travel_speed(stats), 0.01), 0.01)
+
+
 func _has_session_override(scene_id: String, property: String) -> bool:
 	var session: Dictionary = _session.get(scene_id, {})
 	if property == "ranged_damage":
 		return session.has("ranged_damage_min") or session.has("ranged_damage_max")
 	if property == "charge_travel_distance":
 		return session.has("charge_duration")
+	if property == "jump_chase_travel_distance":
+		return session.has("jump_chase_duration") or session.has("jump_chase_travel_distance")
+	if property == "jump_chase_enabled":
+		return session.has("jump_chase_enabled")
 	if property == "chase_mode":
 		return session.has("chase_mode")
 	return session.has(property)
@@ -269,6 +340,13 @@ func _authoring_has_property(authoring: Dictionary, property: String) -> bool:
 		)
 	if property == "charge_travel_distance":
 		return authoring.has("charge_travel_distance") or authoring.has("charge_duration")
+	if property == "jump_chase_travel_distance":
+		return (
+			authoring.has("jump_chase_travel_distance")
+			or authoring.has("jump_chase_duration")
+		)
+	if property == "jump_chase_enabled":
+		return authoring.has("jump_chase_enabled")
 	return authoring.has(property)
 
 
@@ -303,6 +381,13 @@ static func _property_values_equal(
 			_charge_travel_distance_from_stats(tuned)
 			- _charge_travel_distance_from_stats(baseline)
 		) < 0.5
+	if property == "jump_chase_travel_distance":
+		return abs(
+			float(tuned.get("jump_chase_travel_distance", 0.0))
+			- float(baseline.get("jump_chase_travel_distance", 0.0))
+		) < 0.5
+	if property == "jump_chase_enabled":
+		return bool(tuned.get("jump_chase_enabled", false)) == bool(baseline.get("jump_chase_enabled", false))
 	if property == "chase_mode":
 		return int(tuned.get("chase_mode", 0)) == int(baseline.get("chase_mode", 0))
 	return _float_eq(tuned.get(property), baseline.get(property))

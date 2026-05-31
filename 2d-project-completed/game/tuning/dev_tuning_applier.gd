@@ -31,7 +31,7 @@ static func apply_mob_tuning(
 
 
 static func build_merged_stats(
-	scene: PackedScene,
+	_scene: PackedScene,
 	baseline: Dictionary,
 	authoring: Dictionary,
 	session: Dictionary = {}
@@ -66,6 +66,17 @@ static func _apply_stats_to_mob(mob: Mob, stats: Dictionary) -> void:
 		var target_distance := _charge_travel_distance_from_stats(stats)
 		var denom := mob.speed * maxf(mob.charge_speed_mult, 0.01)
 		mob.charge_duration = maxf(target_distance / maxf(denom, 0.01), 0.01)
+	_apply_chase_skill_stats(mob, stats)
+
+
+static func _apply_chase_skill_stats(mob: Mob, stats: Dictionary) -> void:
+	if stats.has("jump_chase_enabled"):
+		mob.jump_chase_enabled = bool(stats["jump_chase_enabled"])
+	for prop in TestArenaMobSnapshot.CHASE_SKILL_JUMP_PROPERTIES:
+		if prop == "jump_chase_enabled":
+			continue
+		if stats.has(prop):
+			mob.set(prop, stats[prop])
 
 
 static func _supports_death_burst_tuning(mob: Mob) -> bool:
@@ -90,6 +101,8 @@ static func _capture_stats_from_mob(mob: Mob) -> Dictionary:
 			stats[prop] = mob.get(prop)
 		stats["speed_min"] = mob.speed_min
 		stats["speed_max"] = mob.speed_max
+	for prop in TestArenaMobSnapshot.CHASE_SKILL_JUMP_PROPERTIES:
+		stats[prop] = mob.get(prop)
 	return stats
 
 
@@ -107,6 +120,14 @@ static func _normalize_overrides(overrides: Dictionary, baseline: Dictionary) ->
 		normalized["charge_duration"] = _charge_duration_for_distance(
 			merged,
 			float(overrides["charge_travel_distance"])
+		)
+	if normalized.has("jump_chase_travel_distance"):
+		var merged: Dictionary = baseline.duplicate(true)
+		_apply_overrides(merged, normalized)
+		var travel_distance := float(normalized["jump_chase_travel_distance"])
+		normalized["jump_chase_duration"] = TestArenaMobSnapshot._jump_chase_duration_for_distance(
+			merged,
+			travel_distance
 		)
 	return normalized
 

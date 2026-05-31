@@ -25,6 +25,7 @@ var _mob_tuning_color_session := Color(0.95, 0.82, 0.38, 1.0)
 var _mob_combat_field_defs: Array = []
 var _mob_death_burst_field_defs: Array = []
 var _mob_charge_field_defs: Array = []
+var _mob_chase_skill_field_defs: Array = []
 var _mob_tuning_ui_refreshing := false
 
 var _mob_type_option: OptionButton
@@ -44,6 +45,10 @@ var _mob_charge_section: Control
 var _mob_charge_spins: Array[SpinBox] = []
 var _mob_charge_step_buttons: Array[Button] = []
 var _mob_charge_field_labels: Array[Label] = []
+var _mob_chase_skill_section: Control
+var _mob_chase_skill_spins: Array[SpinBox] = []
+var _mob_chase_skill_step_buttons: Array[Button] = []
+var _mob_chase_skill_field_labels: Array[Label] = []
 var _mob_chase_mode_label: Label
 var _mob_chase_mode_option: OptionButton
 
@@ -80,6 +85,10 @@ func configure(
 	mob_charge_spins: Array[SpinBox],
 	mob_charge_step_buttons: Array[Button],
 	mob_charge_field_labels: Array[Label],
+	mob_chase_skill_section: Control,
+	mob_chase_skill_spins: Array[SpinBox],
+	mob_chase_skill_step_buttons: Array[Button],
+	mob_chase_skill_field_labels: Array[Label],
 	mob_chase_mode_label: Label,
 	mob_chase_mode_option: OptionButton
 ) -> void:
@@ -114,6 +123,10 @@ func configure(
 	_mob_charge_spins = mob_charge_spins
 	_mob_charge_step_buttons = mob_charge_step_buttons
 	_mob_charge_field_labels = mob_charge_field_labels
+	_mob_chase_skill_section = mob_chase_skill_section
+	_mob_chase_skill_spins = mob_chase_skill_spins
+	_mob_chase_skill_step_buttons = mob_chase_skill_step_buttons
+	_mob_chase_skill_field_labels = mob_chase_skill_field_labels
 	_mob_chase_mode_label = mob_chase_mode_label
 	_mob_chase_mode_option = mob_chase_mode_option
 
@@ -144,12 +157,17 @@ func setup_mob_combat_tuning_ui() -> void:
 		spin.add_theme_constant_override("updown_width", 0)
 		spin.value_changed.connect(_on_mob_combat_spin_changed.bind(spin_index))
 		spin.tree_entered.connect(_on_mob_combat_spin_tree_entered.bind(spin_index, spin), CONNECT_ONE_SHOT)
-	_mob_combat_step_buttons[0].pressed.connect(_on_mob_combat_step_pressed.bind(0, -1))
-	_mob_combat_step_buttons[1].pressed.connect(_on_mob_combat_step_pressed.bind(0, 1))
-	_mob_combat_step_buttons[2].pressed.connect(_on_mob_combat_step_pressed.bind(1, -1))
-	_mob_combat_step_buttons[3].pressed.connect(_on_mob_combat_step_pressed.bind(1, 1))
-	_mob_combat_step_buttons[4].pressed.connect(_on_mob_combat_step_pressed.bind(2, -1))
-	_mob_combat_step_buttons[5].pressed.connect(_on_mob_combat_step_pressed.bind(2, 1))
+	for spin_index in _mob_combat_spins.size():
+		var dec_index := spin_index * 2
+		var inc_index := dec_index + 1
+		if inc_index >= _mob_combat_step_buttons.size():
+			break
+		_mob_combat_step_buttons[dec_index].pressed.connect(
+			_on_mob_combat_step_pressed.bind(spin_index, -1)
+		)
+		_mob_combat_step_buttons[inc_index].pressed.connect(
+			_on_mob_combat_step_pressed.bind(spin_index, 1)
+		)
 	for burst_index in _mob_death_burst_spins.size():
 		var burst_spin: SpinBox = _mob_death_burst_spins[burst_index]
 		burst_spin.add_theme_constant_override("updown_width", 0)
@@ -166,6 +184,22 @@ func setup_mob_combat_tuning_ui() -> void:
 	_mob_charge_spins[0].tree_entered.connect(_on_mob_charge_spin_tree_entered.bind(0, _mob_charge_spins[0]), CONNECT_ONE_SHOT)
 	_mob_charge_step_buttons[0].pressed.connect(_on_mob_charge_step_pressed.bind(0, -1))
 	_mob_charge_step_buttons[1].pressed.connect(_on_mob_charge_step_pressed.bind(0, 1))
+	for chase_skill_index in _mob_chase_skill_spins.size():
+		var chase_skill_spin: SpinBox = _mob_chase_skill_spins[chase_skill_index]
+		chase_skill_spin.add_theme_constant_override("updown_width", 0)
+		chase_skill_spin.value_changed.connect(
+			_on_mob_chase_skill_spin_changed.bind(chase_skill_index)
+		)
+		chase_skill_spin.tree_entered.connect(
+			_on_mob_chase_skill_spin_tree_entered.bind(chase_skill_index, chase_skill_spin),
+			CONNECT_ONE_SHOT
+		)
+	for button_index in _mob_chase_skill_step_buttons.size():
+		var chase_skill_index := button_index >> 1
+		var direction := -1 if button_index % 2 == 0 else 1
+		_mob_chase_skill_step_buttons[button_index].pressed.connect(
+			_on_mob_chase_skill_step_pressed.bind(chase_skill_index, direction)
+		)
 	_mob_chase_mode_option.item_selected.connect(_on_mob_chase_mode_selected)
 	_populate_mob_chase_mode_dropdown()
 	refresh_mob_combat_tuning_ui()
@@ -251,6 +285,18 @@ func build_mob_info_bbcode(scene: PackedScene) -> String:
 			lines.append("돌진 거리(참고): %.0f · ×%.1f 속도 · %.2fs" % [travel, mob.charge_speed_mult, mob.charge_duration])
 		if mob.charge_end_burst_radius > 0.0:
 			lines.append("돌진 종료 폭발: 반경 %.0f · %d 피해" % [mob.charge_end_burst_radius, mob.charge_end_burst_damage])
+	if mob.jump_chase_enabled:
+		lines.append("점프 추격: 발동 %.0f · 예고 %.1fs · 거리 %.0f · 높이 %.0f" % [
+			mob.jump_chase_trigger_distance,
+			mob.jump_chase_windup_delay,
+			mob.jump_chase_travel_distance,
+			mob.jump_chase_arc_height,
+		])
+		if mob.jump_chase_landing_burst_radius > 0.0 or mob.jump_chase_landing_burst_damage > 0:
+			lines.append(
+				"착지 burst: 반경 %.0f · %d 피해"
+				% [mob.jump_chase_landing_burst_radius, mob.jump_chase_landing_burst_damage]
+			)
 	if mob.self_destruct_enabled:
 		lines.append("자폭: 체력 %.0f%% 이하" % (mob.self_destruct_health_ratio * 100.0))
 	if int(rewards.get("xp", 0)) > 0:
@@ -267,22 +313,28 @@ func refresh_mob_combat_tuning_ui() -> void:
 		_mob_combat_field_defs.clear()
 		_mob_death_burst_field_defs.clear()
 		_mob_charge_field_defs.clear()
+		_mob_chase_skill_field_defs.clear()
 		_mob_combat_tuning_status_label.text = "몹 정보를 불러올 수 없습니다."
 		_set_mob_combat_tuning_enabled(false)
+		_set_mob_combat_row_visibility(0)
 		_set_mob_death_burst_tuning_enabled(false)
 		_set_mob_charge_tuning_enabled(false)
+		_set_mob_chase_skill_tuning_enabled(false)
 		_set_mob_action_buttons_enabled(false, false, false)
 		return
 	_mob_combat_field_defs = _mob_snapshots.get_field_defs(scene)
 	_mob_tuning_ui_refreshing = true
-	for spin_index in _mob_combat_spins.size():
+	var field_count := mini(_mob_combat_field_defs.size(), _mob_combat_spins.size())
+	for spin_index in field_count:
 		var field_def: Dictionary = _mob_combat_field_defs[spin_index]
 		var spin: SpinBox = _mob_combat_spins[spin_index]
 		_configure_mob_combat_spin(spin, field_def)
 		spin.value = _mob_snapshots.get_tuned_value(scene, field_def["property"])
 	_mob_tuning_ui_refreshing = false
+	_set_mob_combat_row_visibility(field_count)
 	_refresh_mob_death_burst_tuning_ui(scene)
 	_refresh_mob_charge_tuning_ui(scene)
+	_refresh_mob_chase_skill_tuning_ui(scene)
 	_sync_mob_chase_mode_dropdown(scene)
 	_refresh_mob_tuning_field_styles(scene)
 	_refresh_mob_combat_tuning_status_only(scene)
@@ -291,10 +343,18 @@ func refresh_mob_combat_tuning_ui() -> void:
 
 
 func _set_mob_combat_tuning_enabled(enabled: bool) -> void:
-	for spin in _mob_combat_spins:
-		spin.editable = enabled
-	for button in _mob_combat_step_buttons:
-		button.disabled = not enabled
+	for spin_index in _mob_combat_spins.size():
+		var spin: SpinBox = _mob_combat_spins[spin_index]
+		var row := spin.get_parent() as CanvasItem
+		var row_visible := row == null or row.visible
+		spin.editable = enabled and row_visible
+	for button_index in _mob_combat_step_buttons.size():
+		var spin_index := button_index >> 1
+		var row_visible := true
+		if spin_index < _mob_combat_spins.size():
+			var row := _mob_combat_spins[spin_index].get_parent() as CanvasItem
+			row_visible = row == null or row.visible
+		_mob_combat_step_buttons[button_index].disabled = not enabled or not row_visible
 	if _mob_chase_mode_option:
 		_mob_chase_mode_option.disabled = not enabled
 	if not enabled:
@@ -327,7 +387,8 @@ func _refresh_mob_action_buttons(scene: PackedScene) -> void:
 
 
 func _has_pending_spin_changes(scene: PackedScene) -> bool:
-	for spin_index in _mob_combat_field_defs.size():
+	var field_count := mini(_mob_combat_field_defs.size(), _mob_combat_spins.size())
+	for spin_index in field_count:
 		if not _spin_matches_tuned_value(scene, _mob_combat_spins[spin_index], _mob_combat_field_defs[spin_index]):
 			return true
 	for burst_index in _mob_death_burst_field_defs.size():
@@ -338,6 +399,13 @@ func _has_pending_spin_changes(scene: PackedScene) -> bool:
 	for charge_index in _mob_charge_field_defs.size():
 		if not _spin_matches_tuned_value(
 			scene, _mob_charge_spins[charge_index], _mob_charge_field_defs[charge_index]
+		):
+			return true
+	for chase_skill_index in _mob_chase_skill_field_defs.size():
+		if not _spin_matches_tuned_value(
+			scene,
+			_mob_chase_skill_spins[chase_skill_index],
+			_mob_chase_skill_field_defs[chase_skill_index]
 		):
 			return true
 	if not _chase_mode_matches_tuned_value(scene):
@@ -364,6 +432,44 @@ func _set_mob_charge_tuning_enabled(enabled: bool) -> void:
 		spin.editable = enabled
 	for button in _mob_charge_step_buttons:
 		button.disabled = not enabled
+
+
+func _set_mob_chase_skill_tuning_enabled(enabled: bool, detail_enabled: bool = enabled) -> void:
+	_mob_chase_skill_section.visible = enabled
+	for spin_index in _mob_chase_skill_spins.size():
+		var spin: SpinBox = _mob_chase_skill_spins[spin_index]
+		var row := spin.get_parent() as CanvasItem
+		var row_visible := row == null or row.visible
+		var row_editable := enabled and row_visible and (spin_index == 0 or detail_enabled)
+		spin.editable = row_editable
+	for button_index in _mob_chase_skill_step_buttons.size():
+		var spin_index := button_index >> 1
+		var row_visible := true
+		if spin_index < _mob_chase_skill_spins.size():
+			var row := _mob_chase_skill_spins[spin_index].get_parent() as CanvasItem
+			row_visible = row == null or row.visible
+		var button_enabled := enabled and row_visible and (spin_index == 0 or detail_enabled)
+		_mob_chase_skill_step_buttons[button_index].disabled = not button_enabled
+
+
+func _set_mob_chase_skill_row_visibility(active_field_count: int) -> void:
+	for spin_index in _mob_chase_skill_spins.size():
+		var row := _mob_chase_skill_spins[spin_index].get_parent() as CanvasItem
+		if row:
+			row.visible = spin_index < active_field_count
+
+
+func _is_chase_skill_detail_enabled(_scene: PackedScene) -> bool:
+	if _mob_chase_skill_spins.is_empty():
+		return false
+	return int(_mob_chase_skill_spins[0].value) != 0
+
+
+func _set_mob_combat_row_visibility(active_field_count: int) -> void:
+	for spin_index in _mob_combat_spins.size():
+		var row := _mob_combat_spins[spin_index].get_parent() as CanvasItem
+		if row:
+			row.visible = spin_index < active_field_count
 
 
 func _configure_mob_combat_spin(spin: SpinBox, field_def: Dictionary) -> void:
@@ -407,6 +513,13 @@ func _refresh_mob_tuning_field_styles(scene: PackedScene) -> void:
 		_apply_mob_tuning_field_style(_mob_death_burst_field_labels[i], _mob_death_burst_spins[i], scene, _mob_death_burst_field_defs[i])
 	for i in mini(_mob_charge_field_labels.size(), _mob_charge_field_defs.size()):
 		_apply_mob_tuning_field_style(_mob_charge_field_labels[i], _mob_charge_spins[i], scene, _mob_charge_field_defs[i])
+	for i in mini(_mob_chase_skill_field_labels.size(), _mob_chase_skill_field_defs.size()):
+		_apply_mob_tuning_field_style(
+			_mob_chase_skill_field_labels[i],
+			_mob_chase_skill_spins[i],
+			scene,
+			_mob_chase_skill_field_defs[i]
+		)
 	_refresh_mob_chase_mode_field_style(scene)
 
 
@@ -524,6 +637,25 @@ func _refresh_mob_charge_tuning_ui(scene: PackedScene) -> void:
 	_set_mob_charge_tuning_enabled(true)
 
 
+func _refresh_mob_chase_skill_tuning_ui(scene: PackedScene) -> void:
+	if not _mob_snapshots.supports_chase_skill_tuning(scene):
+		_mob_chase_skill_field_defs.clear()
+		_set_mob_chase_skill_tuning_enabled(false)
+		return
+	_mob_chase_skill_field_defs = _mob_snapshots.get_chase_skill_field_defs(scene)
+	_mob_tuning_ui_refreshing = true
+	var field_count := mini(_mob_chase_skill_field_defs.size(), _mob_chase_skill_spins.size())
+	for chase_skill_index in field_count:
+		var field_def: Dictionary = _mob_chase_skill_field_defs[chase_skill_index]
+		var spin: SpinBox = _mob_chase_skill_spins[chase_skill_index]
+		_configure_mob_combat_spin(spin, field_def)
+		spin.value = _mob_snapshots.get_tuned_value(scene, field_def["property"])
+	_mob_tuning_ui_refreshing = false
+	_set_mob_chase_skill_row_visibility(field_count)
+	_refresh_mob_tuning_field_styles(scene)
+	_set_mob_chase_skill_tuning_enabled(true, _is_chase_skill_detail_enabled(scene))
+
+
 func _on_mob_combat_spin_tree_entered(spin_index: int, spin: SpinBox) -> void:
 	_on_tuning_spin_tree_entered.call(spin)
 	_wire_spin_box_text_commit.call(spin, func(new_value: float) -> void:
@@ -542,11 +674,18 @@ func _on_mob_charge_spin_tree_entered(charge_index: int, spin: SpinBox) -> void:
 		_on_mob_charge_spin_changed(charge_index, new_value))
 
 
+func _on_mob_chase_skill_spin_tree_entered(chase_skill_index: int, spin: SpinBox) -> void:
+	_on_tuning_spin_tree_entered.call(spin)
+	_wire_spin_box_text_commit.call(spin, func(new_value: float) -> void:
+		_on_mob_chase_skill_spin_changed(chase_skill_index, new_value))
+
+
 func _commit_mob_tuning_to_session(scene: PackedScene) -> void:
 	if scene == null:
 		return
 	var scene_id := TestArenaMobSnapshot.get_scene_id(scene)
-	for spin_index in _mob_combat_field_defs.size():
+	var field_count := mini(_mob_combat_field_defs.size(), _mob_combat_spins.size())
+	for spin_index in field_count:
 		var spin: SpinBox = _mob_combat_spins[spin_index]
 		_commit_spin_box_pending.call(spin)
 		var property: String = _mob_combat_field_defs[spin_index]["property"]
@@ -561,6 +700,11 @@ func _commit_mob_tuning_to_session(scene: PackedScene) -> void:
 		_commit_spin_box_pending.call(charge_spin)
 		var charge_property: String = _mob_charge_field_defs[charge_index]["property"]
 		_mob_snapshots.set_session_value(scene_id, charge_property, charge_spin.value)
+	for chase_skill_index in _mob_chase_skill_field_defs.size():
+		var chase_skill_spin: SpinBox = _mob_chase_skill_spins[chase_skill_index]
+		_commit_spin_box_pending.call(chase_skill_spin)
+		var chase_skill_property: String = _mob_chase_skill_field_defs[chase_skill_index]["property"]
+		_mob_snapshots.set_session_value(scene_id, chase_skill_property, chase_skill_spin.value)
 	if _mob_chase_mode_option != null:
 		_mob_snapshots.set_session_value(scene_id, CHASE_MODE_PROPERTY, _mob_chase_mode_option.selected)
 
@@ -585,6 +729,8 @@ func _on_mob_combat_spin_changed(spin_index: int, new_value: float) -> void:
 		return
 	var scene := get_selected_mob_scene(null)
 	if scene == null or spin_index < 0 or spin_index >= _mob_combat_field_defs.size():
+		return
+	if spin_index >= _mob_combat_spins.size() or spin_index >= _mob_combat_field_labels.size():
 		return
 	var spin: SpinBox = _mob_combat_spins[spin_index]
 	if not is_equal_approx(spin.value, new_value):
@@ -638,6 +784,44 @@ func _on_mob_charge_spin_changed(charge_index: int, new_value: float) -> void:
 		spin.value = new_value
 		_mob_tuning_ui_refreshing = false
 	_apply_mob_tuning_field_style(_mob_charge_field_labels[charge_index], spin, scene, _mob_charge_field_defs[charge_index])
+	_refresh_mob_combat_tuning_status_only(scene)
+	_refresh_mob_action_buttons(scene)
+
+
+func _on_mob_chase_skill_step_pressed(chase_skill_index: int, direction: int) -> void:
+	if chase_skill_index < 0 or chase_skill_index >= _mob_chase_skill_spins.size():
+		return
+	var spin: SpinBox = _mob_chase_skill_spins[chase_skill_index]
+	_on_mob_chase_skill_spin_changed(
+		chase_skill_index,
+		spin.value + spin.step * float(direction)
+	)
+
+
+func _on_mob_chase_skill_spin_changed(chase_skill_index: int, new_value: float) -> void:
+	if _mob_tuning_ui_refreshing:
+		return
+	var scene := get_selected_mob_scene(null)
+	if scene == null or chase_skill_index < 0 or chase_skill_index >= _mob_chase_skill_field_defs.size():
+		return
+	if (
+		chase_skill_index >= _mob_chase_skill_spins.size()
+		or chase_skill_index >= _mob_chase_skill_field_labels.size()
+	):
+		return
+	var spin: SpinBox = _mob_chase_skill_spins[chase_skill_index]
+	if not is_equal_approx(spin.value, new_value):
+		_mob_tuning_ui_refreshing = true
+		spin.value = new_value
+		_mob_tuning_ui_refreshing = false
+	_apply_mob_tuning_field_style(
+		_mob_chase_skill_field_labels[chase_skill_index],
+		spin,
+		scene,
+		_mob_chase_skill_field_defs[chase_skill_index]
+	)
+	if chase_skill_index == 0:
+		_set_mob_chase_skill_tuning_enabled(true, int(spin.value) != 0)
 	_refresh_mob_combat_tuning_status_only(scene)
 	_refresh_mob_action_buttons(scene)
 

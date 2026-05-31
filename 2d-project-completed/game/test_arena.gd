@@ -661,6 +661,10 @@ func _configure_mob_panel_controller() -> void:
 		_get_mob_charge_spins(),
 		_get_mob_charge_step_buttons(),
 		_get_mob_charge_field_labels(),
+		%MobChaseSkillSection,
+		_get_mob_chase_skill_spins(),
+		_get_mob_chase_skill_step_buttons(),
+		_get_mob_chase_skill_field_labels(),
 		%MobChaseModeLabel,
 		%MobChaseModeOption
 	)
@@ -800,7 +804,13 @@ func _refresh_armor_gear_tuning_ui() -> void:
 
 # ===== Mob 패널/설명/전투 튜닝 (Step0 boundary freeze) =====
 func _get_mob_combat_field_labels() -> Array[Label]:
-	return [%MobDamageLabel, %MobRangeLabel, %MobIntervalLabel]
+	return [
+		%MobDamageLabel,
+		%MobChaseLabel,
+		%MobAttackLabel,
+		%MobRangeLabel,
+		%MobIntervalLabel,
+	]
 
 
 func _get_mob_death_burst_field_labels() -> Array[Label]:
@@ -811,14 +821,37 @@ func _get_mob_charge_field_labels() -> Array[Label]:
 	return [%MobChargeDistanceLabel]
 
 
+func _get_mob_chase_skill_field_labels() -> Array[Label]:
+	return [
+		%MobChaseSkillEnabledLabel,
+		%MobChaseSkillTriggerLabel,
+		%MobChaseSkillWindupLabel,
+		%MobChaseSkillTravelLabel,
+		%MobChaseSkillArcHeightLabel,
+		%MobChaseSkillCooldownLabel,
+		%MobChaseSkillBurstRadiusLabel,
+		%MobChaseSkillBurstDamageLabel,
+	]
+
+
 func _get_mob_combat_spins() -> Array[SpinBox]:
-	return [%MobDamageSpin, %MobRangeSpin, %MobIntervalSpin]
+	return [
+		%MobDamageSpin,
+		%MobChaseSpin,
+		%MobAttackSpin,
+		%MobRangeSpin,
+		%MobIntervalSpin,
+	]
 
 
 func _get_mob_combat_step_buttons() -> Array[Button]:
 	return [
 		%MobDamageDecButton,
 		%MobDamageIncButton,
+		%MobChaseDecButton,
+		%MobChaseIncButton,
+		%MobAttackDecButton,
+		%MobAttackIncButton,
 		%MobRangeDecButton,
 		%MobRangeIncButton,
 		%MobIntervalDecButton,
@@ -853,6 +886,40 @@ func _get_mob_charge_step_buttons() -> Array[Button]:
 	return [%MobChargeDistanceDecButton, %MobChargeDistanceIncButton]
 
 
+func _get_mob_chase_skill_spins() -> Array[SpinBox]:
+	return [
+		%MobChaseSkillEnabledSpin,
+		%MobChaseSkillTriggerSpin,
+		%MobChaseSkillWindupSpin,
+		%MobChaseSkillTravelSpin,
+		%MobChaseSkillArcHeightSpin,
+		%MobChaseSkillCooldownSpin,
+		%MobChaseSkillBurstRadiusSpin,
+		%MobChaseSkillBurstDamageSpin,
+	]
+
+
+func _get_mob_chase_skill_step_buttons() -> Array[Button]:
+	return [
+		%MobChaseSkillEnabledDecButton,
+		%MobChaseSkillEnabledIncButton,
+		%MobChaseSkillTriggerDecButton,
+		%MobChaseSkillTriggerIncButton,
+		%MobChaseSkillWindupDecButton,
+		%MobChaseSkillWindupIncButton,
+		%MobChaseSkillTravelDecButton,
+		%MobChaseSkillTravelIncButton,
+		%MobChaseSkillArcHeightDecButton,
+		%MobChaseSkillArcHeightIncButton,
+		%MobChaseSkillCooldownDecButton,
+		%MobChaseSkillCooldownIncButton,
+		%MobChaseSkillBurstRadiusDecButton,
+		%MobChaseSkillBurstRadiusIncButton,
+		%MobChaseSkillBurstDamageDecButton,
+		%MobChaseSkillBurstDamageIncButton,
+	]
+
+
 func _refresh_mob_combat_tuning_ui() -> void:
 	_mob_panel_controller.refresh_mob_combat_tuning_ui()
 
@@ -871,6 +938,7 @@ func _apply_mob_tuning_live(scene: PackedScene) -> void:
 	_mob_snapshots.apply_to_mob(_active_mob, scene)
 	if _active_mob.is_node_ready():
 		_active_mob.refresh_attack_range_ring()
+		_active_mob.refresh_chase_skill_range_rings()
 
 
 func _on_save_mob_combat_tuning_pressed() -> void:
@@ -905,6 +973,7 @@ func spawn_test_mob(scene: PackedScene) -> void:
 	_mob_snapshots.apply_to_mob(mob, scene)
 	if mob.is_node_ready():
 		mob.refresh_attack_range_ring()
+		mob.refresh_chase_skill_range_rings()
 	_active_mob = mob
 	_last_mob_scene = scene
 

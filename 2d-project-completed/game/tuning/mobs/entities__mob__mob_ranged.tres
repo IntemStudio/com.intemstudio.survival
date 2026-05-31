@@ -6,6 +6,8 @@
 script = ExtResource("1_u13md")
 scene_path = "res://entities/mob/mob_ranged.tscn"
 overrides = {
+"attack_distance": 360.0,
+"chase_distance": 300.0,
 "chase_mode": 1,
 "ranged_cooldown": 1.5,
 "ranged_damage_max": 6,

@@ -184,7 +184,7 @@ theme_override_constants/separation = 6
 [node name="MobCombatTuningTitle" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 14
-text = "피해량 · 사거리 · 공격 간격"
+text = "피해량 · 추격 · 사거리 · 공격 간격"
 
 [node name="MobCombatTuningStatusLabel" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox"]
 unique_name_in_owner = true
@@ -220,6 +220,72 @@ max_value = 999.0
 rounded = true
 
 [node name="MobDamageIncButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobDamageRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "+"
+
+[node name="MobChaseRow" type="HBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MobChaseLabel" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(88, 0)
+theme_override_font_sizes/font_size = 13
+text = "추격 거리"
+
+[node name="MobChaseDecButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "−"
+
+[node name="MobChaseSpin" type="SpinBox" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 48)
+max_value = 2000.0
+step = 5.0
+
+[node name="MobChaseIncButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "+"
+
+[node name="MobAttackRow" type="HBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MobAttackLabel" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobAttackRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(88, 0)
+theme_override_font_sizes/font_size = 13
+text = "공격 사거리"
+
+[node name="MobAttackDecButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobAttackRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "−"
+
+[node name="MobAttackSpin" type="SpinBox" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobAttackRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 48)
+max_value = 2000.0
+step = 5.0
+
+[node name="MobAttackIncButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobAttackRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(52, 48)
 layout_mode = 2
@@ -455,6 +521,280 @@ max_value = 900.0
 step = 10.0
 
 [node name="MobChargeDistanceIncButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChargeSection/MobChargeDistanceRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "+"
+
+[node name="MobChaseSkillSection" type="VBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="MobChaseSkillTitle" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "추격 기술 (점프)"
+
+[node name="MobChaseSkillEnabledRow" type="HBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MobChaseSkillEnabledLabel" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection/MobChaseSkillEnabledRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(88, 0)
+theme_override_font_sizes/font_size = 13
+text = "활성"
+
+[node name="MobChaseSkillEnabledDecButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection/MobChaseSkillEnabledRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "−"
+
+[node name="MobChaseSkillEnabledSpin" type="SpinBox" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection/MobChaseSkillEnabledRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 48)
+max_value = 1.0
+step = 1.0
+
+[node name="MobChaseSkillEnabledIncButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection/MobChaseSkillEnabledRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "+"
+
+[node name="MobChaseSkillTriggerRow" type="HBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MobChaseSkillTriggerLabel" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection/MobChaseSkillTriggerRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(88, 0)
+theme_override_font_sizes/font_size = 13
+text = "발동 거리"
+
+[node name="MobChaseSkillTriggerDecButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection/MobChaseSkillTriggerRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "−"
+
+[node name="MobChaseSkillTriggerSpin" type="SpinBox" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection/MobChaseSkillTriggerRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 48)
+max_value = 2000.0
+step = 5.0
+
+[node name="MobChaseSkillTriggerIncButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection/MobChaseSkillTriggerRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "+"
+
+[node name="MobChaseSkillWindupRow" type="HBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MobChaseSkillWindupLabel" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection/MobChaseSkillWindupRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(88, 0)
+theme_override_font_sizes/font_size = 13
+text = "예고(초)"
+
+[node name="MobChaseSkillWindupDecButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection/MobChaseSkillWindupRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "−"
+
+[node name="MobChaseSkillWindupSpin" type="SpinBox" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection/MobChaseSkillWindupRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 48)
+max_value = 5.0
+step = 0.05
+
+[node name="MobChaseSkillWindupIncButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection/MobChaseSkillWindupRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "+"
+
+[node name="MobChaseSkillTravelRow" type="HBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MobChaseSkillTravelLabel" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection/MobChaseSkillTravelRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(88, 0)
+theme_override_font_sizes/font_size = 13
+text = "점프 거리"
+
+[node name="MobChaseSkillTravelDecButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection/MobChaseSkillTravelRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "−"
+
+[node name="MobChaseSkillTravelSpin" type="SpinBox" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection/MobChaseSkillTravelRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 48)
+max_value = 900.0
+step = 10.0
+
+[node name="MobChaseSkillTravelIncButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection/MobChaseSkillTravelRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "+"
+
+[node name="MobChaseSkillArcHeightRow" type="HBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MobChaseSkillArcHeightLabel" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection/MobChaseSkillArcHeightRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(88, 0)
+theme_override_font_sizes/font_size = 13
+text = "점프 높이"
+
+[node name="MobChaseSkillArcHeightDecButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection/MobChaseSkillArcHeightRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "−"
+
+[node name="MobChaseSkillArcHeightSpin" type="SpinBox" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection/MobChaseSkillArcHeightRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 48)
+max_value = 240.0
+step = 4.0
+
+[node name="MobChaseSkillArcHeightIncButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection/MobChaseSkillArcHeightRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "+"
+
+[node name="MobChaseSkillCooldownRow" type="HBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MobChaseSkillCooldownLabel" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection/MobChaseSkillCooldownRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(88, 0)
+theme_override_font_sizes/font_size = 13
+text = "쿨다운"
+
+[node name="MobChaseSkillCooldownDecButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection/MobChaseSkillCooldownRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "−"
+
+[node name="MobChaseSkillCooldownSpin" type="SpinBox" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection/MobChaseSkillCooldownRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 48)
+max_value = 30.0
+step = 0.1
+
+[node name="MobChaseSkillCooldownIncButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection/MobChaseSkillCooldownRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "+"
+
+[node name="MobChaseSkillBurstRadiusRow" type="HBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MobChaseSkillBurstRadiusLabel" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection/MobChaseSkillBurstRadiusRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(88, 0)
+theme_override_font_sizes/font_size = 13
+text = "착지 범위"
+
+[node name="MobChaseSkillBurstRadiusDecButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection/MobChaseSkillBurstRadiusRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "−"
+
+[node name="MobChaseSkillBurstRadiusSpin" type="SpinBox" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection/MobChaseSkillBurstRadiusRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 48)
+max_value = 600.0
+step = 5.0
+
+[node name="MobChaseSkillBurstRadiusIncButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection/MobChaseSkillBurstRadiusRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "+"
+
+[node name="MobChaseSkillBurstDamageRow" type="HBoxContainer" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MobChaseSkillBurstDamageLabel" type="Label" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection/MobChaseSkillBurstDamageRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(88, 0)
+theme_override_font_sizes/font_size = 13
+text = "착지 피해"
+
+[node name="MobChaseSkillBurstDamageDecButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection/MobChaseSkillBurstDamageRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(52, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "−"
+
+[node name="MobChaseSkillBurstDamageSpin" type="SpinBox" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection/MobChaseSkillBurstDamageRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 48)
+max_value = 999.0
+step = 1.0
+
+[node name="MobChaseSkillBurstDamageIncButton" type="Button" parent="TestUI/TestUILayout/TestPanelsWrap/TestPanelsTab/MobTab/MobTabVBox/MobCombatTuningPanel/MobCombatTuningVBox/MobChaseSkillSection/MobChaseSkillBurstDamageRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(52, 48)
 layout_mode = 2

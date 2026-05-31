@@ -30,7 +30,7 @@ If you skip step 2 or 3, the mob will never spawn in play.
 - Every play mob scene must include `%TargetIndicator` (`Node2D` + `target_indicator_ring.gd`, default hidden) for `gun.gd` `set_targeted`. Do not revert to `circle.png` `Sprite2D` for targeting FX.
 - Mob `%HealthBar` must start hidden per spawn (`initialize_spawn_health` / `pool_reset`); reveal on damage via `_reveal_health_bar`; hide on `_request_die` (pool reuse — do not `queue_free` the bar).
 - Mob `CollisionShape2D` size is driven at runtime by `GroundShadowFootprint` from `%Slime` child `GroundShadow` (`pool_on_acquire` → `_sync_body_collision_to_shadow`). Do not rely on a static circle-only shape for contact standoff.
-- When changing `attack_distance`, `contact_attack_interval`, `contact_attack_damage`, `CONTACT_STANDOFF_PADDING`, or `GroundShadow` scale, verify range attacks vs stop distance — player damage uses center distance ≤ `get_contact_attack_distance()` and `tick_contact_attack()`; stop uses `_get_contact_standoff_distance()` (see `AGENTS.md` contact damage). Ranged mobs (`ranged_attack_enabled`) must not deal contact damage.
+- When changing `chase_distance`, `attack_distance`, `contact_attack_interval`, `contact_attack_damage`, `CONTACT_STANDOFF_PADDING`, `CHASE_DEFAULT_INSET`, or `GroundShadow` scale, verify chase stop vs attack range — player damage uses center distance ≤ `get_contact_attack_distance()` (`_get_attack_range_distance()`); chase stop uses `_get_chase_stop_distance()` (capped at attack range). Ranged windup uses attack range, not chase stop. Ranged mobs (`ranged_attack_enabled`) must not deal contact damage.
 
 ## Must (ranged — `mob_ranged.tscn`)
 

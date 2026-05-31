@@ -19,6 +19,8 @@ mob_kind = &"fast"
 speed_min = 280.0
 speed_max = 360.0
 slime_tint = Color(0.75, 0.95, 1, 1)
+chase_mode = 0
+jump_chase_enabled = true
 
 [node name="Slime" parent="." instance=ExtResource("2_slime")]
 unique_name_in_owner = true

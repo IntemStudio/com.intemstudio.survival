@@ -16,7 +16,7 @@
 | 책임 | 설명 |
 |------|------|
 | 몹 스폰·리스폰 | `MOB_OPTIONS` 씬 선택, `%MobSpawnPoint`(플레이어 스폰 기준 고정), 선택적 리스폰 |
-| 몹 전투 튜닝 | 접촉/원거리·**사망 폭발**(특수 A)·**돌진 거리**(특수 B)·**추격 방식**(`chase_mode`) — 3계층(프리팹 baseline · `res://game/tuning/mobs/*.tres` authoring · F6 `_session`) |
+| 몹 전투 튜닝 | 접촉/원거리·**사망 폭발**(특수 A)·**돌진 거리**(특수 B)·**추격 방식**(`chase_mode`)·**추격 기술**(점프, `jump_chase_*`) — 3계층(프리팹 baseline · `res://game/tuning/mobs/*.tres` authoring · F6 `_session`) |
 | 무기/보조 선택·착용 | 카탈로그 필터, 인벤 강제 장착, 튜닝 스냅샷 적용 |
 | 무기·발사체 튜닝 | 피해·APS·사거리·발사체 수 + movement·타입별 SpinBox, **적용/저장**, `user://test_arena_weapon_snapshots.cfg` |
 | 보조손 튜닝 | `block_min/max`, `armor_min/max`, `weapon_damage_mult`, `power` SpinBox, **적용/저장**, `user://test_arena_gear_snapshots.cfg` (`power`는 피해·범위에 합산 1회 softcap) |
@@ -41,7 +41,7 @@
 | `game/test_arena_status_effect_controller.gd` | 상태이상 탭 옵션/잠금 규칙(poison)·튜닝 UI·적용/저장/초기화 |
 | `game/test_arena_weapon_panel_controller.gd` | 무기 필터/옵션/설명, GUI 장착, 무기 튜닝 UI, 즉시 적용 |
 | `game/test_arena_gear_panel_controller.gd` | 보조손/방어구 옵션·장착·설명·튜닝 UI, 상태이상 탭 연계 |
-| `game/test_arena_mob_panel_controller.gd` | 몹 옵션/설명, 전투 튜닝 UI(기본/사망 폭발/돌진/`chase_mode` 드롭다운), 적용/저장/되돌리기 |
+| `game/test_arena_mob_panel_controller.gd` | 몹 옵션/설명, 전투 튜닝 UI(기본/사망 폭발/돌진/추격 기술/`chase_mode` 드롭다운), 적용/저장/되돌리기 |
 | `game/tuning/mob_scene_tuning.gd` | 몹 authoring Resource — `scene_path` + `overrides` Dictionary |
 | `game/tuning/dev_tuning_store.gd` | `res://game/tuning/mobs/*.tres` 로드·캐시·저장(몹 전용 API) |
 | `game/tuning/dev_tuning_applier.gd` | baseline+overrides 병합 후 Mob export 적용(F5/F6 공통) |
@@ -82,7 +82,7 @@ test_arena.gd (Coordinator)
 ### Runtime
 
 1. `_ready`: `DevTuningStore.reload_mob_authoring()` → 패널 컨트롤러 `configure()` 의존성 주입 → 옵션 빌드/탭 세팅/튜닝 UI 세팅 → signal connect 순서로 부트스트랩한다. 상태이상 저장 스냅샷은 카탈로그에 자동 반영하고, `use_inventory_loadout`이면 `apply_inventory_loadout_to_player()`를 지연 호출한다.
-2. **몹 탭(`TestArenaMobPanelController`):** 타입 선택 → 설명 BBCode(추격 방식 포함) → 전투 튜닝 스핀·**추격 방식** 드롭다운(색: 기본/저장/세션) → **적용**·**저장**·**되돌리기**. 스핀/드롭다운 변경은 `_session`만 갱신하고 스폰 중 몹에는 **적용** 또는 라이브 반영으로 즉시 반영한다. **저장**은 `_session`을 `res://game/tuning/mobs/{encoded_scene_id}.tres`에 merge한다. **특수 A** — 사망 폭발. **특수 B** — 돌진 거리(`charge_travel_distance` 가상 키). `spawn_test_mob()`는 코디네이터에 남아 씬 계약을 유지한다.
+2. **몹 탭(`TestArenaMobPanelController`):** 타입 선택 → 설명 BBCode(추격 방식·점프 추격 포함) → 전투 튜닝 스핀·**추격 방식** 드롭다운(색: 기본/저장/세션) → **추격 기술**(`%MobChaseSkillSection`, baseline/session/authoring에 `jump_chase_enabled` 또는 fast 등) → **적용**·**저장**·**되돌리기**. 스핀/드롭다운 변경은 `_session`만 갱신하고 스폰 중 몹에는 **적용** 또는 라이브 반영으로 즉시 반영한다. **저장**은 `_session`을 `res://game/tuning/mobs/{encoded_scene_id}.tres`에 merge한다. **특수 A** — 사망 폭발. **특수 B** — 돌진 거리(`charge_travel_distance` 가상 키). `spawn_test_mob()`는 코디네이터에 남아 씬 계약을 유지한다.
 3. **무기 탭(`TestArenaWeaponPanelController`):** 필터·선택 → 설명 BBCode(`omit`으로 튜닝 중 필드 숨김) → Equip → 인벤 활성 weapon 슬롯 교체 → `build_tuned_weapon()` 적용 후 `Gun` 갱신.
 4. **무기 하위 탭(`WeaponSubTab`)**: `주무기`(무기 필터/선택/설명/무기 튜닝)와 `보조무기`(보조손 선택/설명/상태이상 진입/보조손 튜닝)로 분리한다.
 5. **장비 탭(`TestArenaGearPanelController`)**: 방어구(helmet/armor/gloves/boots/accessory) 선택 → Equip → 인벤 활성 슬롯 교체 → loadout 재적용.
@@ -149,11 +149,12 @@ override가 0이거나 세션에 없으면 `range_type` 표(`MELEE_RANGE_BY_TYPE
 
 | 구분 | 속성 | 비고 |
 |------|------|------|
-| 접촉 | `contact_attack_damage`, `attack_distance`, `contact_attack_interval` | 근접 몹 |
-| 원거리 | `ranged_damage`(가상→min/max), `ranged_max_distance`, `ranged_cooldown` | 원거리 몹 |
+| 접촉 | `contact_attack_damage`, `chase_distance`, `attack_distance`, `contact_attack_interval` | 근접 몹. `chase_distance` 0=자동(inset) |
+| 원거리 | `ranged_damage`(가상→min/max), `chase_distance`, `attack_distance`, `ranged_max_distance`, `ranged_cooldown` | 원거리 몹 |
 | 사망 폭발 | `death_burst_radius`, `death_burst_damage`, `death_burst_delay` | 특수 A (`charge_attack_enabled`면 UI 숨김) |
 | 돌진 | `charge_travel_distance`(가상→`charge_duration`) | 특수 B |
 | 추격 | `chase_mode` (0=직선, 1=포위) | `%MobChaseModeOption` — 변경 시 `Mob.refresh_chase_strategy()` |
+| 추격 기술(점프) | `jump_chase_enabled`, `jump_chase_trigger_distance`, `jump_chase_windup_delay`, `jump_chase_travel_distance`(가상→`jump_chase_duration`), `jump_chase_arc_height`, `jump_chase_cooldown`, `jump_chase_landing_burst_radius`, `jump_chase_landing_burst_damage` | `%MobChaseSkillSection` — `chase_mode`와 독립. 활성 0이면 섹션 숨김 가능 |
 
 **저장 제약:** exported 빌드(에디터 feature 없음)에서 **저장**은 no-op, 상태 라벨에 에디터 실행 안내. 무기/장비/상태이상은 아직 `user://` 스냅샷 유지(후속 PR).
 
@@ -199,7 +200,7 @@ override가 0이거나 세션에 없으면 `range_type` 표(`MELEE_RANGE_BY_TYPE
 | 컨트롤러 의존성 주입 | `test_arena.gd` `_configure_*_controller`, `_ready` 호출 순서(로드→옵션→탭→UI→signal) 유지 |
 | 코디네이터 경계 | `spawn_test_mob`, `register_kill`, player death/respawn, pause/inventory bridge API가 `test_arena.gd`에 유지되는지 확인 |
 | 새 몹 F6 옵션 | `MOB_OPTIONS`, `TestArenaMobSnapshot.register_scene`, 필드 def, 설명 BBCode, 필요 시 `game/tuning/mobs/` authoring |
-| 몹 튜닝 필드·저장 | `COMBAT_*` / `DEATH_BURST_*` / `CHARGE_*` / `chase_mode`, `DevTuningStore`·`DevTuningApplier`, `%MobBurst*`·`%MobCharge*`·`%MobChaseMode*` |
+| 몹 튜닝 필드·저장 | `COMBAT_*` / `DEATH_BURST_*` / `CHARGE_*` / `CHASE_SKILL_*` / `chase_mode`, `DevTuningStore`·`DevTuningApplier`, `%MobBurst*`·`%MobCharge*`·`%MobChaseSkill*`·`%MobChaseMode*` |
 | SpinBox·적용 버튼 | `_commit_spin_box_pending`, `%ApplyMobCombatTuningButton` / `%ApplyProjectileTuningButton` |
 | 무기 GUI 착용 | `try_force_equip_weapon_on_active_set`, 인벤 refresh, `apply_inventory_loadout_to_player` |
 | 보조 GUI 착용/튜닝 | `try_force_equip_offhand_on_active_set`, `%OffhandTuning*`, `TestArenaGearSnapshot.get_field_defs`, `set_gear_modifier_resolver` |
@@ -236,6 +237,21 @@ Godot **에디터**에서 실행. Pass 열은 수동 확인 시 `[x]`.
 |---|------|------|
 | M8 | F6에서 elite 등 **chase_mode·피해 저장** 후 F5 실행 → 스폰된 동일 변종에 동일 수치·추격 적용 | [ ] |
 | M9 | 확인 경로 — 아레나 모드 스폰 또는 서바이벌 8분+ 원거리/elite 스폰 구간 | [ ] |
+
+### F6 — 추격 기술(점프) QA
+
+Godot **에디터**에서 fast(또는 `jump_chase_enabled` on) 기준. Pass 열은 수동 확인 시 `[x]`.
+
+| # | 확인 | Pass |
+|---|------|------|
+| J1 | **직선** fast — 걸음 추격 + 쿨마다 `!` → 호핑 → 착지 burst | [ ] |
+| J2 | **포위** — elite 등 `chase_mode=1` + `jump_chase_enabled` on — 궤도 이동 중에도 기술 발동 | [ ] |
+| J3 | standoff **안** — 점프 기술 없음, 접촉 주기 공격만 | [ ] |
+| J4 | `jump_chase_trigger_distance` **밖** — 기술 없음, 추격만 | [ ] |
+| J5 | 착지 burst **피해 0** 또는 **반경 0** — 이동만, 피해 없음(효과 분리) | [ ] |
+| J6 | 풀 반환·사망 후 쿨다운·windup·예고 마크 잔류 없음 | [ ] |
+| J7 | F6 **저장** → `entities__mob__mob_fast.tres`(또는 해당 scene_id) authoring · 재실행 후 수치·활성 유지 | [ ] |
+| J8 | (선택) 설정 **추격 기술 범위 표시** on — 발동·착지 링 표시 | [ ] |
 
 기록: `날짜 / Godot 버전 / 몹 scene_id / 이슈 한 줄`
 
