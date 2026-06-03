@@ -226,8 +226,7 @@ static func _spawn_dash_darts(player: Node2D, registry: ItemRegistry, modifiers:
 	if template == null:
 		return
 	var dart_weapon := template.duplicate(true) as WeaponData
-	dart_weapon.min_damage = int(modifiers.get("dart_damage_min", template.min_damage))
-	dart_weapon.max_damage = int(modifiers.get("dart_damage_max", template.max_damage))
+	dart_weapon.damage_coefficient = _resolve_dart_damage_coefficient(modifiers, template)
 	var dash_dir := Vector2.RIGHT
 	if player.has_method(&"get_last_move_direction"):
 		dash_dir = player.call("get_last_move_direction") as Vector2
@@ -263,3 +262,14 @@ static func _find_game_root(player: Node) -> Node:
 	if scene.get_node_or_null("ObjectPools") != null:
 		return scene
 	return scene.get_parent()
+
+
+static func _resolve_dart_damage_coefficient(modifiers: Dictionary, template: WeaponData) -> float:
+	if modifiers.has("dart_damage_coeff"):
+		return float(modifiers["dart_damage_coeff"])
+	if modifiers.has("dart_damage_min") and modifiers.has("dart_damage_max"):
+		return WeaponData.legacy_mid_to_coeff(
+			int(modifiers["dart_damage_min"]),
+			int(modifiers["dart_damage_max"])
+		)
+	return template.damage_coefficient

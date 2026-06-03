@@ -455,6 +455,19 @@ theme_override_font_sizes/font_size = 18
 text = "추격 기술 거리 표시"
 button_pressed = true
 
+[node name="ChaseStopRangeRow" type="HBoxContainer" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/GameplaySettingsGui/GameplaySettingsUi"]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="ShowChaseStopRangeToggle" type="CheckButton" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/GameplaySettingsGui/GameplaySettingsUi/ChaseStopRangeRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.84, 0.9, 1)
+theme_override_font_sizes/font_size = 18
+text = "추격 최소 거리 표시"
+button_pressed = true
+
 [node name="PrimaryWeaponRangeRow" type="HBoxContainer" parent="MenuOverlay/SettingsPanel/SettingsCenter/SettingsVBox/GameplaySettingsGui/GameplaySettingsUi"]
 layout_mode = 2
 theme_override_constants/separation = 12

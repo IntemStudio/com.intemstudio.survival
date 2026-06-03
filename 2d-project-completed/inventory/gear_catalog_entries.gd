@@ -63,7 +63,7 @@ static func append_all(target: Array, create_gear: Callable) -> void:
 	_append(target, create_gear, "town_guard_armor", "Town Guard Armor", "마을 경비 갑옷", EquipSlots.ARMOR, {"weapon_upgrade_level": 1}, "", "", 0)
 	_append(target, create_gear, "wizard_cloak", "Wizard Cloak", "마법사 망토", EquipSlots.ARMOR, {"mana_min": 1, "mana_max": 1})
 	_append(target, create_gear, "bone_gloves", "Bone Gloves", "뼈 장갑", EquipSlots.GLOVES, {"companion_attack_speed_mult": 1.2}, "", "", 0)
-	_append(target, create_gear, "dart_wrists", "Dart Wrists", "다트 손목", EquipSlots.GLOVES, {"grant_on_dash": "darts", "dart_damage_min": 575, "dart_damage_max": 780}, "On Dash, triggers Darts that deal 575 to 780 Thrusting Damage.", "대시 시 다트를 발사합니다. 관통 575~780 피해.", 1)
+	_append(target, create_gear, "dart_wrists", "Dart Wrists", "다트 손목", EquipSlots.GLOVES, {"grant_on_dash": "darts", "dart_damage_coeff": 5.21}, "On Dash, triggers Darts with 521% damage coefficient.", "대시 시 다트를 발사합니다. 피해 계수 521%.", 1)
 	_append(target, create_gear, "leather_gloves", "Leather Gloves", "가죽 장갑", EquipSlots.GLOVES, {"attack_speed_mult": 1.1}, "", "", 0)
 	_append(target, create_gear, "iron_gauntlets", "Iron Gauntlets", "철 건틀릿", EquipSlots.GLOVES, {"armor_min": 1, "armor_max": 1})
 	_append(target, create_gear, "iron_greaves", "Iron Greaves", "철 그리브", EquipSlots.BOOTS, {"armor_min": 1, "armor_max": 1})

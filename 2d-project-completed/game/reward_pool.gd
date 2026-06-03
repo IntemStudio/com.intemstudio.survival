@@ -200,6 +200,8 @@ static func _build_weapon_pool(
 		+ MeleeWeaponCatalog.get_all()
 		+ MagicWeaponCatalog.get_all()
 	):
+		if weapon.is_locked:
+			continue
 		if owned_keys.has(weapon.get_unique_key()):
 			continue
 		pool.append(weapon)

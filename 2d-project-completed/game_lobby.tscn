@@ -55,6 +55,32 @@ theme_override_font_sizes/font_size = 96
 text = "Survival"
 horizontal_alignment = 1
 
+[node name="ClassPanel" type="HBoxContainer" parent="MenuOverlay/CenterContainer/LobbyContent"]
+layout_mode = 2
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="ClassLabel" type="Label" parent="MenuOverlay/CenterContainer/LobbyContent/ClassPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "직업"
+
+[node name="ClassOptionButton" type="OptionButton" parent="MenuOverlay/CenterContainer/LobbyContent/ClassPanel"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+
+[node name="ClassDescriptionLabel" type="Label" parent="MenuOverlay/CenterContainer/LobbyContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "직업 설명"
+horizontal_alignment = 1
+autowrap_mode = 2
+custom_minimum_size = Vector2(640, 0)
+
 [node name="Buttons" type="VBoxContainer" parent="MenuOverlay/CenterContainer/LobbyContent"]
 layout_mode = 2
 theme_override_constants/separation = 16

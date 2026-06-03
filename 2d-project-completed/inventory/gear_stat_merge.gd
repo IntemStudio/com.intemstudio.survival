@@ -42,6 +42,16 @@ const _TAG_LIST_KEYS: Array[String] = [
 	"grant_on_hit",
 ]
 
+## PlayerClassData.build_stat_modifiers() — 합산하지 않고 마지막 source가 이깁니다.
+const _CLASS_KEYS: Array[String] = [
+	"class_base_max_health",
+	"class_max_health_per_level",
+	"class_base_attack",
+	"class_attack_per_level",
+	"class_base_health_regen",
+	"class_health_regen_per_level",
+]
+
 
 # 레거시 flat armor 등을 min/max 쌍으로 정규화합니다.
 static func normalize_modifiers(modifiers: Dictionary) -> Dictionary:
@@ -80,6 +90,8 @@ static func merge_into(totals: Dictionary, modifiers: Dictionary) -> void:
 			_merge_bool_or(totals, key, bool(value))
 		elif key in _TAG_LIST_KEYS:
 			_merge_tag_values(totals, key, value)
+		elif key in _CLASS_KEYS:
+			totals[key] = value
 		else:
 			push_warning("GearStatMerge: unknown stat key '%s' — last-wins" % key)
 			totals[key] = value

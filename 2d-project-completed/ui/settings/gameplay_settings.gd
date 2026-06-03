@@ -7,6 +7,7 @@ const SAVE_PATH := "user://gameplay_settings.cfg"
 const KEY_SHOW_RANGED_ATTACK_RANGE := "show_ranged_attack_range"
 const KEY_SHOW_MELEE_ATTACK_RANGE := "show_melee_attack_range"
 const KEY_SHOW_CHASE_SKILL_RANGE := "show_chase_skill_range"
+const KEY_SHOW_CHASE_STOP_RANGE := "show_chase_stop_range"
 const KEY_SHOW_PRIMARY_WEAPON_RANGE := "show_primary_weapon_range"
 const KEY_SHOW_FLOATING_DAMAGE := "show_floating_damage"
 const KEY_SHOW_MOB_HEALTH_BAR := "show_mob_health_bar"
@@ -15,6 +16,7 @@ const KEY_DEFAULT_AUTO_ATTACK := "default_auto_attack"
 const DEFAULT_SHOW_RANGED_ATTACK_RANGE := true
 const DEFAULT_SHOW_MELEE_ATTACK_RANGE := true
 const DEFAULT_SHOW_CHASE_SKILL_RANGE := true
+const DEFAULT_SHOW_CHASE_STOP_RANGE := true
 const DEFAULT_SHOW_PRIMARY_WEAPON_RANGE := true
 const DEFAULT_SHOW_FLOATING_DAMAGE := true
 const DEFAULT_SHOW_MOB_HEALTH_BAR := true
@@ -24,6 +26,7 @@ const DEFAULT_AUTO_ATTACK := true
 static var _show_ranged_attack_range := DEFAULT_SHOW_RANGED_ATTACK_RANGE
 static var _show_melee_attack_range := DEFAULT_SHOW_MELEE_ATTACK_RANGE
 static var _show_chase_skill_range := DEFAULT_SHOW_CHASE_SKILL_RANGE
+static var _show_chase_stop_range := DEFAULT_SHOW_CHASE_STOP_RANGE
 static var _show_primary_weapon_range := DEFAULT_SHOW_PRIMARY_WEAPON_RANGE
 static var _show_floating_damage := DEFAULT_SHOW_FLOATING_DAMAGE
 static var _show_mob_health_bar := DEFAULT_SHOW_MOB_HEALTH_BAR
@@ -38,6 +41,7 @@ static func load_and_apply() -> void:
 		bool(data.get(KEY_SHOW_RANGED_ATTACK_RANGE, DEFAULT_SHOW_RANGED_ATTACK_RANGE)),
 		bool(data.get(KEY_SHOW_MELEE_ATTACK_RANGE, DEFAULT_SHOW_MELEE_ATTACK_RANGE)),
 		bool(data.get(KEY_SHOW_CHASE_SKILL_RANGE, DEFAULT_SHOW_CHASE_SKILL_RANGE)),
+		bool(data.get(KEY_SHOW_CHASE_STOP_RANGE, DEFAULT_SHOW_CHASE_STOP_RANGE)),
 		bool(data.get(KEY_SHOW_PRIMARY_WEAPON_RANGE, DEFAULT_SHOW_PRIMARY_WEAPON_RANGE)),
 		bool(data.get(KEY_SHOW_FLOATING_DAMAGE, DEFAULT_SHOW_FLOATING_DAMAGE)),
 		bool(data.get(KEY_SHOW_MOB_HEALTH_BAR, DEFAULT_SHOW_MOB_HEALTH_BAR)),
@@ -50,6 +54,7 @@ static func apply(
 	show_ranged_attack_range: bool,
 	show_melee_attack_range: bool,
 	show_chase_skill_range: bool,
+	show_chase_stop_range: bool,
 	show_primary_weapon_range: bool,
 	show_floating_damage: bool,
 	show_mob_health_bar: bool,
@@ -59,6 +64,7 @@ static func apply(
 	_show_ranged_attack_range = show_ranged_attack_range
 	_show_melee_attack_range = show_melee_attack_range
 	_show_chase_skill_range = show_chase_skill_range
+	_show_chase_stop_range = show_chase_stop_range
 	_show_primary_weapon_range = show_primary_weapon_range
 	_show_floating_damage = show_floating_damage
 	_show_mob_health_bar = show_mob_health_bar
@@ -68,6 +74,7 @@ static func apply(
 		show_ranged_attack_range,
 		show_melee_attack_range,
 		show_chase_skill_range,
+		show_chase_stop_range,
 		show_primary_weapon_range,
 		show_floating_damage,
 		show_mob_health_bar,
@@ -88,6 +95,10 @@ static func is_melee_attack_range_visible() -> bool:
 
 static func is_chase_skill_range_visible() -> bool:
 	return _show_chase_skill_range
+
+
+static func is_chase_stop_range_visible() -> bool:
+	return _show_chase_stop_range
 
 
 static func is_primary_weapon_range_visible() -> bool:
@@ -115,6 +126,7 @@ static func read_current() -> Dictionary:
 		KEY_SHOW_RANGED_ATTACK_RANGE: _show_ranged_attack_range,
 		KEY_SHOW_MELEE_ATTACK_RANGE: _show_melee_attack_range,
 		KEY_SHOW_CHASE_SKILL_RANGE: _show_chase_skill_range,
+		KEY_SHOW_CHASE_STOP_RANGE: _show_chase_stop_range,
 		KEY_SHOW_PRIMARY_WEAPON_RANGE: _show_primary_weapon_range,
 		KEY_SHOW_FLOATING_DAMAGE: _show_floating_damage,
 		KEY_SHOW_MOB_HEALTH_BAR: _show_mob_health_bar,
@@ -132,6 +144,7 @@ static func _refresh_mob_visuals() -> void:
 			var mob := node as Mob
 			mob.refresh_attack_range_ring()
 			mob.refresh_chase_skill_range_rings()
+			mob.refresh_chase_stop_ring()
 			mob.refresh_health_bar_visibility()
 
 
@@ -151,6 +164,7 @@ static func _save(
 	show_ranged_attack_range: bool,
 	show_melee_attack_range: bool,
 	show_chase_skill_range: bool,
+	show_chase_stop_range: bool,
 	show_primary_weapon_range: bool,
 	show_floating_damage: bool,
 	show_mob_health_bar: bool,
@@ -161,6 +175,7 @@ static func _save(
 	cfg.set_value("gameplay", KEY_SHOW_RANGED_ATTACK_RANGE, show_ranged_attack_range)
 	cfg.set_value("gameplay", KEY_SHOW_MELEE_ATTACK_RANGE, show_melee_attack_range)
 	cfg.set_value("gameplay", KEY_SHOW_CHASE_SKILL_RANGE, show_chase_skill_range)
+	cfg.set_value("gameplay", KEY_SHOW_CHASE_STOP_RANGE, show_chase_stop_range)
 	cfg.set_value("gameplay", KEY_SHOW_PRIMARY_WEAPON_RANGE, show_primary_weapon_range)
 	cfg.set_value("gameplay", KEY_SHOW_FLOATING_DAMAGE, show_floating_damage)
 	cfg.set_value("gameplay", KEY_SHOW_MOB_HEALTH_BAR, show_mob_health_bar)
@@ -188,6 +203,11 @@ static func _load_file() -> Dictionary:
 			"gameplay",
 			KEY_SHOW_CHASE_SKILL_RANGE,
 			DEFAULT_SHOW_CHASE_SKILL_RANGE
+		),
+		KEY_SHOW_CHASE_STOP_RANGE: cfg.get_value(
+			"gameplay",
+			KEY_SHOW_CHASE_STOP_RANGE,
+			DEFAULT_SHOW_CHASE_STOP_RANGE
 		),
 		KEY_SHOW_PRIMARY_WEAPON_RANGE: cfg.get_value(
 			"gameplay",

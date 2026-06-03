@@ -7,6 +7,7 @@ const GearCatalog = preload("res://inventory/gear_catalog.gd")
 const GearStatDisplayScript = preload("res://inventory/gear_stat_display.gd")
 const TestArenaGearTuningUiUtil = preload("res://game/test_arena_gear_tuning_ui.gd")
 const LoadoutGrantPassiveScript = preload("res://inventory/loadout_grant_passive.gd")
+const ItemLockFilterScript = preload("res://inventory/item_lock_filter.gd")
 
 var _gear_snapshots: TestArenaGearSnapshot
 var _update_status: Callable
@@ -20,6 +21,7 @@ var _commit_spin_box_pending: Callable
 
 var _armor_slot_labels_ko: Dictionary = {}
 var _all_offhand_options: Array[GearData] = []
+var _filtered_offhand_options: Array[GearData] = []
 var _armor_gear_by_slot: Dictionary = {}
 var _filtered_armor_gear_options: Array[GearData] = []
 var _equipped_offhand_id := ""
@@ -30,6 +32,8 @@ var _armor_gear_tuning_ui_refreshing := false
 var _gear_tuning_presets: Dictionary = {}
 
 var _offhand_option: OptionButton
+var _offhand_lock_filter: OptionButton
+var _offhand_filter_row: Control
 var _offhand_desc_label: RichTextLabel
 var _offhand_status_row: Control
 var _offhand_status_hint_label: Label
@@ -41,6 +45,7 @@ var _save_offhand_tuning_button: Button
 var _reset_offhand_tuning_button: Button
 
 var _armor_slot_filter: OptionButton
+var _armor_gear_lock_filter: OptionButton
 var _armor_gear_option: OptionButton
 var _armor_gear_desc_label: RichTextLabel
 var _armor_gear_tuning_fields: VBoxContainer
@@ -80,6 +85,8 @@ func configure(
 	tuning_spin_min_height: int,
 	tuning_spin_button_font_size: int,
 	offhand_option: OptionButton,
+	offhand_lock_filter: OptionButton,
+	offhand_filter_row: Control,
 	offhand_desc_label: RichTextLabel,
 	offhand_status_row: Control,
 	offhand_status_hint_label: Label,
@@ -90,6 +97,7 @@ func configure(
 	save_offhand_tuning_button: Button,
 	reset_offhand_tuning_button: Button,
 	armor_slot_filter: OptionButton,
+	armor_gear_lock_filter: OptionButton,
 	armor_gear_option: OptionButton,
 	armor_gear_desc_label: RichTextLabel,
 	armor_gear_tuning_fields: VBoxContainer,
@@ -122,6 +130,8 @@ func configure(
 	_tuning_spin_min_height = tuning_spin_min_height
 	_tuning_spin_button_font_size = tuning_spin_button_font_size
 	_offhand_option = offhand_option
+	_offhand_lock_filter = offhand_lock_filter
+	_offhand_filter_row = offhand_filter_row
 	_offhand_desc_label = offhand_desc_label
 	_offhand_status_row = offhand_status_row
 	_offhand_status_hint_label = offhand_status_hint_label
@@ -132,6 +142,7 @@ func configure(
 	_save_offhand_tuning_button = save_offhand_tuning_button
 	_reset_offhand_tuning_button = reset_offhand_tuning_button
 	_armor_slot_filter = armor_slot_filter
+	_armor_gear_lock_filter = armor_gear_lock_filter
 	_armor_gear_option = armor_gear_option
 	_armor_gear_desc_label = armor_gear_desc_label
 	_armor_gear_tuning_fields = armor_gear_tuning_fields
@@ -176,6 +187,7 @@ func build_armor_gear_options() -> void:
 
 
 func setup_offhand_picker() -> void:
+	ItemLockFilterScript.populate_option_button(_offhand_lock_filter)
 	_refresh_offhand_option_list()
 
 
@@ -187,11 +199,13 @@ func setup_armor_gear_picker() -> void:
 		_armor_slot_filter.set_item_metadata(_armor_slot_filter.get_item_count() - 1, slot_key)
 	if _armor_slot_filter.get_item_count() > 0:
 		_armor_slot_filter.select(0)
+	ItemLockFilterScript.populate_option_button(_armor_gear_lock_filter)
 	_refresh_armor_gear_option_list()
 
 
 func setup_offhand_section_visibility(enabled: bool) -> void:
 	_offhand_section_label.visible = enabled
+	_offhand_filter_row.visible = enabled
 	_offhand_row.visible = enabled
 	_offhand_desc_label.visible = enabled
 	_offhand_status_row.visible = enabled
@@ -244,6 +258,15 @@ func on_offhand_option_selected() -> void:
 	refresh_offhand_tuning_ui()
 
 
+func on_offhand_lock_filter_selected() -> void:
+	var current := _get_selected_offhand()
+	var preserve_key := current.get_unique_key() if current else ""
+	_refresh_offhand_option_list(preserve_key)
+	_update_offhand_description()
+	_refresh_offhand_status_hint()
+	refresh_offhand_tuning_ui()
+
+
 func on_armor_slot_filter_selected() -> void:
 	var slot_key := _get_selected_armor_slot_key()
 	var preserve_key := ""
@@ -255,6 +278,14 @@ func on_armor_slot_filter_selected() -> void:
 				EquipSlots.SHARED_ARMOR_SET_INDEX,
 				slot_key
 			)
+	_refresh_armor_gear_option_list(preserve_key)
+	_update_armor_gear_description()
+	refresh_armor_gear_tuning_ui()
+
+
+func on_armor_gear_lock_filter_selected() -> void:
+	var current := _get_selected_armor_gear()
+	var preserve_key := current.get_unique_key() if current else ""
 	_refresh_armor_gear_option_list(preserve_key)
 	_update_armor_gear_description()
 	refresh_armor_gear_tuning_ui()
@@ -353,11 +384,15 @@ func _sort_gear_for_picker(a: GearData, b: GearData) -> bool:
 	return a.get_display_name_localized() < b.get_display_name_localized()
 
 
+func _gear_matches_lock(gear: GearData, lock_mode: int) -> bool:
+	return ItemLockFilterScript.matches(gear.is_locked, lock_mode)
+
+
 func _get_selected_offhand() -> GearData:
 	var index: int = _offhand_option.selected
-	if index < 0 or index >= _all_offhand_options.size():
+	if index < 0 or index >= _filtered_offhand_options.size():
 		return null
-	return _all_offhand_options[index]
+	return _filtered_offhand_options[index]
 
 
 func _get_selected_armor_slot_key() -> StringName:
@@ -376,15 +411,17 @@ func _get_selected_armor_gear() -> GearData:
 
 func _refresh_armor_gear_option_list(preserve_key: String = "", rebuild_tuning: bool = true) -> void:
 	var slot_key := _get_selected_armor_slot_key()
+	var filter_lock := ItemLockFilterScript.get_mode(_armor_gear_lock_filter)
 	_filtered_armor_gear_options.clear()
 	var bucket: Variant = _armor_gear_by_slot.get(slot_key, [])
 	if bucket is Array:
 		for gear in bucket:
-			if gear is GearData:
+			if gear is GearData and _gear_matches_lock(gear, filter_lock):
 				_filtered_armor_gear_options.append(gear)
 
 	_armor_gear_option.clear()
 	if _filtered_armor_gear_options.is_empty():
+		_update_status.call("조건에 맞는 장비가 없습니다.")
 		_update_armor_gear_description()
 		return
 
@@ -401,14 +438,21 @@ func _refresh_armor_gear_option_list(preserve_key: String = "", rebuild_tuning: 
 
 
 func _refresh_offhand_option_list(preserve_key: String = "") -> void:
+	var filter_lock := ItemLockFilterScript.get_mode(_offhand_lock_filter)
+	_filtered_offhand_options.clear()
+	for gear in _all_offhand_options:
+		if _gear_matches_lock(gear, filter_lock):
+			_filtered_offhand_options.append(gear)
+
 	_offhand_option.clear()
-	if _all_offhand_options.is_empty():
+	if _filtered_offhand_options.is_empty():
+		_update_status.call("조건에 맞는 보조무기가 없습니다.")
 		_update_offhand_description()
 		return
 
 	var select_index := 0
-	for i in _all_offhand_options.size():
-		var gear: GearData = _all_offhand_options[i]
+	for i in _filtered_offhand_options.size():
+		var gear: GearData = _filtered_offhand_options[i]
 		_offhand_option.add_item(gear.get_display_name_localized())
 		if not preserve_key.is_empty() and gear.get_unique_key() == preserve_key:
 			select_index = i

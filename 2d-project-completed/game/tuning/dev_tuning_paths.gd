@@ -19,3 +19,11 @@ static func encode_scene_id(scene_path: String) -> String:
 
 static func mob_tuning_path(scene_path: String) -> String:
 	return MOBS_DIR + encode_scene_id(scene_path) + ".tres"
+
+
+static func encode_weapon_id(weapon_id: String) -> String:
+	return weapon_id.replace("/", "__").replace("|", "_")
+
+
+static func weapon_tuning_path(weapon_id: String) -> String:
+	return WEAPONS_DIR + encode_weapon_id(weapon_id) + ".tres"

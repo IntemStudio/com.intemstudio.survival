@@ -4,6 +4,7 @@ class_name DevTuningStore
 ## 몹 authoring 로드·캐시·저장. ( 무기/장비/상태이상 API는 후속 PR )
 
 static var _mob_authoring: Dictionary = {}
+static var _weapon_authoring: Dictionary = {}
 
 
 static func reload_mob_authoring() -> void:
@@ -72,7 +73,62 @@ static func get_last_save_error_key() -> String:
 	return DevTuningPersistence.ERR_EDITOR_ONLY
 
 
-# --- 후속 PR: weapons / gear / status_effects ---
-# static func reload_weapon_authoring() -> void: pass
+static func reload_weapon_authoring() -> void:
+	_weapon_authoring.clear()
+	if not DirAccess.dir_exists_absolute(DevTuningPaths.WEAPONS_DIR):
+		return
+	for file_name in DirAccess.get_files_at(DevTuningPaths.WEAPONS_DIR):
+		if not file_name.ends_with(".tres"):
+			continue
+		var full_path := DevTuningPaths.WEAPONS_DIR + file_name
+		var tuning := load(full_path) as WeaponSceneTuning
+		if tuning == null:
+			push_warning("DevTuningStore: invalid weapon tuning (%s)" % full_path)
+			continue
+		var weapon_id := tuning.weapon_id
+		if weapon_id.is_empty():
+			continue
+		_weapon_authoring[weapon_id] = tuning.overrides.duplicate(true)
+
+
+static func get_weapon_authoring(weapon_id: String) -> Dictionary:
+	if weapon_id.is_empty():
+		return {}
+	return _weapon_authoring.get(weapon_id, {}).duplicate(true)
+
+
+static func has_weapon_authoring(weapon_id: String) -> bool:
+	return not weapon_id.is_empty() and _weapon_authoring.has(weapon_id)
+
+
+static func save_weapon_authoring(weapon_id: String, overrides: Dictionary) -> bool:
+	if weapon_id.is_empty():
+		return false
+	var path := DevTuningPaths.weapon_tuning_path(weapon_id)
+	var resource: WeaponSceneTuning
+	if ResourceLoader.exists(path):
+		resource = load(path) as WeaponSceneTuning
+	if resource == null:
+		resource = WeaponSceneTuning.new()
+	resource.weapon_id = weapon_id
+	for key in overrides:
+		resource.overrides[key] = overrides[key]
+	var result: Dictionary = DevTuningPersistence.save_resource(resource, path)
+	if result.get("ok", false):
+		_weapon_authoring[weapon_id] = resource.overrides.duplicate(true)
+	return bool(result.get("ok", false))
+
+
+static func delete_weapon_authoring(weapon_id: String) -> bool:
+	if weapon_id.is_empty():
+		return false
+	var path := DevTuningPaths.weapon_tuning_path(weapon_id)
+	var result: Dictionary = DevTuningPersistence.delete_resource(path)
+	if result.get("ok", false):
+		_weapon_authoring.erase(weapon_id)
+	return bool(result.get("ok", false))
+
+
+# --- 후속 PR: gear / status_effects ---
 # static func reload_gear_authoring() -> void: pass
 # static func reload_status_effect_authoring() -> void: pass

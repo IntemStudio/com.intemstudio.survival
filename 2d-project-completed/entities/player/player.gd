@@ -5,6 +5,7 @@ signal leveled_up(new_level: int)
 
 const GUN_SCENE := preload("res://weapons/core/gun.tscn")
 const PlayerDebuffControllerScript = preload("res://elite/player_debuff_controller.gd")
+const EliteBlazingConstantsScript = preload("res://elite/elite_blazing_constants.gd")
 const RelicCombatBridgeScript = preload("res://inventory/relic_combat_bridge.gd")
 const DASH_SPEED := 1400.0
 const BASE_DASH_DURATION := 0.18
@@ -50,21 +51,25 @@ var _revive_remaining := 0
 var _revive_cap_granted := 0
 var _revive_invincible_remaining := 0.0
 var _lethal_resolve_physics_frame := -1
+var _cached_max_health := 100.0
+var _character_visual: Node2D
+var _active_visual_scene_path := ""
+var _base_move_speed := BASE_MOVE_SPEED
 
 
 func _ready() -> void:
 	add_to_group(UiLocale.GROUP_REFRESH)
 	_buff_controller.buffs_changed.connect(_on_buffs_changed)
-	_hit_flash_target = %HappyBoo.get_node("Colorizer") as CanvasItem
-	_hit_flash_base_modulate = _hit_flash_target.modulate
 	_sync_physics_layers()
-	_sync_collision_to_ground_shadow()
+	apply_player_class_from_run_config()
 	_sync_pickup_range_visual()
 	refresh_primary_weapon_range_ring()
 	%PickupRange.area_entered.connect(_on_pickup_range_area_entered)
 	%DashCooldownBar.visible = false
 	%StaminaRegenWaitBar.visible = false
 	set_contact_damage_enabled(false)
+	_update_health_hud()
+	_update_burn_hud()
 	_update_experience_hud()
 	_update_gold_hud()
 	call_deferred("_apply_gameplay_combat_defaults")
@@ -87,20 +92,26 @@ func set_contact_damage_enabled(enabled: bool) -> void:
 
 # 발밑 GroundShadow 크기에 맞춰 이동·접촉 판정 충돌체를 맞춥니다.
 func _sync_collision_to_ground_shadow() -> void:
-	var footprint := GroundShadowFootprint.footprint_size_from_visual(%HappyBoo)
+	var visual := _get_character_visual_root()
+	if visual == null:
+		return
+	var footprint := GroundShadowFootprint.footprint_size_from_visual(visual)
 	if footprint == Vector2.ZERO:
 		return
-	GroundShadowFootprint.sync_collision_shape_to_shadow(self, $CollisionShape2D, %HappyBoo)
+	GroundShadowFootprint.sync_collision_shape_to_shadow(self, $CollisionShape2D, visual)
 	GroundShadowFootprint.sync_collision_shape_to_shadow(
 		self,
 		%HurtBox.get_node("CollisionShape2D") as CollisionShape2D,
-		%HappyBoo
+		visual
 	)
 
 
 # 조준·접촉·몹 추적에 쓰는 발밑 그림자 중심.
 func get_footprint_global_center() -> Vector2:
-	return GroundShadowFootprint.footprint_center_global(%HappyBoo)
+	var visual := _get_character_visual_root()
+	if visual == null:
+		return global_position
+	return GroundShadowFootprint.footprint_center_global(visual)
 
 
 # 몹 접촉 거리 계산용 HurtBox 반경(그림자 발밑 박스 기준)
@@ -108,7 +119,10 @@ func get_contact_hurtbox_half_extents() -> Vector2:
 	var hurt_shape := %HurtBox.get_node("CollisionShape2D").shape as RectangleShape2D
 	if hurt_shape:
 		return hurt_shape.size * 0.5
-	return GroundShadowFootprint.footprint_half_extents_from_visual(%HappyBoo)
+	var visual := _get_character_visual_root()
+	if visual == null:
+		return Vector2.ZERO
+	return GroundShadowFootprint.footprint_half_extents_from_visual(visual)
 
 
 # 범위 공격(몹별 쿨다운) + HurtBox 겹침 진입 시 충돌 1 피해.
@@ -264,6 +278,94 @@ func clear_weapons() -> void:
 	refresh_primary_weapon_range_ring()
 
 
+# RunConfig 직업 stat_modifiers·비주얼을 적용하고 체력·스태미나 상한을 맞춥니다.
+func apply_player_class_from_run_config() -> void:
+	var player_class := RunConfig.get_player_class()
+	if player_class == null:
+		apply_player_class_with_modifiers({})
+	else:
+		apply_player_class_with_modifiers(player_class.build_stat_modifiers())
+
+
+# F6 등 — 튜닝된 stat_modifiers로 직업 스탯·비주얼을 적용합니다.
+func apply_player_class_with_modifiers(stat_modifiers: Dictionary) -> void:
+	var player_class := RunConfig.get_player_class()
+	_stats.set_class_modifiers(stat_modifiers)
+	_apply_character_visual(player_class)
+	_sync_health_bar_max()
+	health = get_max_health()
+	_refill_stamina_to_max()
+
+
+# F6 등 — 선택 직업 비주얼·스탯으로 스폰 지점에 플레이어를 재생성합니다.
+func recreate_at(spawn_global_position: Vector2) -> void:
+	global_position = spawn_global_position
+	velocity = Vector2.ZERO
+	_dash_direction = Vector2.ZERO
+	_dash_time_remaining = 0.0
+	_hurtbox_overlap_mob_ids.clear()
+	reset_health_depleted_state()
+	clear_player_debuffs()
+	apply_player_class_from_run_config()
+	_update_health_hud()
+
+
+func get_player_class_id() -> StringName:
+	return RunConfig.get_player_class_id()
+
+
+func _apply_character_visual(player_class: PlayerClassData) -> void:
+	if player_class == null or player_class.visual_scene == null:
+		return
+	var scene_path := player_class.visual_scene.resource_path
+	if (
+		scene_path == _active_visual_scene_path
+		and _character_visual != null
+		and is_instance_valid(_character_visual)
+	):
+		return
+	for child in %VisualMount.get_children():
+		child.free()
+	_character_visual = player_class.visual_scene.instantiate() as Node2D
+	if _character_visual == null:
+		return
+	%VisualMount.add_child(_character_visual)
+	_active_visual_scene_path = scene_path
+	_bind_character_visual()
+	_sync_collision_to_ground_shadow()
+	_play_character_idle_animation()
+
+
+func _get_character_visual_root() -> Node2D:
+	if _character_visual != null and is_instance_valid(_character_visual):
+		return _character_visual
+	if %VisualMount.get_child_count() > 0:
+		return %VisualMount.get_child(0) as Node2D
+	return null
+
+
+func _bind_character_visual() -> void:
+	var visual := _get_character_visual_root()
+	if visual == null:
+		return
+	var colorizer := visual.get_node_or_null("Colorizer") as CanvasItem
+	if colorizer != null:
+		_hit_flash_target = colorizer
+		_hit_flash_base_modulate = colorizer.modulate
+
+
+func _play_character_idle_animation() -> void:
+	var visual := _get_character_visual_root()
+	if visual != null and visual.has_method(&"play_idle_animation"):
+		visual.play_idle_animation()
+
+
+func _play_character_walk_animation() -> void:
+	var visual := _get_character_visual_root()
+	if visual != null and visual.has_method(&"play_walk_animation"):
+		visual.play_walk_animation()
+
+
 # loadout 장비 stat_modifiers를 캐시하고 이동·무기 배율을 갱신합니다.
 func refresh_stats_from_loadout(registry: ItemRegistry, loadout: PlayerLoadoutState) -> void:
 	if registry == null or loadout == null:
@@ -330,7 +432,11 @@ func is_loadout_stats_active() -> bool:
 
 
 func get_max_health() -> float:
-	return _stats.get_max_health()
+	return _stats.get_max_health(level)
+
+
+func get_health_regen_per_sec() -> float:
+	return _stats.get_health_regen_per_sec(level)
 
 
 func get_max_stamina() -> float:
@@ -404,6 +510,16 @@ func _tick_stamina(delta: float) -> void:
 	_stamina_current = minf(_stamina_current + get_stamina_regen_rate() * delta, max_stamina)
 
 
+# 직업 기본 체력 회복을 초당 tick합니다.
+func _tick_health_regen(delta: float) -> void:
+	if get_tree().paused or _health_depleted_emitted or health <= 0.0:
+		return
+	var rate := get_health_regen_per_sec()
+	if rate <= 0.0:
+		return
+	heal_health(rate * delta)
+
+
 func get_revive_charges_max() -> int:
 	return _stats.get_revive_charges_max()
 
@@ -422,13 +538,13 @@ func _sync_revive_charges_from_stats() -> void:
 
 # 장비 heart_* 반영 후 체력바 상한을 맞춥니다.
 func _sync_health_bar_max() -> void:
-	var previous_max: float = %HealthBar.max_value
+	var previous_max: float = _cached_max_health
 	var new_max: float = get_max_health()
-	%HealthBar.max_value = new_max
 	if new_max > previous_max:
 		health += new_max - previous_max
 	health = minf(health, new_max)
-	%HealthBar.value = health
+	_cached_max_health = new_max
+	_update_health_hud()
 
 
 # loadout 방어구·방패가 있으면 피해를 줄입니다.
@@ -443,7 +559,7 @@ func _apply_damage_taken(taken: int, add_to_contact_float: bool = false) -> void
 	if taken <= 0:
 		return
 	health = maxf(health - float(taken), 0.0)
-	%HealthBar.value = health
+	_update_health_hud()
 	if add_to_contact_float:
 		_damage_float_accumulator += taken
 	_try_emit_health_depleted()
@@ -452,7 +568,16 @@ func _apply_damage_taken(taken: int, add_to_contact_float: bool = false) -> void
 
 
 func get_move_speed() -> float:
-	return _stats.get_move_speed(BASE_MOVE_SPEED) * _debuff_controller.get_move_speed_mult()
+	return _stats.get_move_speed(_base_move_speed) * _debuff_controller.get_move_speed_mult()
+
+
+func get_base_move_speed() -> float:
+	return _base_move_speed
+
+
+# 기본 이동속도(장비·버프 배율 적용 전)를 설정합니다.
+func set_base_move_speed(speed: float) -> void:
+	_base_move_speed = maxf(speed, 50.0)
 
 
 func get_last_move_direction() -> Vector2:
@@ -558,6 +683,9 @@ func _on_buffs_changed() -> void:
 
 
 func add_weapon(weapon_data: WeaponData) -> void:
+	weapon_data = DevWeaponTuning.build_tuned_weapon(weapon_data)
+	if weapon_data == null:
+		return
 	if has_weapon(weapon_data):
 		return
 
@@ -617,7 +745,7 @@ func heal_health(amount: float) -> void:
 		return
 	var max_hp: float = get_max_health()
 	health = minf(health + amount, max_hp)
-	%HealthBar.value = health
+	_update_health_hud()
 	if health > 0.0:
 		_health_depleted_emitted = false
 
@@ -627,6 +755,7 @@ func gain_experience(amount: int) -> void:
 	while experience >= get_exp_to_level():
 		experience -= get_exp_to_level()
 		level += 1
+		_sync_health_bar_max()
 		leveled_up.emit(level)
 	_update_experience_hud()
 
@@ -657,17 +786,37 @@ func refund_gold(amount: int) -> void:
 	gain_gold(amount)
 
 
-func _update_experience_hud() -> void:
-	var hud := get_node_or_null("/root/Game/HUD")
-	if not hud:
+func _update_health_hud() -> void:
+	var panel: Node = _get_player_status_panel()
+	if panel == null:
 		return
-	var hud_root: Control = hud.get_node("HUDRoot")
-	var exp_bar: ProgressBar = hud_root.get_node("ExperienceBar")
-	var exp_to_level := get_exp_to_level()
-	exp_bar.max_value = exp_to_level
-	exp_bar.value = experience
-	hud_root.get_node("LevelLabel").text = "Lv. %d" % level
-	hud_root.get_node("ExpLabel").text = "%d / %d" % [experience, exp_to_level]
+	panel.set_health(health, get_max_health())
+
+
+func _update_burn_hud() -> void:
+	var panel: Node = _get_player_status_panel()
+	if panel == null:
+		return
+	var burn_id: StringName = EliteBlazingConstantsScript.PLAYER_DEBUFF_ID
+	var burning: bool = _debuff_controller.has_debuff(burn_id)
+	var remaining_sec: float = 0.0
+	if burning:
+		remaining_sec = _debuff_controller.get_debuff_remaining_seconds(burn_id)
+	panel.set_burn_active(burning, remaining_sec)
+
+
+func _update_experience_hud() -> void:
+	var panel: Node = _get_player_status_panel()
+	if panel == null:
+		return
+	panel.set_experience(experience, get_exp_to_level(), level)
+
+
+func _get_player_status_panel() -> Node:
+	var hud := get_node_or_null("/root/Game/HUD")
+	if hud == null:
+		return null
+	return hud.get_node_or_null("HUDRoot/PlayerStatusPanel")
 
 
 func _update_gold_hud() -> void:
@@ -804,13 +953,14 @@ func _physics_process(delta: float) -> void:
 	_tick_active_buffs(delta)
 	_tick_player_debuffs(delta)
 	_tick_stamina(delta)
+	_tick_health_regen(delta)
 	if is_elite_debuff_frozen():
 		velocity = Vector2.ZERO
 		move_and_slide()
 		if velocity.length_squared() > 0.0:
-			%HappyBoo.play_walk_animation()
+			_play_character_walk_animation()
 		else:
-			%HappyBoo.play_idle_animation()
+			_play_character_idle_animation()
 		_apply_contact_damage(delta)
 		_damage_float_timer -= delta
 		if _damage_float_accumulator > 0.0 and _damage_float_timer <= 0.0:
@@ -851,9 +1001,9 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 	if velocity.length_squared() > 0.0:
-		%HappyBoo.play_walk_animation()
+		_play_character_walk_animation()
 	else:
-		%HappyBoo.play_idle_animation()
+		_play_character_idle_animation()
 	
 	_apply_contact_damage(delta)
 
@@ -878,12 +1028,14 @@ func _tick_player_debuffs(delta: float) -> void:
 	if get_tree().paused:
 		return
 	_debuff_controller.tick(delta, self)
-	RelicCombatBridgeScript.tick(delta)
+	RelicCombatBridgeScript.tick(delta, self)
+	_update_burn_hud()
 
 
 # affix 몹 debuff를 적용합니다.
 func apply_elite_debuff(debuff_id: StringName, payload: Dictionary = {}) -> void:
 	_debuff_controller.apply(debuff_id, payload)
+	_update_burn_hud()
 
 
 # 유물 on-hit 효과 — Mob.apply_weapon_damage 성공 후 호출됩니다.
@@ -898,6 +1050,7 @@ func is_elite_debuff_frozen() -> bool:
 # affix debuff·리스폰 시 초기화합니다.
 func clear_player_debuffs() -> void:
 	_debuff_controller.clear()
+	_update_burn_hud()
 
 
 func _tick_revive_invincibility(delta: float) -> void:
@@ -920,7 +1073,7 @@ func _try_consume_revive() -> bool:
 	_revive_invincible_remaining = REVIVE_INVINCIBILITY_SEC
 	var max_hp := get_max_health()
 	health = maxf(max_hp * REVIVE_HP_RATIO, 1.0)
-	%HealthBar.value = health
+	_update_health_hud()
 	FloatingInfoText.spawn_info(global_position, UiLocale.t(&"combat.revived"))
 	return true
 
@@ -929,7 +1082,7 @@ func _try_emit_health_depleted() -> void:
 	if health > 0.0 or _health_depleted_emitted:
 		return
 	health = 0.0
-	%HealthBar.value = health
+	_update_health_hud()
 	var frame := Engine.get_physics_frames()
 	if _lethal_resolve_physics_frame == frame:
 		return

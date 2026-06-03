@@ -28,6 +28,13 @@ func setup_weapon(thrower: Node2D, direction: Vector2, weapon_data: WeaponData) 
 	rotation = _direction.angle()
 	if $Sprite2D:
 		$Sprite2D.modulate = weapon_data.get_element_color()
+	ProjectileVisualUtil.apply_circle_projectile(
+		self,
+		weapon_data,
+		Vector2(0.85, 0.85),
+		Vector2.ZERO,
+		14.0
+	)
 
 
 func _physics_process(delta: float) -> void:

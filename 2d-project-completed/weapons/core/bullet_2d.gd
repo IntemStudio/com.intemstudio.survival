@@ -37,6 +37,13 @@ func setup(
 	global_transform = spawn_transform
 	if has_node("Sprite"):
 		$Sprite.modulate = weapon_data.get_element_color()
+	ProjectileVisualUtil.apply_circle_projectile(
+		self,
+		weapon_data,
+		Vector2.ONE,
+		Vector2(-11.0, -1.0),
+		15.0333
+	)
 
 
 func _physics_process(delta: float) -> void:

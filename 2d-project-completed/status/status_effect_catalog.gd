@@ -126,6 +126,17 @@ static func _ensure_cache() -> void:
 		1.5,
 		Color(0.55, 0.9, 1.0)
 	))
+	_register(_create_percent_hp_dot(
+		&"relic_burn",
+		"Relic Burn",
+		"유물 화상",
+		CATEGORY_BURN,
+		&"fire",
+		2.0,
+		0.5,
+		2.5,
+		Color(1.0, 0.42, 0.18)
+	))
 	_register(_create_move_speed_mult(
 		&"sticky_goo",
 		"Sticky Goo",
@@ -228,4 +239,31 @@ static func _create_move_speed_mult(
 ) -> StatusEffectData:
 	var data := _create_base(status_id, display_name, display_name_ko, category, duration_seconds, 1, color)
 	data.move_speed_mult = move_speed_mult
+	return data
+
+
+static func _create_percent_hp_dot(
+	status_id: StringName,
+	display_name: String,
+	display_name_ko: String,
+	category: StringName,
+	damage_element: StringName,
+	duration_seconds: float,
+	tick_interval: float,
+	tick_percent_max_hp: float,
+	color: Color
+) -> StatusEffectData:
+	var data := _create_base(
+		status_id,
+		display_name,
+		display_name_ko,
+		category,
+		duration_seconds,
+		1,
+		color
+	)
+	data.stacking_policy = StatusEffectData.STACK_REFRESH
+	data.damage_element = damage_element
+	data.tick_percent_max_hp = tick_percent_max_hp
+	data.tick_interval = tick_interval
 	return data

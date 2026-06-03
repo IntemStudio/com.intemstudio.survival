@@ -4,6 +4,7 @@ extends RefCounted
 ## 테스트 아레나 무기 패널(필터/장착/튜닝 UI) 제어 컨트롤러.
 
 const TestArenaTuningUiUtil = preload("res://game/test_arena_tuning_ui.gd")
+const ItemLockFilterScript = preload("res://inventory/item_lock_filter.gd")
 
 var _weapon_snapshots: TestArenaWeaponSnapshot
 var _update_status: Callable
@@ -28,6 +29,7 @@ var _tuning_ui_refreshing := false
 var _player: CharacterBody2D
 var _weapon_type_filter: OptionButton
 var _weapon_rarity_filter: OptionButton
+var _weapon_lock_filter: OptionButton
 var _weapon_option: OptionButton
 var _weapon_desc_label: RichTextLabel
 var _projectile_tuning_fields: VBoxContainer
@@ -60,6 +62,7 @@ func configure(
 	player: CharacterBody2D,
 	weapon_type_filter: OptionButton,
 	weapon_rarity_filter: OptionButton,
+	weapon_lock_filter: OptionButton,
 	weapon_option: OptionButton,
 	weapon_desc_label: RichTextLabel,
 	projectile_tuning_fields: VBoxContainer,
@@ -89,6 +92,7 @@ func configure(
 	_player = player
 	_weapon_type_filter = weapon_type_filter
 	_weapon_rarity_filter = weapon_rarity_filter
+	_weapon_lock_filter = weapon_lock_filter
 	_weapon_option = weapon_option
 	_weapon_desc_label = weapon_desc_label
 	_projectile_tuning_fields = projectile_tuning_fields
@@ -121,6 +125,8 @@ func setup_weapon_filters() -> void:
 		_weapon_rarity_filter.select(common_index + 1)
 	else:
 		_weapon_rarity_filter.select(0)
+
+	ItemLockFilterScript.populate_option_button(_weapon_lock_filter)
 
 	_refresh_weapon_option_list(_start_weapon.get_unique_key())
 
@@ -317,14 +323,21 @@ func _weapon_matches_rarity(weapon: WeaponData, rarity_filter: String) -> bool:
 	return weapon_rarity == rarity_filter
 
 
+func _weapon_matches_lock(weapon: WeaponData, lock_mode: int) -> bool:
+	return ItemLockFilterScript.matches(weapon.is_locked, lock_mode)
+
+
 func _refresh_weapon_option_list(preserve_key: String = "") -> void:
 	var filter_type := _get_weapon_filter_type()
 	var filter_rarity := _get_weapon_filter_rarity()
+	var filter_lock := ItemLockFilterScript.get_mode(_weapon_lock_filter)
 	_filtered_weapon_options.clear()
 	for weapon in _all_weapon_options:
 		if not filter_type.is_empty() and weapon.weapon_type != filter_type:
 			continue
 		if not _weapon_matches_rarity(weapon, filter_rarity):
+			continue
+		if not _weapon_matches_lock(weapon, filter_lock):
 			continue
 		_filtered_weapon_options.append(weapon)
 
@@ -527,8 +540,6 @@ func _on_projectile_tuning_value_changed(
 			_refresh_projectile_tuning_ui()
 			return
 	elif property in [
-		"min_damage",
-		"max_damage",
 		"melee_spread_count",
 		"hit_count",
 		"burst_count",

@@ -16,6 +16,7 @@ const STACK_STACK := &"stack"
 @export var damage_element: StringName = &""
 @export var tick_damage_min := 0
 @export var tick_damage_max := 0
+@export var tick_percent_max_hp := 0.0
 @export var tick_interval := 0.0
 @export var damage_taken_element: StringName = &""
 @export var damage_taken_mult := 1.0
@@ -34,7 +35,7 @@ func get_display_name_localized() -> String:
 
 
 func has_dot() -> bool:
-	return tick_damage_max > 0 and tick_interval > 0.0
+	return tick_interval > 0.0 and (tick_damage_max > 0 or tick_percent_max_hp > 0.0)
 
 
 func has_damage_taken_mult() -> bool:

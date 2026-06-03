@@ -51,7 +51,6 @@ const CHARGE_PROPERTIES: Array[String] = [
 ]
 
 const CHASE_SKILL_JUMP_FIELD_DEFS := [
-	{"property": "jump_chase_enabled", "label": "활성", "min": 0.0, "max": 1.0, "step": 1.0},
 	{"property": "jump_chase_trigger_distance", "label": "발동 거리", "min": 0.0, "max": 2000.0, "step": 5.0},
 	{"property": "jump_chase_windup_delay", "label": "예고(초)", "min": 0.0, "max": 5.0, "step": 0.05},
 	{"property": "jump_chase_travel_distance", "label": "점프 거리", "min": 20.0, "max": 900.0, "step": 10.0},

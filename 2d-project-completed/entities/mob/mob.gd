@@ -119,6 +119,7 @@ const ATTACK_RANGE_RING_TEXTURE := preload("res://art/shared/fx/circle.png")
 const MELEE_ATTACK_RANGE_RING_COLOR := Color(0.95, 0.4, 0.32, 0.28)
 const CHASE_SKILL_TRIGGER_RING_COLOR := Color(0.55, 0.82, 1.0, 0.22)
 const CHASE_SKILL_LANDING_RING_COLOR := Color(0.98, 0.62, 0.28, 0.3)
+const CHASE_STOP_RANGE_RING_COLOR := Color(0.42, 0.9, 0.58, 0.26)
 const STATUS_ICON_DEFAULT_TEXT := "ST"
 const STATUS_ICON_TEXT := {
 	&"bleed": "BD",
@@ -133,15 +134,18 @@ const STATUS_ICON_TEXT := {
 const ELITE_AFFIX_LABEL_NODE_NAME := &"EliteAffixLabel"
 const ELITE_AFFIX_LABEL_HEIGHT := 18.0
 const ELITE_AFFIX_LABEL_GAP := 4.0
+const HEALTH_BAR_LABEL_NODE_NAME := &"HealthLabel"
 
 @onready var player: Node2D = get_node("/root/Game/Player")
 @onready var _target_indicator: Node2D = %TargetIndicator
 @onready var _attack_range_ring: Sprite2D = get_node_or_null("AttackRangeRing")
+var _chase_stop_ring: Sprite2D
 var _chase_skill_trigger_ring: Sprite2D
 var _chase_skill_landing_ring: Sprite2D
 @onready var _status_effect_icons: HBoxContainer = get_node_or_null("StatusEffectIcons") as HBoxContainer
 
 var _status_icon_signature := ""
+var _health_bar_label: Label = null
 
 
 # 스폰 직전 Game에서 호출해 밸런스 HP 배수를 반영합니다.
@@ -190,6 +194,7 @@ func pool_reset() -> void:
 		_target_indicator.scale = TARGET_INDICATOR_BASE_SCALE
 		_target_indicator.rotation = 0.0
 		_set_attack_range_ring_visible(false)
+		_set_chase_stop_ring_visible(false)
 		_set_chase_skill_range_rings_visible(false)
 		_hide_health_bar()
 
@@ -221,9 +226,11 @@ func pool_on_acquire() -> void:
 				0.0, maxf(jump_chase_cooldown, 0.01) * 0.5
 			)
 		_sync_attack_range_ring()
+		_sync_chase_stop_ring()
 		_sync_chase_skill_range_rings()
 	else:
 		_set_attack_range_ring_visible(false)
+		_set_chase_stop_ring_visible(false)
 		_set_chase_skill_range_rings_visible(false)
 	_sync_body_collision_to_shadow()
 	set_physics_process(true)
@@ -377,11 +384,36 @@ func _remove_elite_horn_child() -> void:
 		horn.free()
 
 
+func _ensure_health_bar_label() -> Label:
+	if _health_bar_label != null and is_instance_valid(_health_bar_label):
+		return _health_bar_label
+	var existing := %HealthBar.get_node_or_null(String(HEALTH_BAR_LABEL_NODE_NAME)) as Label
+	if existing != null:
+		_health_bar_label = existing
+		return existing
+	var label := Label.new()
+	label.name = String(HEALTH_BAR_LABEL_NODE_NAME)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", 11)
+	label.add_theme_color_override("font_color", Color(1, 1, 1, 1))
+	label.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	label.add_theme_constant_override("outline_size", 2)
+	%HealthBar.add_child(label)
+	_health_bar_label = label
+	return label
+
+
 func _sync_health_bar() -> void:
 	if not is_node_ready():
 		return
 	%HealthBar.max_value = max_health
 	%HealthBar.value = health
+	var max_value: float = maxf(max_health, 1.0)
+	var label := _ensure_health_bar_label()
+	label.text = "%d / %d" % [int(round(health)), int(round(max_value))]
 
 
 func _hide_health_bar() -> void:
@@ -467,6 +499,56 @@ func _set_attack_range_ring_visible(visible_state: bool) -> void:
 		_attack_range_ring.visible = (
 			visible_state and _is_attack_range_ring_setting_enabled()
 		)
+
+
+# ChaseStopRing — 추격 정지 거리(_get_chase_stop_distance) 반경.
+func _sync_chase_stop_ring() -> void:
+	_ensure_chase_stop_ring()
+	if _chase_stop_ring == null:
+		return
+	var tex := _chase_stop_ring.texture
+	if tex == null:
+		_set_chase_stop_ring_visible(false)
+		return
+	var tex_radius := maxf(tex.get_width(), tex.get_height()) * 0.5
+	if tex_radius <= 0.0:
+		return
+	var display_radius := _get_chase_stop_distance()
+	var ring_scale := display_radius / tex_radius
+	_chase_stop_ring.scale = Vector2(ring_scale, ring_scale)
+	_set_chase_stop_ring_visible(true)
+
+
+func _ensure_chase_stop_ring() -> void:
+	if _chase_stop_ring:
+		return
+	_chase_stop_ring = Sprite2D.new()
+	_chase_stop_ring.name = &"ChaseStopRing"
+	_chase_stop_ring.z_index = -12
+	_chase_stop_ring.texture = ATTACK_RANGE_RING_TEXTURE
+	_chase_stop_ring.modulate = CHASE_STOP_RANGE_RING_COLOR
+	add_child(_chase_stop_ring)
+
+
+# 설정·스폰 상태에 맞춰 추격 정지 링 표시를 갱신합니다.
+func refresh_chase_stop_ring() -> void:
+	if combat_enabled and movement_enabled:
+		_sync_chase_stop_ring()
+	else:
+		_set_chase_stop_ring_visible(false)
+
+
+func _should_show_chase_stop_ring() -> bool:
+	return (
+		combat_enabled
+		and movement_enabled
+		and GameplaySettings.is_chase_stop_range_visible()
+	)
+
+
+func _set_chase_stop_ring_visible(visible_state: bool) -> void:
+	if _chase_stop_ring:
+		_chase_stop_ring.visible = visible_state and _should_show_chase_stop_ring()
 
 
 # 추격 기술 — 발동 거리·착지 burst 반경(기술 진행 중) 링.

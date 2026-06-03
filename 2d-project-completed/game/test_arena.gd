@@ -12,19 +12,22 @@ const TestArenaStatusEffectControllerScript = preload("res://game/test_arena_sta
 const TestArenaWeaponPanelControllerScript = preload("res://game/test_arena_weapon_panel_controller.gd")
 const TestArenaGearPanelControllerScript = preload("res://game/test_arena_gear_panel_controller.gd")
 const TestArenaMobPanelControllerScript = preload("res://game/test_arena_mob_panel_controller.gd")
+const TestArenaPlayerPanelControllerScript = preload("res://game/test_arena_player_panel_controller.gd")
+const TestArenaPlayerSnapshotScript = preload("res://game/test_arena_player_snapshot.gd")
 const EQUIPMENT_DROP_SCENE := preload("res://effects/equipment_drop/equipment_drop.tscn")
 const RelicCombatBridgeScript = preload("res://inventory/relic_combat_bridge.gd")
 
-const START_WEAPON := preload("res://weapons/data/revolver.tres")
+const START_WEAPON := preload("res://weapons/data/katana.tres")
 const PLAYER_RESPAWN_DELAY := 3.0
 const TUNING_SPIN_BUTTON_SIZE := Vector2(52, 52)
 const TUNING_SPIN_MIN_HEIGHT := 48
 const TUNING_SPIN_BUTTON_FONT_SIZE := 24
 const TUNING_SPIN_VALUE_FONT_SIZE := 17
-const TEST_TAB_INDEX_MOB := 0
-const TEST_TAB_INDEX_WEAPON := 1
-const TEST_TAB_INDEX_GEAR := 2
-const TEST_TAB_INDEX_STATUS_EFFECT := 3
+const TEST_TAB_INDEX_PLAYER := 0
+const TEST_TAB_INDEX_MOB := 1
+const TEST_TAB_INDEX_WEAPON := 2
+const TEST_TAB_INDEX_GEAR := 3
+const TEST_TAB_INDEX_STATUS_EFFECT := 4
 const WEAPON_SUB_TAB_INDEX_PRIMARY := 0
 const WEAPON_SUB_TAB_INDEX_OFFHAND := 1
 
@@ -108,7 +111,7 @@ var _saved_player_collision_mask := 0
 var _saved_auto_attack_enabled := true
 var _mob_respawn_token := 0
 var _weapon_damage := WeaponDamageTracker.new()
-var _weapon_snapshots := TestArenaWeaponSnapshot.new()
+var _weapon_snapshots: TestArenaWeaponSnapshot
 var _gear_snapshots := TestArenaGearSnapshot.new()
 var _mob_snapshots := TestArenaMobSnapshot.new()
 var _status_effect_snapshots := TestArenaStatusEffectSnapshotScript.new()
@@ -116,6 +119,8 @@ var _status_effect_controller := TestArenaStatusEffectControllerScript.new()
 var _weapon_panel_controller := TestArenaWeaponPanelControllerScript.new()
 var _gear_panel_controller := TestArenaGearPanelControllerScript.new()
 var _mob_panel_controller := TestArenaMobPanelControllerScript.new()
+var _player_panel_controller := TestArenaPlayerPanelControllerScript.new()
+var _player_snapshot := TestArenaPlayerSnapshotScript.new()
 var _equipped_weapon_id := ""
 var _equipped_offhand_id := ""
 var _pending_offhand_context_restore := false
@@ -141,13 +146,18 @@ func _ready() -> void:
 	GameplaySettings.load_and_apply()
 	_place_player_at_spawn()
 	%Player.set_contact_damage_enabled(true)
-	# 1) load: 스냅샷 복원/카탈로그 반영
+	# 1) load: 스냅샷 복원/카탈로그 반영 (F5와 동일 인스턴스 공유)
+	_weapon_snapshots = DevWeaponTuning.get_snapshot()
+	_weapon_snapshots.clear_session()
 	_weapon_snapshots.load_from_disk()
 	_gear_snapshots.load_from_disk()
+	_player_snapshot.load_from_disk()
 	DevTuningStore.reload_mob_authoring()
+	DevTuningStore.reload_weapon_authoring()
 	EliteFeatureFlags.affix_roll_enabled = false
 	_status_effect_snapshots.load_from_disk()
 	# 컨트롤러는 옵션 빌드 전에 의존성 주입이 필요합니다.
+	_configure_player_panel_controller()
 	_configure_weapon_panel_controller()
 	_configure_gear_panel_controller()
 	_configure_mob_panel_controller()
@@ -162,6 +172,7 @@ func _ready() -> void:
 	# 3) 탭 세팅: TestPanels 탭 타이틀/탭바 구성
 	_setup_test_panels_tab()
 	_setup_weapon_sub_tabs()
+	_setup_player_class_option()
 	# 4) UI 세팅: 탭별 Option/튜닝/가시성 초기화
 	_setup_mob_type_option()
 	_setup_weapon_filters()
@@ -181,6 +192,12 @@ func _ready() -> void:
 	else:
 		call_deferred("apply_inventory_loadout_to_player")
 	# 5) signal connect: UI 이벤트 및 런타임 브리지 연결
+	%PlayerClassOption.item_selected.connect(_on_player_class_option_selected)
+	%PlayerDefaultWeaponOption.item_selected.connect(_on_player_default_weapon_option_selected)
+	%HealPlayerButton.pressed.connect(_player_panel_controller.on_heal_player_pressed)
+	%SavePlayerMoveSpeedButton.pressed.connect(_player_panel_controller.on_save_player_tuning_pressed)
+	%ResetPlayerMoveSpeedButton.pressed.connect(_player_panel_controller.on_reset_player_tuning_pressed)
+	%CreatePlayerButton.pressed.connect(_on_create_player_button_pressed)
 	%SpawnMobButton.pressed.connect(_on_spawn_mob_button_pressed)
 	%MobTypeOption.item_selected.connect(_on_mob_type_option_selected)
 	%EquipWeaponButton.pressed.connect(_weapon_panel_controller.on_equip_weapon_button_pressed)
@@ -205,6 +222,9 @@ func _ready() -> void:
 	%ProjectileMovementOption.item_selected.connect(_on_projectile_movement_selected)
 	%WeaponTypeFilter.item_selected.connect(_on_weapon_filters_changed)
 	%WeaponRarityFilter.item_selected.connect(_on_weapon_filters_changed)
+	%WeaponLockFilter.item_selected.connect(_on_weapon_filters_changed)
+	%OffhandLockFilter.item_selected.connect(_on_offhand_lock_filter_selected)
+	%ArmorGearLockFilter.item_selected.connect(_on_armor_gear_lock_filter_selected)
 	%StatusEffectOption.item_selected.connect(_on_status_effect_option_selected)
 	%ApplyStatusEffectTuningButton.pressed.connect(_on_apply_status_effect_tuning_pressed)
 	%SaveStatusEffectTuningButton.pressed.connect(_on_save_status_effect_tuning_pressed)
@@ -458,6 +478,7 @@ func _sort_weapons_for_picker(a: WeaponData, b: WeaponData) -> bool:
 # 몹·무기 패널 탭 제목을 한국어로 맞추고, 고정 너비 탭 바를 갱신합니다.
 func _setup_test_panels_tab() -> void:
 	var tabs: TabContainer = %TestPanelsTab
+	tabs.set_tab_title(TEST_TAB_INDEX_PLAYER, "플레이어")
 	tabs.set_tab_title(TEST_TAB_INDEX_MOB, "몹")
 	tabs.set_tab_title(TEST_TAB_INDEX_WEAPON, "무기")
 	tabs.set_tab_title(TEST_TAB_INDEX_GEAR, "장비")
@@ -482,6 +503,38 @@ func _refresh_weapon_sub_tab_lock_state() -> void:
 		WEAPON_SUB_TAB_INDEX_OFFHAND,
 		"보조무기" if offhand_enabled else "보조무기(잠금)"
 	)
+
+
+func _setup_player_class_option() -> void:
+	_player_panel_controller.setup_class_option()
+
+
+func _on_player_class_option_selected(index: int) -> void:
+	_player_panel_controller.on_class_option_selected(index)
+
+
+func _on_player_default_weapon_option_selected(index: int) -> void:
+	_player_panel_controller.on_default_weapon_option_selected(index)
+
+
+func _on_create_player_button_pressed() -> void:
+	if _player_is_dead:
+		_restore_player_from_death_state()
+	_player_panel_controller.on_create_player_pressed()
+
+
+func _restore_player_from_death_state() -> void:
+	var player: CharacterBody2D = %Player
+	if _saved_player_collision_layer != 0:
+		player.collision_layer = _saved_player_collision_layer
+		player.collision_mask = _saved_player_collision_mask
+	else:
+		PhysicsLayers.apply_player_body(player)
+	player.set_physics_process(true)
+	player.visible = true
+	player.set_auto_attack_enabled(_saved_auto_attack_enabled)
+	player.reset_health_depleted_state()
+	_player_is_dead = false
 
 
 func _setup_mob_type_option() -> void:
@@ -588,6 +641,36 @@ func _configure_status_effect_controller() -> void:
 	)
 
 
+func _configure_player_panel_controller() -> void:
+	_player_panel_controller.configure(
+		%Player,
+		_update_status,
+		apply_inventory_loadout_to_player,
+		equip_player_default_weapon,
+		_player_snapshot,
+		%PlayerClassOption,
+		%PlayerDefaultWeaponOption,
+		_all_weapon_options,
+		%PlayerClassDescLabel,
+		%PlayerStatsLabel,
+		%HealPlayerButton,
+		%CreatePlayerButton,
+		%PlayerMoveSpeedFields,
+		%PlayerClassMultFields,
+		%PlayerMoveSpeedTuningStatusLabel,
+		%SavePlayerMoveSpeedButton,
+		%ResetPlayerMoveSpeedButton,
+		%PlayerSpawnPoint.global_position,
+		TUNING_SPIN_BUTTON_SIZE,
+		TUNING_SPIN_MIN_HEIGHT,
+		TUNING_SPIN_BUTTON_FONT_SIZE,
+		TUNING_SPIN_VALUE_FONT_SIZE,
+		MOB_TUNING_COLOR_DEFAULT,
+		MOB_TUNING_COLOR_SAVED,
+		MOB_TUNING_COLOR_SESSION
+	)
+
+
 func _configure_weapon_panel_controller() -> void:
 	_weapon_panel_controller.configure(
 		_weapon_snapshots,
@@ -609,6 +692,7 @@ func _configure_weapon_panel_controller() -> void:
 		%Player,
 		%WeaponTypeFilter,
 		%WeaponRarityFilter,
+		%WeaponLockFilter,
 		%WeaponOption,
 		%WeaponDescLabel,
 		%ProjectileTuningFields,
@@ -645,6 +729,8 @@ func _configure_gear_panel_controller() -> void:
 		TUNING_SPIN_MIN_HEIGHT,
 		TUNING_SPIN_BUTTON_FONT_SIZE,
 		%OffhandOption,
+		%OffhandLockFilter,
+		%OffhandFilterRow,
 		%OffhandDescLabel,
 		%OffhandStatusRow,
 		%OffhandStatusHintLabel,
@@ -655,6 +741,7 @@ func _configure_gear_panel_controller() -> void:
 		%SaveOffhandTuningButton,
 		%ResetOffhandTuningButton,
 		%ArmorSlotFilter,
+		%ArmorGearLockFilter,
 		%ArmorGearOption,
 		%ArmorGearDescLabel,
 		%ArmorGearTuningFields,
@@ -717,6 +804,8 @@ func _configure_mob_panel_controller() -> void:
 		_get_mob_chase_skill_field_labels(),
 		%MobChaseModeLabel,
 		%MobChaseModeOption,
+		%MobChaseSkillLabel,
+		%MobChaseSkillOption,
 		%MobAffixOption,
 		%MobAffixDescLabel
 	)
@@ -758,6 +847,14 @@ func _on_armor_slot_filter_selected(_index: int) -> void:
 	_gear_panel_controller.on_armor_slot_filter_selected()
 
 
+func _on_offhand_lock_filter_selected(_index: int = -1) -> void:
+	_gear_panel_controller.on_offhand_lock_filter_selected()
+
+
+func _on_armor_gear_lock_filter_selected(_index: int = -1) -> void:
+	_gear_panel_controller.on_armor_gear_lock_filter_selected()
+
+
 func _on_armor_gear_option_selected(_index: int) -> void:
 	_gear_panel_controller.on_armor_gear_option_selected()
 
@@ -769,6 +866,37 @@ func _on_offhand_option_selected(_index: int) -> void:
 # ===== Weapon 장착/발사체 튜닝 (Step0 boundary freeze) =====
 func _get_selected_mob_scene() -> PackedScene:
 	return _mob_panel_controller.get_selected_mob_scene(MobSpawnSelector.MOB_BASIC_SCENE)
+
+
+# 플레이어 탭에서 지정한 기본 무기를 인벤(또는 직접) 장착합니다.
+func equip_player_default_weapon() -> void:
+	var weapon_id := _player_snapshot.get_effective_default_weapon_id()
+	if weapon_id.is_empty():
+		return
+	var weapon := _find_weapon_by_id(weapon_id)
+	if weapon == null:
+		push_warning("TestArena: default weapon not found (%s)" % weapon_id)
+		return
+	if use_inventory_loadout and _inventory_menu != null:
+		var menu_service: InventoryService = _inventory_menu.get_service()
+		if menu_service != null:
+			var err := menu_service.try_force_equip_weapon_on_active_set(weapon_id)
+			if not err.is_empty():
+				_update_status("기본 무기 장착 실패 (%s)" % String(err))
+				return
+			if _inventory_menu.has_method("refresh_all_slots"):
+				_inventory_menu.refresh_all_slots()
+			if _inventory_menu.has_method("persist_loadout_if_enabled"):
+				_inventory_menu.persist_loadout_if_enabled()
+			return
+	_equip_weapon(weapon)
+
+
+func _find_weapon_by_id(weapon_id: String) -> WeaponData:
+	for weapon in _all_weapon_options:
+		if weapon.get_unique_key() == weapon_id:
+			return weapon
+	return null
 
 
 func _get_selected_weapon() -> WeaponData:
@@ -875,7 +1003,6 @@ func _get_mob_charge_field_labels() -> Array[Label]:
 
 func _get_mob_chase_skill_field_labels() -> Array[Label]:
 	return [
-		%MobChaseSkillEnabledLabel,
 		%MobChaseSkillTriggerLabel,
 		%MobChaseSkillWindupLabel,
 		%MobChaseSkillTravelLabel,
@@ -940,7 +1067,6 @@ func _get_mob_charge_step_buttons() -> Array[Button]:
 
 func _get_mob_chase_skill_spins() -> Array[SpinBox]:
 	return [
-		%MobChaseSkillEnabledSpin,
 		%MobChaseSkillTriggerSpin,
 		%MobChaseSkillWindupSpin,
 		%MobChaseSkillTravelSpin,
@@ -953,8 +1079,6 @@ func _get_mob_chase_skill_spins() -> Array[SpinBox]:
 
 func _get_mob_chase_skill_step_buttons() -> Array[Button]:
 	return [
-		%MobChaseSkillEnabledDecButton,
-		%MobChaseSkillEnabledIncButton,
 		%MobChaseSkillTriggerDecButton,
 		%MobChaseSkillTriggerIncButton,
 		%MobChaseSkillWindupDecButton,
@@ -990,6 +1114,7 @@ func _apply_mob_tuning_live(scene: PackedScene) -> void:
 	_mob_snapshots.apply_to_mob(_active_mob, scene)
 	if _active_mob.is_node_ready():
 		_active_mob.refresh_attack_range_ring()
+		_active_mob.refresh_chase_stop_ring()
 		_active_mob.refresh_chase_skill_range_rings()
 
 
@@ -1026,6 +1151,7 @@ func spawn_test_mob(scene: PackedScene) -> void:
 	EliteAffixSpawnHelper.apply_after_mob_ready(mob, _build_test_elite_roll_context(mob, scene))
 	if mob.is_node_ready():
 		mob.refresh_attack_range_ring()
+		mob.refresh_chase_stop_ring()
 		mob.refresh_chase_skill_range_rings()
 	_active_mob = mob
 	_last_mob_scene = scene
@@ -1082,10 +1208,9 @@ func _respawn_player() -> void:
 	if not _player_is_dead:
 		return
 	var player: CharacterBody2D = %Player
-	var max_hp: float = player.get_max_health() if player.has_method(&"get_max_health") else player.get_node("%HealthBar").max_value
+	var max_hp: float = player.get_max_health()
 	player.health = max_hp
-	player.get_node("%HealthBar").max_value = max_hp
-	player.get_node("%HealthBar").value = max_hp
+	player.call(&"_sync_health_bar_max")
 	player.global_position = %PlayerSpawnPoint.global_position
 	player.collision_layer = _saved_player_collision_layer
 	player.collision_mask = _saved_player_collision_mask
@@ -1098,6 +1223,7 @@ func _respawn_player() -> void:
 	if player.has_method(&"clear_player_debuffs"):
 		player.call(&"clear_player_debuffs")
 	_player_is_dead = false
+	_player_panel_controller.refresh_panel()
 	_update_status("")
 
 

@@ -1,7 +1,6 @@
 [gd_scene format=3 uid="uid://dsw8raqgacxsc"]
 
 [ext_resource type="Script" uid="uid://bjpua3hfywlnl" path="res://entities/player/player.gd" id="1_73bic"]
-[ext_resource type="PackedScene" uid="uid://pbmyh1qru7p" path="res://characters/happy_boo/happy_boo.tscn" id="2_bl5ih"]
 [ext_resource type="Texture2D" uid="uid://dn80eu1qs371v" path="res://art/shared/fx/circle.png" id="3_ring"]
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_csncd"]
 size = Vector2(67.2, 41.6)
@@ -11,9 +10,6 @@ size = Vector2(67.2, 41.6)
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_pickup"]
 radius = 150.0
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_a5sny"]
-bg_color = Color(0.623529, 0.866667, 0.317647, 1)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dash_bg"]
 bg_color = Color(0.12, 0.12, 0.16, 0.75)
@@ -42,15 +38,15 @@ collision_mask = 1
 motion_mode = 1
 script = ExtResource("1_73bic")
 
-[node name="HappyBoo" parent="." unique_id=984748070 instance=ExtResource("2_bl5ih")]
+[node name="VisualMount" type="Node2D" parent="."]
 unique_name_in_owner = true
 
-[node name="OffhandPivot" type="Node2D" parent="HappyBoo"]
+[node name="OffhandPivot" type="Node2D" parent="."]
 unique_name_in_owner = true
 visible = false
 position = Vector2(-38, 6)
 
-[node name="OffhandSprite" type="Sprite2D" parent="HappyBoo/OffhandPivot"]
+[node name="OffhandSprite" type="Sprite2D" parent="OffhandPivot"]
 unique_name_in_owner = true
 texture = ExtResource("3_ring")
 scale = Vector2(0.32, 0.32)
@@ -98,17 +94,6 @@ visible = false
 z_index = -9
 modulate = Color(0.95, 0.82, 0.35, 0.28)
 texture = ExtResource("3_ring")
-
-[node name="HealthBar" type="ProgressBar" parent="." unique_id=384523252]
-unique_name_in_owner = true
-z_index = 100
-offset_left = -83.0
-offset_top = -185.0
-offset_right = 87.0
-offset_bottom = -150.0
-theme_override_styles/fill = SubResource("StyleBoxFlat_a5sny")
-value = 100.0
-show_percentage = false
 
 [node name="DashCooldownBar" type="ProgressBar" parent="."]
 unique_name_in_owner = true

@@ -142,7 +142,8 @@ func _apply_due_ticks(active: ActiveStatusEffect, owner_mob: Node) -> void:
 		return
 
 	while active.is_tick_due() and active.remaining_seconds > 0.0:
-		var amount := active.consume_tick()
+		var owner_mob_ref: Mob = owner_mob as Mob if owner_mob is Mob else null
+		var amount := active.consume_tick(owner_mob_ref)
 		if amount > 0:
 			owner_mob.call(
 				&"apply_status_tick_damage",

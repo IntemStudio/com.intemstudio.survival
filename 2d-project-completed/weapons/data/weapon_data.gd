@@ -45,6 +45,8 @@ const PROJECTILE_MOVEMENT_OPTIONS_BY_TYPE := {
 @export var weapon_id := ""
 @export var display_name := ""
 @export var display_name_ko := ""
+## false면 해금(기본). true면 잠금.
+@export var is_locked := false
 @export var weapon_type := ""
 @export var weapon_subtype := ""
 @export var rarity := ""
@@ -64,8 +66,8 @@ const PROJECTILE_MOVEMENT_OPTIONS_BY_TYPE := {
 @export var poison_ticks_per_second := 2.0
 @export var status_effects: Array[StringName] = []
 @export var status_chance := 1.0
-@export var min_damage := 1
-@export var max_damage := 1
+## 캐릭터 공격력에 곱하는 피해 계수. 1.0 = 100%.
+@export var damage_coefficient := 1.0
 @export var attacks_per_second := 1.0
 ## F6 튜닝: 0이면 range_type 표 기본값
 @export var melee_range_override := 0.0
@@ -100,6 +102,8 @@ const PROJECTILE_MOVEMENT_OPTIONS_BY_TYPE := {
 @export var orbit_speed := 2.8
 ## 궤도 반경 = get_melee_range() + orbit_radius_extra
 @export var orbit_radius_extra := 30.0
+## F6 튜닝: 발사체 스프라이트·히트박스 배율. 1.0 = 기본 크기.
+@export var projectile_scale := 1.0
 
 
 func get_unique_key() -> String:
@@ -111,7 +115,11 @@ func get_unique_key() -> String:
 
 
 func get_select_label() -> String:
-	return "%s (%d-%d)" % [get_display_name_localized(), min_damage, max_damage]
+	return "%s (%d%%)" % [get_display_name_localized(), get_damage_coefficient_percent()]
+
+
+func get_damage_coefficient_percent() -> int:
+	return int(roundf(damage_coefficient * 100.0))
 
 
 func get_display_name_localized() -> String:
@@ -169,7 +177,7 @@ func _build_test_arena_info_bbcode_ko(omit_properties: Array) -> String:
 	if _test_arena_damage_omitted(omit):
 		pass
 	else:
-		lines.append("데미지: %d-%d" % [min_damage, max_damage])
+		lines.append("피해 계수: %d%%" % get_damage_coefficient_percent())
 	if not _test_arena_is_omitted(omit, "attacks_per_second"):
 		lines.append("공격 속도: %.2f APS" % attacks_per_second)
 	if has_burst() and not (
@@ -212,7 +220,7 @@ func _build_test_arena_info_bbcode_ko(omit_properties: Array) -> String:
 		and not _test_arena_melee_spread_omitted(omit)
 	):
 		lines.append("병렬 탄막: %d발 (좌우 %d)" % [get_melee_spread_count(), int(melee_parallel_offset)])
-	elif has_melee_spread() and not _test_arena_melee_spread_omitted(omit):
+	elif (has_melee_spread() or has_ranged_spread()) and not _test_arena_melee_spread_omitted(omit):
 		lines.append("탄막: %d발 (부채꼴 %.0f°)" % [get_melee_spread_count(), melee_spread_angle_deg])
 	if is_area_zone_attack():
 		lines.append("공격 방식: 영역")
@@ -244,7 +252,7 @@ func _build_test_arena_info_bbcode_en(omit_properties: Array) -> String:
 	if _test_arena_damage_omitted(omit):
 		pass
 	else:
-		lines.append("Damage: %d-%d" % [min_damage, max_damage])
+		lines.append("Damage coeff: %d%%" % get_damage_coefficient_percent())
 	if not _test_arena_is_omitted(omit, "attacks_per_second"):
 		lines.append("Attack speed: %.2f APS" % attacks_per_second)
 	if has_burst() and not (
@@ -285,7 +293,7 @@ func _build_test_arena_info_bbcode_en(omit_properties: Array) -> String:
 			"Parallel volley: %d projectiles (%d each side)"
 			% [get_melee_spread_count(), int(melee_parallel_offset)]
 		)
-	elif has_melee_spread() and not _test_arena_melee_spread_omitted(omit):
+	elif (has_melee_spread() or has_ranged_spread()) and not _test_arena_melee_spread_omitted(omit):
 		lines.append("Volley: %d projectiles (%.0f° fan)" % [get_melee_spread_count(), melee_spread_angle_deg])
 	if is_area_zone_attack():
 		lines.append("Delivery: area zone")
@@ -300,7 +308,7 @@ func _build_test_arena_info_bbcode_en(omit_properties: Array) -> String:
 
 
 static func _test_arena_damage_omitted(omit: Dictionary) -> bool:
-	return _test_arena_is_omitted(omit, "min_damage") or _test_arena_is_omitted(omit, "max_damage")
+	return _test_arena_is_omitted(omit, "damage_coefficient")
 
 
 static func _test_arena_poison_stats_omitted(omit: Dictionary) -> bool:
@@ -333,7 +341,7 @@ func _build_select_tooltip_bbcode_ko() -> String:
 		lines.append("[color=#c9a87a]피해 속성: %s[/color]" % _damage_element_ko())
 	if not status_effects.is_empty():
 		lines.append("[color=#a9d6ff]상태이상: %s[/color]" % _status_effects_label())
-	lines.append("데미지: %d-%d" % [min_damage, max_damage])
+	lines.append("피해 계수: %d%%" % get_damage_coefficient_percent())
 	lines.append("공격 속도: %.2f APS" % attacks_per_second)
 	if has_burst():
 		lines.append("연사: %d발" % burst_count)
@@ -357,7 +365,7 @@ func _build_select_tooltip_bbcode_ko() -> String:
 		lines.append("공격 방식: 관통 탄")
 	if has_melee_parallel_spawn():
 		lines.append("병렬 탄막: %d발 (좌우 %d)" % [get_melee_spread_count(), int(melee_parallel_offset)])
-	elif has_melee_spread():
+	elif has_melee_spread() or has_ranged_spread():
 		lines.append("탄막: %d발 (부채꼴 %.0f°)" % [get_melee_spread_count(), melee_spread_angle_deg])
 	if is_area_zone_attack():
 		lines.append("공격 방식: 영역")
@@ -385,7 +393,7 @@ func _build_select_tooltip_bbcode_en() -> String:
 		lines.append("[color=#c9a87a]Damage type: %s[/color]" % _damage_element_en())
 	if not status_effects.is_empty():
 		lines.append("[color=#a9d6ff]Status: %s[/color]" % _status_effects_label())
-	lines.append("Damage: %d-%d" % [min_damage, max_damage])
+	lines.append("Damage coeff: %d%%" % get_damage_coefficient_percent())
 	lines.append("Attack speed: %.2f APS" % attacks_per_second)
 	if has_burst():
 		lines.append("Burst: %d shots" % burst_count)
@@ -410,7 +418,7 @@ func _build_select_tooltip_bbcode_en() -> String:
 		lines.append("Delivery: piercing projectile")
 	if has_melee_parallel_spawn():
 		lines.append("Parallel volley: %d projectiles (%d each side)" % [get_melee_spread_count(), int(melee_parallel_offset)])
-	elif has_melee_spread():
+	elif has_melee_spread() or has_ranged_spread():
 		lines.append("Volley: %d projectiles (%.0f° fan)" % [get_melee_spread_count(), melee_spread_angle_deg])
 	if is_area_zone_attack():
 		lines.append("Delivery: area zone")
@@ -522,6 +530,8 @@ func _effect_ko() -> String:
 		text = text.replace(" and inflicts Nettles.", " · 쐐기 부여")
 	if hit_count <= 1:
 		text = text.replace(" and can hit multiple times.", " · 다중 타격")
+	if text.contains("fires a spread of pellets"):
+		text = text.replace("fires a spread of pellets", "산탄을 부채꼴로 발사")
 	text = text.replace("thrusting damage", "관통 피해")
 	text = text.replace("slashing damage", "베기 피해")
 	text = text.replace("striking damage", "타격 피해")
@@ -598,6 +608,10 @@ func get_orbit_radius() -> float:
 
 func has_melee_spread() -> bool:
 	return is_melee() and melee_spread_count > 1
+
+
+func has_ranged_spread() -> bool:
+	return is_ranged() and melee_spread_count > 1
 
 
 func has_melee_parallel_spawn() -> bool:
@@ -743,8 +757,29 @@ func get_projectile_range() -> float:
 	return PROJECTILE_RANGE_BY_TYPE.get(range_type, PROJECTILE_RANGE_BY_TYPE["Medium"])
 
 
-func roll_damage() -> int:
-	return randi_range(min_damage, max_damage)
+func get_projectile_scale() -> float:
+	return clampf(projectile_scale, 0.25, 4.0)
+
+
+# 카탈로그 min/max → 피해 계수 변환 기준(중간값).
+const LEGACY_DAMAGE_REFERENCE := 130.0
+
+
+static func legacy_mid_to_coeff(min_damage: int, max_damage: int) -> float:
+	return (float(min_damage) + float(max_damage)) * 0.5 / LEGACY_DAMAGE_REFERENCE
+
+
+static func resolve_damage_coefficient(entry: Dictionary) -> float:
+	if entry.has("coeff"):
+		return float(entry["coeff"])
+	if entry.has("min") and entry.has("max"):
+		return legacy_mid_to_coeff(int(entry["min"]), int(entry["max"]))
+	return 1.0
+
+
+# 캐릭터 공격력과 무기 피해 계수로 기본 피해를 계산합니다.
+func compute_damage_from_attack(attack_power: float) -> int:
+	return maxi(1, roundi(attack_power * damage_coefficient))
 
 
 func get_element_color() -> Color:

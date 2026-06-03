@@ -7,6 +7,9 @@ extends VBoxContainer
 @onready var _chase_skill_range_toggle: CheckButton = (
 	$ChaseSkillRangeRow/ShowChaseSkillRangeToggle
 )
+@onready var _chase_stop_range_toggle: CheckButton = (
+	$ChaseStopRangeRow/ShowChaseStopRangeToggle
+)
 @onready var _primary_weapon_range_toggle: CheckButton = (
 	$PrimaryWeaponRangeRow/ShowPrimaryWeaponRangeToggle
 )
@@ -28,6 +31,7 @@ func _ready() -> void:
 	_ranged_range_toggle.toggled.connect(_on_option_toggled)
 	_melee_range_toggle.toggled.connect(_on_option_toggled)
 	_chase_skill_range_toggle.toggled.connect(_on_option_toggled)
+	_chase_stop_range_toggle.toggled.connect(_on_option_toggled)
 	_primary_weapon_range_toggle.toggled.connect(_on_option_toggled)
 	_floating_damage_toggle.toggled.connect(_on_option_toggled)
 	_mob_health_bar_toggle.toggled.connect(_on_option_toggled)
@@ -43,6 +47,7 @@ func refresh_locale() -> void:
 	_ranged_range_toggle.text = UiLocale.t(&"settings.ranged_range")
 	_melee_range_toggle.text = UiLocale.t(&"settings.melee_range")
 	_chase_skill_range_toggle.text = UiLocale.t(&"settings.chase_skill_range")
+	_chase_stop_range_toggle.text = UiLocale.t(&"settings.chase_stop_range")
 	_primary_weapon_range_toggle.text = UiLocale.t(&"settings.primary_weapon_range")
 	_floating_damage_toggle.text = UiLocale.t(&"settings.floating_damage")
 	_mob_health_bar_toggle.text = UiLocale.t(&"settings.mob_health_bar")
@@ -62,6 +67,9 @@ func sync_from_gameplay() -> void:
 	)
 	_chase_skill_range_toggle.set_pressed_no_signal(
 		bool(state[GameplaySettings.KEY_SHOW_CHASE_SKILL_RANGE])
+	)
+	_chase_stop_range_toggle.set_pressed_no_signal(
+		bool(state[GameplaySettings.KEY_SHOW_CHASE_STOP_RANGE])
 	)
 	_primary_weapon_range_toggle.set_pressed_no_signal(
 		bool(state[GameplaySettings.KEY_SHOW_PRIMARY_WEAPON_RANGE])
@@ -92,6 +100,7 @@ func _apply_from_ui() -> void:
 		_ranged_range_toggle.button_pressed,
 		_melee_range_toggle.button_pressed,
 		_chase_skill_range_toggle.button_pressed,
+		_chase_stop_range_toggle.button_pressed,
 		_primary_weapon_range_toggle.button_pressed,
 		_floating_damage_toggle.button_pressed,
 		_mob_health_bar_toggle.button_pressed,

@@ -47,6 +47,25 @@ static func _ensure_cache() -> void:
 		80.0,
 		0.25
 	)
+	_register(
+		&"relic_blazing",
+		"불타는 유물",
+		RelicDataScript.HeldEffectKind.ON_HIT_MOB_STATUS,
+		&"relic_burn",
+		Color(1.0, 0.42, 0.18)
+	)
+	_register(
+		&"relic_mending",
+		"수리 유물",
+		RelicDataScript.HeldEffectKind.PERIODIC_SELF_HEAL,
+		&"",
+		Color(0.72, 0.58, 0.38),
+		0.75,
+		80.0,
+		0.25,
+		3.0,
+		1.0
+	)
 
 
 static func _register(
@@ -57,7 +76,9 @@ static func _register(
 	tint: Color = Color.WHITE,
 	burst_delay_sec: float = 0.75,
 	burst_radius: float = 80.0,
-	burst_damage_ratio: float = 0.25
+	burst_damage_ratio: float = 0.25,
+	heal_interval_sec: float = 3.0,
+	heal_percent_max_hp: float = 1.0
 ) -> void:
 	var data: RelicDataScript = RelicDataScript.new()
 	data.item_id = String(relic_id)
@@ -69,6 +90,8 @@ static func _register(
 	data.burst_delay_sec = burst_delay_sec
 	data.burst_radius = burst_radius
 	data.burst_damage_ratio = burst_damage_ratio
+	data.heal_interval_sec = heal_interval_sec
+	data.heal_percent_max_hp = heal_percent_max_hp
 	_cache[relic_id] = data
 
 

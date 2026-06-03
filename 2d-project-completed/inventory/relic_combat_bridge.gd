@@ -1,22 +1,25 @@
 class_name RelicCombatBridge
 extends RefCounted
 
-## 가방 유물 보유 효과 — on-hit·지연 burst tick.
+## 가방 유물 보유 효과 — on-hit·지연 burst·주기 치유 tick.
 
 const _RelicCatalog := preload("res://inventory/relic_catalog.gd")
 const RelicDataScript := preload("res://inventory/relic_data.gd")
 
 static var _held_relic_ids: Array[StringName] = []
 static var _pending_bursts: Array[Dictionary] = []
+static var _periodic_heal_elapsed: Dictionary = {}
 
 
 static func clear() -> void:
 	_held_relic_ids.clear()
 	_pending_bursts.clear()
+	_periodic_heal_elapsed.clear()
 
 
 static func refresh_from_bag(loadout: PlayerLoadoutState) -> void:
 	_held_relic_ids.clear()
+	_periodic_heal_elapsed.clear()
 	if loadout == null:
 		return
 	var seen: Dictionary = {}
@@ -45,8 +48,19 @@ static func on_weapon_hit_mob(mob: Mob, weapon: WeaponData, raw_damage: int) -> 
 				_schedule_delayed_burst(mob, weapon, raw_damage, relic)
 
 
-static func tick(delta: float) -> void:
-	if delta <= 0.0 or _pending_bursts.is_empty():
+static func tick(delta: float, player_context: Node = null) -> void:
+	if delta <= 0.0:
+		return
+	_tick_pending_bursts(delta)
+	_tick_periodic_self_heal(delta, player_context)
+
+
+static func get_held_relic_count(relic_id: StringName) -> bool:
+	return _held_relic_ids.has(relic_id)
+
+
+static func _tick_pending_bursts(delta: float) -> void:
+	if _pending_bursts.is_empty():
 		return
 	for index in range(_pending_bursts.size() - 1, -1, -1):
 		var pending: Dictionary = _pending_bursts[index]
@@ -59,8 +73,31 @@ static func tick(delta: float) -> void:
 		_pending_bursts.remove_at(index)
 
 
-static func get_held_relic_count(relic_id: StringName) -> bool:
-	return _held_relic_ids.has(relic_id)
+static func _tick_periodic_self_heal(delta: float, player_context: Node) -> void:
+	if player_context == null or _held_relic_ids.is_empty():
+		return
+	for relic_id in _held_relic_ids:
+		var relic := _RelicCatalog.get_relic(relic_id)
+		if relic == null or relic.held_effect_kind != RelicDataScript.HeldEffectKind.PERIODIC_SELF_HEAL:
+			continue
+		var interval := maxf(relic.heal_interval_sec, 0.01)
+		var elapsed: float = float(_periodic_heal_elapsed.get(relic_id, 0.0)) + delta
+		while elapsed >= interval:
+			elapsed -= interval
+			_apply_periodic_heal(player_context, relic)
+		_periodic_heal_elapsed[relic_id] = elapsed
+
+
+static func _apply_periodic_heal(player_context: Node, relic: RelicDataScript) -> void:
+	if relic == null or not player_context.has_method(&"heal_health"):
+		return
+	var max_hp := 0.0
+	if player_context.has_method(&"get_max_health"):
+		max_hp = float(player_context.call(&"get_max_health"))
+	if max_hp <= 0.0:
+		return
+	var heal_amount := maxf(max_hp * relic.heal_percent_max_hp / 100.0, 1.0)
+	player_context.call(&"heal_health", heal_amount)
 
 
 static func _schedule_delayed_burst(

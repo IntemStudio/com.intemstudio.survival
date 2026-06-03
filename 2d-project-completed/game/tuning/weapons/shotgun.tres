@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="WeaponSceneTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://game/tuning/weapon_scene_tuning.gd" id="1_cge22"]
+
+[resource]
+script = ExtResource("1_cge22")
+weapon_id = "shotgun"
+overrides = {
+"attacks_per_second": 0.9,
+"burst_interval": 0.08,
+"damage_coefficient": 0.25,
+"melee_spread_angle_deg": 32.0,
+"melee_spread_count": 4,
+"projectile_pierce_count": -1,
+"projectile_range_override": 400.0,
+"projectile_scale": 1.0,
+"projectile_speed": 2000.0
+}

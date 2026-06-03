@@ -97,6 +97,8 @@ func _ready() -> void:
 	if not balance_timeline:
 		balance_timeline = DEFAULT_BALANCE_TIMELINE
 	DevTuningStore.reload_mob_authoring()
+	DevWeaponTuning.clear_session()
+	DevTuningStore.reload_weapon_authoring()
 	EliteFeatureFlags.affix_roll_enabled = elite_affix_roll_enabled
 	_update_kill_count_hud()
 	$Timer.stop()

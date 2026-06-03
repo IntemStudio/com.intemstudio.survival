@@ -5,6 +5,7 @@ extends RefCounted
 
 const BASE_MAX_HEALTH := 100.0
 const BASE_MAX_STAMINA := 3.0
+const FALLBACK_ATTACK_POWER := 12.0
 ## heart min/max 합산값 1당 최대 체력 보너스(툴팁 "+1 Heart" 체감용).
 const HEART_HP_PER_POINT := 10.0
 const POWER_DAMAGE_PER_POINT := 0.01
@@ -126,11 +127,38 @@ static func compute_revive_charges(modifiers: Dictionary) -> int:
 
 
 # heart_* 합산 → 최대 체력. min·max 평균 × HEART_HP_PER_POINT.
-static func compute_max_health(modifiers: Dictionary) -> float:
+# class_base_max_health가 있으면 직업 기본·레벨당 체력 위에 장비 heart를 더합니다.
+static func compute_max_health(modifiers: Dictionary, player_level: int = 1) -> float:
+	var level := maxi(player_level, 1)
 	var heart_min := float(modifiers.get("heart_min", 0.0))
 	var heart_max := float(modifiers.get("heart_max", 0.0))
 	var heart_points := (heart_min + heart_max) * 0.5
+	var class_base := float(modifiers.get("class_base_max_health", 0.0))
+	if class_base > 0.0:
+		var per_level := float(modifiers.get("class_max_health_per_level", 0.0))
+		var class_hp := class_base + per_level * float(level - 1)
+		return class_hp + heart_points * HEART_HP_PER_POINT
 	return BASE_MAX_HEALTH + heart_points * HEART_HP_PER_POINT
+
+
+# 직업 기본 공격력 + 레벨당 공격력(무기 피해 계수의 기준 값).
+static func compute_class_attack_bonus(modifiers: Dictionary, player_level: int = 1) -> float:
+	var class_base := float(modifiers.get("class_base_attack", 0.0))
+	if class_base <= 0.0 and not modifiers.has("class_base_attack"):
+		return 0.0
+	var level := maxi(player_level, 1)
+	var per_level := float(modifiers.get("class_attack_per_level", 0.0))
+	return class_base + per_level * float(level - 1)
+
+
+# 직업 기본 체력 회복 + 레벨당 회복(HP/초).
+static func compute_health_regen_per_sec(modifiers: Dictionary, player_level: int = 1) -> float:
+	if not modifiers.has("class_base_health_regen"):
+		return 0.0
+	var level := maxi(player_level, 1)
+	var class_base := float(modifiers.get("class_base_health_regen", 0.0))
+	var per_level := float(modifiers.get("class_health_regen_per_level", 0.0))
+	return class_base + per_level * float(level - 1)
 
 
 # block(고정 감소) 후 armor(% 감소) 순으로 피해를 줄입니다.
@@ -199,7 +227,7 @@ static func roll_combat_damage(weapon: WeaponData) -> int:
 	if player and player.has_method(&"roll_weapon_damage"):
 		return player.roll_weapon_damage(weapon)
 	if weapon:
-		return weapon.roll_damage()
+		return weapon.compute_damage_from_attack(FALLBACK_ATTACK_POWER)
 	return 1
 
 

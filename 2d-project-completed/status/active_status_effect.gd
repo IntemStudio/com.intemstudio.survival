@@ -60,12 +60,20 @@ func is_tick_due() -> bool:
 	return data != null and data.has_dot() and tick_timer <= 0.0
 
 
-func consume_tick() -> int:
+func consume_tick(owner_mob: Mob = null) -> int:
 	if data == null or not data.has_dot():
 		return 0
 	var total_damage := 0
-	for _i in stacks:
-		total_damage += randi_range(tick_damage_min, tick_damage_max)
+	if data.tick_percent_max_hp > 0.0 and owner_mob != null:
+		var per_stack := maxi(
+			roundi(float(owner_mob.max_health) * data.tick_percent_max_hp / 100.0),
+			1
+		)
+		for _i in stacks:
+			total_damage += per_stack
+	else:
+		for _i in stacks:
+			total_damage += randi_range(tick_damage_min, tick_damage_max)
 	tick_timer += tick_interval
 	return total_damage
 

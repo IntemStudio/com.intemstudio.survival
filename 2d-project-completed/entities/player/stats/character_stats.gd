@@ -4,9 +4,15 @@ extends RefCounted
 ## 캐릭터의 장비·패시브·버프 modifier를 모아 최종 전투 수치를 계산합니다.
 
 var _loadout_active := false
+var _class_modifiers: Dictionary = {}
 var _loadout_modifiers: Dictionary = {}
 var _passive_modifiers: Dictionary = {}
 var _buff_modifiers: Dictionary = {}
+
+
+# 런 시작 직업 modifier를 저장합니다.
+func set_class_modifiers(modifiers: Dictionary) -> void:
+	_class_modifiers = modifiers.duplicate(true)
 
 
 # 장착 장비 modifier를 현재 능력치 source로 저장합니다.
@@ -47,19 +53,32 @@ func get_passive_modifiers() -> Dictionary:
 	return _passive_modifiers.duplicate(true)
 
 
+func get_class_modifiers() -> Dictionary:
+	return _class_modifiers.duplicate(true)
+
+
 func get_combined_persistent_modifiers() -> Dictionary:
 	var totals: Dictionary = {}
+	GearStatMerge.merge_into(totals, _class_modifiers)
 	if _loadout_active:
 		GearStatMerge.merge_into(totals, _loadout_modifiers)
 	GearStatMerge.merge_into(totals, _passive_modifiers)
 	return totals
 
 
-func get_max_health() -> float:
+func get_max_health(player_level: int = 1) -> float:
 	var mods := get_combined_persistent_modifiers()
 	if mods.is_empty():
 		return LoadoutStatApply.BASE_MAX_HEALTH
-	return LoadoutStatApply.compute_max_health(mods)
+	return LoadoutStatApply.compute_max_health(mods, player_level)
+
+
+# 직업·장비 source의 초당 체력 회복량.
+func get_health_regen_per_sec(player_level: int = 1) -> float:
+	return LoadoutStatApply.compute_health_regen_per_sec(
+		get_combined_persistent_modifiers(),
+		player_level
+	)
 
 
 # 장비·패시브 stamina → 최대 스태미나.
@@ -107,7 +126,7 @@ func get_move_speed(base_speed: float) -> float:
 	return speed
 
 
-# 무기 기본 피해 롤에 장비·패시브·버프·무기 강화 배율을 곱합니다.
+# 무기 피해 계수에 장비·패시브·버프·무기 강화 배율을 곱합니다.
 func roll_weapon_damage(
 	weapon: WeaponData,
 	player_level: int = 1,
@@ -115,17 +134,18 @@ func roll_weapon_damage(
 ) -> int:
 	if weapon == null:
 		return 1
-	var rolled := weapon.roll_damage()
+	var persistent := get_combined_persistent_modifiers()
+	var attack := LoadoutStatApply.compute_class_attack_bonus(persistent, player_level)
+	var base_damage := float(attack) * weapon.damage_coefficient
 	var mult := 1.0
 	if weapon_run_level > 1:
 		mult *= WeaponRunState.compute_damage_mult(weapon_run_level)
-	var persistent := get_combined_persistent_modifiers()
 	if not persistent.is_empty():
 		mult *= LoadoutStatApply.compute_damage_mult(persistent, weapon, player_level)
 	mult *= LoadoutStatApply.compute_damage_mult(_buff_modifiers, weapon, player_level)
 	# power는 전체 소스 합산 후 1회만 점감 적용합니다.
 	mult *= LoadoutStatApply.compute_power_damage_mult(_get_all_source_modifiers())
-	return maxi(1, roundi(float(rolled) * mult))
+	return maxi(1, roundi(base_damage * mult))
 
 
 # 무기 기본 APS에 장비·패시브·버프 공격 속도 배율을 곱합니다.

@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://weapons/data/weapon_data.gd" id="1_weapon"]
+[ext_resource type="Texture2D" uid="uid://cswb5do8rrj7q" path="res://art/shared/pistol.png" id="2_texture"]
+
+[resource]
+script = ExtResource("1_weapon")
+weapon_id = "shotgun"
+display_name = "Shotgun"
+display_name_ko = "샷건"
+is_locked = false
+weapon_type = "Ranged"
+weapon_subtype = "Shotgun"
+rarity = "Common"
+hand = "Two-Handed"
+range_type = "Short"
+effect = "Primary attack fires a spread of pellets."
+texture = ExtResource("2_texture")
+sprite_modulate = Color(0.75, 0.82, 0.7, 1)
+damage_coefficient = 0.25
+attacks_per_second = 0.9
+attack_delivery = "Projectile"
+projectile_movement = "Straight"
+projectile_speed = 750.0
+projectile_pierce_count = 1
+melee_spread_count = 8
+melee_spread_angle_deg = 32.0

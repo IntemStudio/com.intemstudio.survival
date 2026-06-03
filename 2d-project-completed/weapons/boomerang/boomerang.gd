@@ -47,6 +47,13 @@ func setup_weapon(thrower: Node2D, direction: Vector2, weapon_data: WeaponData) 
 	)
 	if has_node("Sprite2D"):
 		$Sprite2D.modulate = weapon_data.get_element_color()
+	ProjectileVisualUtil.apply_circle_projectile(
+		self,
+		weapon_data,
+		Vector2(1.2, 1.2),
+		Vector2.ZERO,
+		18.0
+	)
 
 
 func _physics_process(delta: float) -> void:
@@ -97,4 +104,4 @@ func _roll_weapon_damage() -> int:
 		return maxi(damage, 1)
 	if is_instance_valid(_thrower) and _thrower.has_method("roll_weapon_damage"):
 		return _thrower.roll_weapon_damage(_weapon)
-	return _weapon.roll_damage()
+	return _weapon.compute_damage_from_attack(LoadoutStatApply.FALLBACK_ATTACK_POWER)

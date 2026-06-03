@@ -5,6 +5,8 @@ extends RefCounted
 
 const CHASE_MODE_LABELS: Array[String] = ["직선 추격", "포위 추격"]
 const CHASE_MODE_PROPERTY := "chase_mode"
+const CHASE_SKILL_LABELS: Array[String] = ["추격 기술 없음", "점프 추격"]
+const CHASE_SKILL_PROPERTY := "jump_chase_enabled"
 
 var _mob_snapshots: TestArenaMobSnapshot
 var _update_status: Callable
@@ -51,6 +53,8 @@ var _mob_chase_skill_step_buttons: Array[Button] = []
 var _mob_chase_skill_field_labels: Array[Label] = []
 var _mob_chase_mode_label: Label
 var _mob_chase_mode_option: OptionButton
+var _mob_chase_skill_label: Label
+var _mob_chase_skill_option: OptionButton
 var _mob_affix_option: OptionButton
 var _mob_affix_desc_label: RichTextLabel
 
@@ -101,6 +105,8 @@ func configure(
 	mob_chase_skill_field_labels: Array[Label],
 	mob_chase_mode_label: Label,
 	mob_chase_mode_option: OptionButton,
+	mob_chase_skill_label: Label,
+	mob_chase_skill_option: OptionButton,
 	mob_affix_option: OptionButton,
 	mob_affix_desc_label: RichTextLabel
 ) -> void:
@@ -141,6 +147,8 @@ func configure(
 	_mob_chase_skill_field_labels = mob_chase_skill_field_labels
 	_mob_chase_mode_label = mob_chase_mode_label
 	_mob_chase_mode_option = mob_chase_mode_option
+	_mob_chase_skill_label = mob_chase_skill_label
+	_mob_chase_skill_option = mob_chase_skill_option
 	_mob_affix_option = mob_affix_option
 	_mob_affix_desc_label = mob_affix_desc_label
 
@@ -243,6 +251,9 @@ func setup_mob_combat_tuning_ui() -> void:
 		)
 	_mob_chase_mode_option.item_selected.connect(_on_mob_chase_mode_selected)
 	_populate_mob_chase_mode_dropdown()
+	if _mob_chase_skill_option != null:
+		_mob_chase_skill_option.item_selected.connect(_on_mob_chase_skill_selected)
+		_populate_mob_chase_skill_dropdown()
 	refresh_mob_combat_tuning_ui()
 
 
@@ -380,6 +391,7 @@ func refresh_mob_combat_tuning_ui() -> void:
 	_refresh_mob_charge_tuning_ui(scene)
 	_refresh_mob_chase_skill_tuning_ui(scene)
 	_sync_mob_chase_mode_dropdown(scene)
+	_sync_mob_chase_skill_dropdown(scene)
 	_refresh_mob_tuning_field_styles(scene)
 	_refresh_mob_combat_tuning_status_only(scene)
 	_set_mob_combat_tuning_enabled(true)
@@ -401,6 +413,8 @@ func _set_mob_combat_tuning_enabled(enabled: bool) -> void:
 		_mob_combat_step_buttons[button_index].disabled = not enabled or not row_visible
 	if _mob_chase_mode_option:
 		_mob_chase_mode_option.disabled = not enabled
+	if _mob_chase_skill_option:
+		_mob_chase_skill_option.disabled = not enabled
 	if not enabled:
 		_set_mob_action_buttons_enabled(false, false, false)
 
@@ -446,6 +460,8 @@ func _has_pending_spin_changes(scene: PackedScene) -> bool:
 		):
 			return true
 	for chase_skill_index in _mob_chase_skill_field_defs.size():
+		if not _is_chase_skill_detail_enabled(scene):
+			continue
 		if not _spin_matches_tuned_value(
 			scene,
 			_mob_chase_skill_spins[chase_skill_index],
@@ -453,6 +469,8 @@ func _has_pending_spin_changes(scene: PackedScene) -> bool:
 		):
 			return true
 	if not _chase_mode_matches_tuned_value(scene):
+		return true
+	if not _chase_skill_matches_tuned_value(scene):
 		return true
 	return false
 
@@ -483,17 +501,22 @@ func _set_mob_chase_skill_tuning_enabled(enabled: bool, detail_enabled: bool = e
 	for spin_index in _mob_chase_skill_spins.size():
 		var spin: SpinBox = _mob_chase_skill_spins[spin_index]
 		var row := spin.get_parent() as CanvasItem
-		var row_visible := row == null or row.visible
-		var row_editable := enabled and row_visible and (spin_index == 0 or detail_enabled)
-		spin.editable = row_editable
+		var row_visible := detail_enabled and (row == null or row.visible)
+		spin.editable = enabled and row_visible
 	for button_index in _mob_chase_skill_step_buttons.size():
 		var spin_index := button_index >> 1
-		var row_visible := true
+		var row_visible := detail_enabled
 		if spin_index < _mob_chase_skill_spins.size():
 			var row := _mob_chase_skill_spins[spin_index].get_parent() as CanvasItem
-			row_visible = row == null or row.visible
-		var button_enabled := enabled and row_visible and (spin_index == 0 or detail_enabled)
-		_mob_chase_skill_step_buttons[button_index].disabled = not button_enabled
+			row_visible = detail_enabled and (row == null or row.visible)
+		_mob_chase_skill_step_buttons[button_index].disabled = not enabled or not row_visible
+
+
+func _set_mob_chase_skill_detail_rows_visible(visible_state: bool) -> void:
+	for spin_index in _mob_chase_skill_spins.size():
+		var row := _mob_chase_skill_spins[spin_index].get_parent() as CanvasItem
+		if row:
+			row.visible = visible_state
 
 
 func _set_mob_chase_skill_row_visibility(active_field_count: int) -> void:
@@ -504,9 +527,9 @@ func _set_mob_chase_skill_row_visibility(active_field_count: int) -> void:
 
 
 func _is_chase_skill_detail_enabled(_scene: PackedScene) -> bool:
-	if _mob_chase_skill_spins.is_empty():
+	if _mob_chase_skill_option == null:
 		return false
-	return int(_mob_chase_skill_spins[0].value) != 0
+	return _mob_chase_skill_option.selected > 0
 
 
 func _set_mob_combat_row_visibility(active_field_count: int) -> void:
@@ -565,6 +588,33 @@ func _refresh_mob_tuning_field_styles(scene: PackedScene) -> void:
 			_mob_chase_skill_field_defs[i]
 		)
 	_refresh_mob_chase_mode_field_style(scene)
+	_refresh_mob_chase_skill_field_style(scene)
+
+
+func _refresh_mob_chase_skill_field_style(scene: PackedScene) -> void:
+	if _mob_chase_skill_label == null or _mob_chase_skill_option == null:
+		return
+	var tuned_index := clampi(
+		int(_mob_snapshots.get_tuned_value(scene, CHASE_SKILL_PROPERTY)),
+		0,
+		CHASE_SKILL_LABELS.size() - 1
+	)
+	var is_pending := _mob_chase_skill_option.selected != tuned_index
+	var color := _mob_tuning_color_default
+	var suffix := ""
+	if is_pending:
+		color = _mob_tuning_color_session
+		suffix = " *"
+	else:
+		var state := _mob_snapshots.get_property_tuning_state(scene, CHASE_SKILL_PROPERTY)
+		if state == TestArenaMobSnapshot.TUNING_STATE_SAVED:
+			color = _mob_tuning_color_saved
+		elif state == TestArenaMobSnapshot.TUNING_STATE_SESSION:
+			color = _mob_tuning_color_session
+			suffix = " *"
+	_mob_chase_skill_label.text = "추격 기술" + suffix
+	_mob_chase_skill_label.add_theme_color_override("font_color", color)
+	_mob_chase_skill_option.add_theme_color_override("font_color", color)
 
 
 func _refresh_mob_chase_mode_field_style(scene: PackedScene) -> void:
@@ -647,6 +697,61 @@ func _on_mob_chase_mode_selected(index: int) -> void:
 	_refresh_mob_action_buttons(scene)
 
 
+func _populate_mob_chase_skill_dropdown() -> void:
+	if _mob_chase_skill_option == null:
+		return
+	_mob_chase_skill_option.clear()
+	for label in CHASE_SKILL_LABELS:
+		_mob_chase_skill_option.add_item(label)
+
+
+func _sync_mob_chase_skill_dropdown(scene: PackedScene) -> void:
+	if _mob_chase_skill_option == null or scene == null:
+		return
+	if _mob_chase_skill_option.get_item_count() != CHASE_SKILL_LABELS.size():
+		_populate_mob_chase_skill_dropdown()
+	var select_index := clampi(
+		int(_mob_snapshots.get_tuned_value(scene, CHASE_SKILL_PROPERTY)),
+		0,
+		CHASE_SKILL_LABELS.size() - 1
+	)
+	_mob_tuning_ui_refreshing = true
+	_mob_chase_skill_option.select(select_index)
+	_mob_tuning_ui_refreshing = false
+	var detail_enabled := select_index > 0
+	_set_mob_chase_skill_detail_rows_visible(detail_enabled)
+	_set_mob_chase_skill_tuning_enabled(true, detail_enabled)
+
+
+func _chase_skill_matches_tuned_value(scene: PackedScene) -> bool:
+	if _mob_chase_skill_option == null:
+		return true
+	var expected := clampi(
+		int(_mob_snapshots.get_tuned_value(scene, CHASE_SKILL_PROPERTY)),
+		0,
+		CHASE_SKILL_LABELS.size() - 1
+	)
+	return _mob_chase_skill_option.selected == expected
+
+
+func on_mob_chase_skill_selected(index: int) -> void:
+	_on_mob_chase_skill_selected(index)
+
+
+func _on_mob_chase_skill_selected(index: int) -> void:
+	if _mob_tuning_ui_refreshing:
+		return
+	var scene := get_selected_mob_scene(null)
+	if scene == null or index < 0 or index >= CHASE_SKILL_LABELS.size():
+		return
+	var detail_enabled := index > 0
+	_set_mob_chase_skill_detail_rows_visible(detail_enabled)
+	_set_mob_chase_skill_tuning_enabled(true, detail_enabled)
+	_refresh_mob_chase_skill_field_style(scene)
+	_refresh_mob_combat_tuning_status_only(scene)
+	_refresh_mob_action_buttons(scene)
+
+
 func _refresh_mob_death_burst_tuning_ui(scene: PackedScene) -> void:
 	if not _mob_snapshots.supports_death_burst_tuning(scene):
 		_mob_death_burst_field_defs.clear()
@@ -696,8 +801,9 @@ func _refresh_mob_chase_skill_tuning_ui(scene: PackedScene) -> void:
 		spin.value = _mob_snapshots.get_tuned_value(scene, field_def["property"])
 	_mob_tuning_ui_refreshing = false
 	_set_mob_chase_skill_row_visibility(field_count)
-	_refresh_mob_tuning_field_styles(scene)
-	_set_mob_chase_skill_tuning_enabled(true, _is_chase_skill_detail_enabled(scene))
+	var detail_enabled := int(_mob_snapshots.get_tuned_value(scene, CHASE_SKILL_PROPERTY)) > 0
+	_set_mob_chase_skill_detail_rows_visible(detail_enabled)
+	_set_mob_chase_skill_tuning_enabled(true, detail_enabled)
 
 
 func _on_mob_combat_spin_tree_entered(spin_index: int, spin: SpinBox) -> void:
@@ -751,6 +857,12 @@ func _commit_mob_tuning_to_session(scene: PackedScene) -> void:
 		_mob_snapshots.set_session_value(scene_id, chase_skill_property, chase_skill_spin.value)
 	if _mob_chase_mode_option != null:
 		_mob_snapshots.set_session_value(scene_id, CHASE_MODE_PROPERTY, _mob_chase_mode_option.selected)
+	if _mob_chase_skill_option != null:
+		_mob_snapshots.set_session_value(
+			scene_id,
+			CHASE_SKILL_PROPERTY,
+			_mob_chase_skill_option.selected
+		)
 
 
 func _commit_and_apply_mob_tuning_from_spins() -> void:
@@ -864,8 +976,6 @@ func _on_mob_chase_skill_spin_changed(chase_skill_index: int, new_value: float) 
 		scene,
 		_mob_chase_skill_field_defs[chase_skill_index]
 	)
-	if chase_skill_index == 0:
-		_set_mob_chase_skill_tuning_enabled(true, int(spin.value) != 0)
 	_refresh_mob_combat_tuning_status_only(scene)
 	_refresh_mob_action_buttons(scene)
 

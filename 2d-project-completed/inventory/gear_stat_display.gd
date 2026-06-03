@@ -56,8 +56,7 @@ const _STAT_SKIP_KEYS: Array[String] = [
 	"grant_orbital",
 	"grant_on_dash",
 	"grant_on_hit",
-	"dart_damage_min",
-	"dart_damage_max",
+	"dart_damage_coeff",
 	"intelligence_stat_mult",
 	"dexterity_stat_mult",
 	"strength_stat_mult",
@@ -91,7 +90,7 @@ static func format_stat_lines(modifiers: Dictionary) -> PackedStringArray:
 	_append_min_max_stat(lines, stats, "mana_min", "mana_max", "Mana", "마나")
 	_append_min_max_stat(lines, stats, "flask_min", "flask_max", "Flask", "플라스크")
 	_append_min_max_stat(lines, stats, "revive_min", "revive_max", "Revive", "부활")
-	_append_min_max_stat(lines, stats, "dart_damage_min", "dart_damage_max", "Thrusting Damage", "관통 피해")
+	_append_coeff_percent_line(lines, stats, "dart_damage_coeff", "Dart damage coeff", "다트 피해 계수")
 	if stats.has("power"):
 		lines.append("+%d %s" % [int(stats["power"]), "Power" if en else "파워"])
 	if stats.has("stamina"):
@@ -230,6 +229,20 @@ static func _append_min_max_stat(
 	lines.append(
 		"+%d/%d %s" % [int(stats[min_key]), int(stats[max_key]), label_en if en else label_ko]
 	)
+
+
+static func _append_coeff_percent_line(
+	lines: PackedStringArray,
+	stats: Dictionary,
+	key: String,
+	label_en: String,
+	label_ko: String
+) -> void:
+	if not stats.has(key):
+		return
+	var pct := int(roundf(float(stats[key]) * 100.0))
+	var en := UiLocale.get_locale() == UiLocale.LOCALE_EN
+	lines.append("+%d%% %s" % [pct, label_en if en else label_ko])
 
 
 static func _append_mult_bonus_line(

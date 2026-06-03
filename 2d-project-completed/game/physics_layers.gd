@@ -78,6 +78,13 @@ static func apply_player_area_zone(area: Area2D) -> void:
 	area.monitorable = false
 
 
+# 엘리트 불타는 잔불 — 플레이어 CharacterBody2D 감지
+static func apply_elite_ember_hazard(area: Area2D) -> void:
+	area.collision_layer = 0
+	area.collision_mask = MASK_PLAYER
+	area.monitorable = false
+
+
 # 몹 원거리 발사체
 static func apply_mob_projectile(area: Area2D) -> void:
 	area.collision_layer = 0

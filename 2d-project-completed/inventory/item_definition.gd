@@ -12,6 +12,8 @@ class_name ItemDefinition
 @export var equip_slots: PackedStringArray = []
 ## 예: {"armor": 12, "move_speed_mult": 1.05}
 @export var stat_modifiers: Dictionary = {}
+## false면 해금(기본). true면 잠금 — F6 필터·보상 풀 등에서 제외 가능.
+@export var is_locked := false
 
 
 func get_unique_key() -> String:

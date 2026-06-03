@@ -287,6 +287,8 @@ func _pick_replacement_weapon() -> WeaponData:
 func _build_selectable_weapon_pool(owned_weapons: Array[WeaponData]) -> Array[WeaponData]:
 	var pool: Array[WeaponData] = []
 	for weapon in _get_all_weapons():
+		if weapon.is_locked:
+			continue
 		if _is_weapon_owned(weapon, owned_weapons):
 			continue
 		if _is_weapon_discarded(weapon):

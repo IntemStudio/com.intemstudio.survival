@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="WeaponSceneTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://game/tuning/weapon_scene_tuning.gd" id="1_d62fh"]
+
+[resource]
+script = ExtResource("1_d62fh")
+weapon_id = "katana"
+overrides = {
+"attacks_per_second": 2.5,
+"damage_coefficient": 0.7000000000000001,
+"hit_count": 1,
+"melee_parallel_offset": 0.0,
+"melee_projectile_speed": 1000.0,
+"melee_range_override": 220.0,
+"melee_spread_angle_deg": 0.0,
+"melee_spread_count": 1,
+"projectile_movement": "Decelerate",
+"projectile_pierce_count": -1,
+"projectile_scale": 4.0
+}

@@ -34,7 +34,13 @@ func setup(weapon_data: WeaponData, spawn_transform: Transform2D) -> void:
 
 	if $Sprite:
 		$Sprite.modulate = weapon_data.get_element_color()
-		$Sprite.scale = Vector2(0.55, 0.55)
+	ProjectileVisualUtil.apply_circle_projectile(
+		self,
+		weapon_data,
+		Vector2(0.55, 0.55),
+		Vector2.ZERO,
+		12.0
+	)
 
 
 func _physics_process(delta: float) -> void:

@@ -3,7 +3,7 @@ class_name EliteAffixRuntimeOverloadingTest
 extends GdUnitTestSuite
 
 const MOB_SCENE: PackedScene = preload("res://entities/mob/mob.tscn")
-const TEST_WEAPON: WeaponData = preload("res://weapons/data/revolver.tres")
+const TEST_WEAPON: WeaponData = preload("res://weapons/data/katana.tres")
 
 
 func _ensure_game_player_stub() -> void:

@@ -31,6 +31,13 @@ func setup(weapon_data: WeaponData, player: Node2D, initial_angle := -1.0) -> vo
 	_angle = initial_angle if initial_angle >= 0.0 else randf() * TAU
 	if $Sprite:
 		$Sprite.modulate = weapon_data.get_element_color()
+	ProjectileVisualUtil.apply_circle_projectile(
+		self,
+		weapon_data,
+		Vector2(0.9, 0.9),
+		Vector2.ZERO,
+		28.0
+	)
 
 
 func _physics_process(_delta: float) -> void:

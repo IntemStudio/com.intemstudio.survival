@@ -1,6 +1,6 @@
 extends Area2D
 
-@export var weapon: WeaponData = preload("res://weapons/data/revolver.tres")
+@export var weapon: WeaponData = preload("res://weapons/data/katana.tres")
 
 const KING_BIBLE_ORB_COUNT := 2
 const AIM_LINE_COLOR := Color(1.0, 0.85, 0.35, 0.55)
@@ -374,7 +374,7 @@ func _roll_combat_damage() -> int:
 	if player and player.has_method("roll_weapon_damage"):
 		return player.roll_weapon_damage(weapon)
 	if weapon:
-		return weapon.roll_damage()
+		return weapon.compute_damage_from_attack(LoadoutStatApply.FALLBACK_ATTACK_POWER)
 	return 1
 
 
@@ -487,7 +487,37 @@ func _shoot_bullet() -> void:
 	var factory := _get_attack_factory()
 	if factory == null:
 		return
+	if weapon.has_ranged_spread():
+		_shoot_ranged_spread(factory)
+		return
 	factory.spawn_bullet(_build_attack_context(_roll_combat_damage()))
+
+
+# 원거리 부채꼴 탄막(샷건 등) — 조준 방향 기준으로 탄환을 분산 발사합니다.
+func _shoot_ranged_spread(factory: AttackFactory) -> void:
+	_refresh_current_target()
+	var spread_count := weapon.get_melee_spread_count()
+	var base_transform := _get_spawn_transform()
+	var origin := base_transform.origin
+	var base_angle := base_transform.get_rotation()
+	var half_spread := deg_to_rad(weapon.melee_spread_angle_deg) * 0.5
+	var last_index := spread_count - 1
+	var player := _get_player()
+	var target: Node2D = _current_target if is_instance_valid(_current_target) else null
+	for index in spread_count:
+		var t := float(index) / float(last_index) if last_index > 0 else 0.0
+		var angle := base_angle - half_spread + t * half_spread * 2.0
+		var spread_transform := Transform2D(angle, origin)
+		var spread_direction := Vector2.RIGHT.rotated(angle)
+		var context := AttackContext.from_gun(
+			weapon,
+			spread_transform,
+			spread_direction,
+			player,
+			target,
+			_roll_combat_damage()
+		)
+		factory.spawn_bullet(context)
 
 
 func _shoot_throwing() -> void:

@@ -53,6 +53,13 @@ func has_debuff(debuff_id: StringName) -> bool:
 	return _find_active(debuff_id) != null
 
 
+func get_debuff_remaining_seconds(debuff_id: StringName) -> float:
+	var active = _find_active(debuff_id)
+	if active == null:
+		return 0.0
+	return maxf(active.remaining_seconds, 0.0)
+
+
 func get_move_speed_mult() -> float:
 	var mult := 1.0
 	for active in _active_debuffs:
