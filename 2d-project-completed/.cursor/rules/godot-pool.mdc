@@ -1,19 +1,12 @@
 ---
 description: ScenePool object pooling — acquire, release, pooled node contract
-globs: game/pool/**,game/game.gd,entities/mob/mob.gd,entities/mob/mob_projectile.gd,entities/mob/mob_attack_mark.gd,effects/exp_orb/**,weapons/core/gun.gd,weapons/core/bullet_2d.gd,weapons/magic/**,weapons/melee/**,weapons/area/**,weapons/throwing/**,weapons/boomerang/**,weapons/concoction/**
+globs: game/pool/**,game/game.gd,game/attack/**,entities/mob/mob.gd,entities/mob/mob_projectile.gd,entities/mob/mob_attack_mark.gd,entities/mob/mob_charge_lane.gd,effects/exp_orb/**,effects/gold_coin/**,effects/elite_ember/**,elite/**,weapons/core/gun.gd,weapons/core/bullet_2d.gd,weapons/magic/**,weapons/melee/**,weapons/area/**,weapons/throwing/**,weapons/boomerang/**,weapons/concoction/**,inventory/loadout_grant_passive.gd
 alwaysApply: false
 ---
 
 # Object pool (ScenePool)
 
-## Infrastructure
-
-- Single pool service: `Game/ObjectPools` node, script `game/pool/scene_pool.gd` (`class_name ScenePool`).
-- Helpers: `game/pool/pool_util.gd` — `PoolUtil.release_node(node)`.
-- API: `acquire(scene: PackedScene, parent: Node, spawn_global_position: Vector2 = INF)`, `release(node: Node)`. Buckets keyed by `PackedScene.resource_path`; no per-type pool classes.
-- `acquire` order: `pool_reset` → reparent to caller parent → (if finite `spawn_global_position`) set `Node2D.global_position` → `_activate` → set `_pooled_active` → `pool_on_acquire()` last. Caller may still set position/`setup()`/`initialize_spawn_health` after return when not passed via acquire.
-- Prewarm: `_prewarm_scene` must `add_child` to `ObjectPools`, then `pool_reset`, then `_deactivate` so pooled scenes run `_ready()` once.
-- Prewarm counts are `@export` on `ObjectPools` in `survivors_game.tscn`.
+**Design SSOT:** [`Docs/Architecture/Architecture_Pool.md`](../../Docs/Architecture/Architecture_Pool.md)
 
 ## Must (pooled node script)
 
@@ -25,32 +18,27 @@ alwaysApply: false
 ## Must (spawn callers)
 
 - Mobs: `Game.spawn_mob()` → `%MapArena.get_random_spawn_position(%Player.global_position)` → `ScenePool.acquire(..., spawn_pos)` → `initialize_spawn_health`.
-- Exp orbs: `mob.gd` `_die()` → `acquire(EXP_ORB_SCENE, parent)` → set position.
-- Projectiles / orbit magic: `gun.gd` `_spawn_from_pool` → setup → `PoolUtil.release_node` on end.
-- Area damage (연금 착지 등): `concoction.gd` → `ScenePool.acquire(AREA_DAMAGE_ZONE_SCENE)` → `setup_circle` → `PoolUtil.release_node` on zone lifetime end. Prewarm: `prewarm_area_damage_zones`.
-- Melee pierce projectiles: `gun.gd` `_shoot_melee_projectile` → `MELEE_PROJECTILE_SCENE` → `PoolUtil.release_node` at range end. Prewarm: `prewarm_melee_projectiles`.
-- Mob ranged: `mob.gd` telegraph → `acquire(MOB_ATTACK_MARK_SCENE)` parent=mob → timer → `release` mark → `acquire(MOB_PROJECTILE_SCENE)` parent=spawn layer → `PoolUtil.release_node` on projectile end. Prewarm: `prewarm_mob_attack_marks`, `prewarm_mob_projectiles` on `ObjectPools`.
-
-## Not pooled (current)
-
-- `magnet_pickup`, `health_pickup`: `mob.gd` `_die()` uses `instantiate` + `queue_free` on `collect()` (low drop rate). If pooled later, add `pool_reset`/`pool_on_acquire` and replace `queue_free` with `PoolUtil.release_node`.
+- Exp orbs / gold: `mob.gd` `_die()` → `acquire(EXP_ORB_SCENE` / `GOLD_COIN_SCENE`, parent) → set position/value.
+- Player projectiles / area / orbit: `AttackFactory._acquire` (via `Gun.shoot()` or `loadout_grant_passive`) → setup → `PoolUtil.release_node` on end.
+- Mob ranged: telegraph → `acquire(MOB_ATTACK_MARK_SCENE)` → timer → release mark → `acquire(MOB_PROJECTILE_SCENE)` → `PoolUtil.release_node` on projectile end.
+- Mob charge lane: `acquire(MOB_CHARGE_LANE_SCENE)` → `setup_world` → lane self-release.
 
 ## Must (mob pool)
 
-- `pool_reset`: clear status, `collision_layer = 0`, `collision_mask = 0`.
-- `pool_on_acquire`: restore `collision_layer = 2`, `collision_mask = 3`, `add_to_group("mobs")`.
+- `pool_reset`: clear status/telegraphs, `collision_layer = 0`, `collision_mask = 0`.
+- `pool_on_acquire`: `PhysicsLayers.apply_mob_body()`, `add_to_group("mobs")`.
 - `_die()` must still call `Game.register_kill()` before `PoolUtil.release_node(self)`.
 
 ## When adding a new mob scene
 
-- Update `MobSpawnSelector` and `scene_pool.gd` mob prewarm list in `_ready()` in the same change.
+- Update `MobSpawnSelector`, `scene_pool.gd` `MOB_PREWARM_SCENE_PATHS`, and active `BalanceTable` in the same change.
 
-## When adding a new pooled projectile scene
+## When adding a new pooled scene
 
-- Add `pool_reset` / `pool_on_acquire`, use `PoolUtil.release_node` on end, spawn via `gun.gd` `_spawn_from_pool` (or `ScenePool.acquire` elsewhere).
-- Add prewarm entry on `ScenePool` if the type spawns frequently.
+- Add `pool_reset` / `pool_on_acquire`, use `PoolUtil.release_node` on end, wire acquire via `AttackFactory`, `Game.spawn_mob`, or direct `ScenePool.acquire`.
+- Add prewarm `@export` + `_ready()` entry on `ScenePool` if the type spawns frequently.
 
 ## Must not
 
-- Do not rename or remove `ObjectPools` without updating `game.gd`, `gun.gd`, `mob.gd`, and grep for `ObjectPools` / `ScenePool`.
-- Do not `queue_free()` pooled mobs, exp orbs, or gun-managed projectiles while pooling is enabled (breaks pool invariants).
+- Do not rename or remove `ObjectPools` without updating `game.gd`, `attack_factory.gd`, `gun.gd`, `mob.gd`, and grep for `ObjectPools` / `ScenePool`.
+- Do not `queue_free()` pooled mobs, exp orbs, gold coins, or gun/attack-managed projectiles while pooling is enabled (breaks pool invariants).

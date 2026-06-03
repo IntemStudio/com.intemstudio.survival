@@ -28,11 +28,12 @@
 | 공격 시스템·독립체 설계 | `Docs/Architecture/Architecture_AttackSystem.md`, `Architecture_Weapons.md`, `Architecture_Projectiles.md` |
 | 무기 추가·수정 | `Docs/Architecture/Architecture_Weapons.md`, `Docs/Architecture/Architecture_Projectiles.md`, `weapons/data/weapon_data.gd`, `weapons/catalogs/*`, `weapons/core/gun.gd` |
 | 몹 추가·수정 | `Docs/Architecture/Architecture_Mobs.md`, `entities/mob/mob.gd`, `game/balance/mob_spawn_selector.gd`, `game/pool/scene_pool.gd` |
+| 풀링·prewarm·acquire/release | `Docs/Architecture/Architecture_Pool.md`, `game/pool/scene_pool.gd`, `game/pool/pool_util.gd`, `.cursor/rules/godot-pool.mdc` |
 | F6 테스트 아레나 | `Docs/Architecture/Architecture_TestArena.md`, `game/test_arena.gd`, `game/test_arena_*_snapshot.gd`, `test_arena.tscn` |
 | 인벤토리·장비 | `Docs/Architecture/Architecture_Inventory.md`, `inventory/*.gd`, `ui/inventory/*` |
 | 무기 획득 UI | `ui/weapon_select_menu.gd`, `survivors_game.tscn`, `Docs/Architecture/Architecture_Weapons.md` |
 | 일시정지·설정 | `ui/pause_menu.gd`, `ui/settings/*`, `AGENTS_Display_UI.md` |
-| 픽업·보상 | `game/balance/kill_rewards.gd`, `effects/exp_orb/*`, `effects/gold_coin/*`, `entities/mob/mob.gd` |
+| 픽업·연출·전투 피드백 | `Docs/Architecture/Architecture_Effects.md`, `effects/*`, `entities/mob/mob.gd`, `entities/player/player.gd`, `game/balance/kill_rewards.gd` |
 | 후속 작업 확인 | `BACKLOG.md`, `Docs/Plan/README.md` |
 
 ## 포함할 문서

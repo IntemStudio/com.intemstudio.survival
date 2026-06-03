@@ -1,6 +1,6 @@
 # Architecture — Projectiles (발사체)
 
-**진입:** [`AGENTS.md`](../../AGENTS.md) · 공격 시스템 목표: [`Architecture_AttackSystem.md`](Architecture_AttackSystem.md) · 플레이 규칙: [`Wiki/Projectiles.md`](../Wiki/Projectiles.md), [`Wiki/Combat.md`](../Wiki/Combat.md) · 무기 연동: [`Architecture_Weapons.md`](Architecture_Weapons.md)
+**진입:** [`AGENTS.md`](../../AGENTS.md) · 공격 시스템 목표: [`Architecture_AttackSystem.md`](Architecture_AttackSystem.md) · 풀링: [`Architecture_Pool.md`](Architecture_Pool.md) · 물리 레이어: [`Architecture_PhysicsLayers.md`](Architecture_PhysicsLayers.md) · 플레이 규칙: [`Wiki/Projectiles.md`](../Wiki/Projectiles.md), [`Wiki/Combat.md`](../Wiki/Combat.md) · 무기 연동: [`Architecture_Weapons.md`](Architecture_Weapons.md)
 
 발사체 시스템은 `WeaponData`의 delivery와 movement를 실제 이동, 충돌, 피해 귀속으로 바꾸는 계층이다. 무기 획득, 장착, 자동 공격 타이머는 `Architecture_Weapons.md`에서 다루고, 이 문서는 `Gun.shoot()` 이후 생성되는 탄환, 근접 관통 탄, 마법 탄, 투척체, 영역 존, 궤도 companion의 런타임 계약을 정리한다.
 
@@ -89,7 +89,7 @@ WeaponData
 | 영역 존은 `PhysicsLayers.apply_player_area_zone()`를 사용한다. | 장판은 mobs만 감지해야 한다. |
 | 피해는 `Mob.apply_weapon_damage(amount, weapon)` 경로를 우선 사용한다. | 피해 통계와 상태이상 귀속을 보존한다. |
 | `projectile_pierce_count == 0`은 유효하지 않다. | 0은 설정 실수로 보고 발사체가 에러 후 반환한다. |
-| 풀링 대상은 `pool_reset()`과 `pool_on_acquire()`를 구현하고 `PoolUtil.release_node()`로 끝난다. | 재사용 시 이전 spawn 상태가 새 공격에 섞이지 않게 한다. |
+| 풀링 대상은 `pool_reset()`과 `pool_on_acquire()`를 구현하고 `PoolUtil.release_node()`로 끝난다. | 재사용 시 이전 spawn 상태가 새 공격에 섞이지 않게 한다. 상세: [`Architecture_Pool.md`](Architecture_Pool.md). |
 | `Return`/`CurvedReturn`은 귀환 시작 시 hit chain과 관통 카운트를 초기화한다. | 왕복 경로에서 재타격 가능한 무기 체감을 유지한다. |
 | `CurvedReturn`은 `Return`과 별도 movement 타입으로 유지한다. | 실제 충돌 경로가 달라지므로 단순 비주얼 옵션이 아니다. |
 | `Decelerate`는 속도 감쇠로 체류감을 만든다. | 별도 lifetime 튜닝보다 탄속 조정으로 자연스러운 정지감을 만든다. |

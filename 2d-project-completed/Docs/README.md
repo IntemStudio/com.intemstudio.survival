@@ -50,14 +50,15 @@
 | `game/arena/` | 아레나 웨이브 디렉터 |
 | `game/balance/` | 밸런스 표, 타임라인, 스폰 선택, 보상 |
 | `game/input/` | 액션 이름, 기본 바인딩, 리맵 저장/로드 |
-| `game/pool/` | `ScenePool`, `PoolUtil` |
+| `game/pool/` | `ScenePool`, `PoolUtil` — [`Architecture_Pool.md`](Architecture/Architecture_Pool.md) |
+| `game/physics_layers.gd` | 2D 레이어·마스크 SSOT — [`Architecture_PhysicsLayers.md`](Architecture/Architecture_PhysicsLayers.md) |
 | `buff/` | 런타임 버프 데이터, 지속시간, 스택, 트리거 연결 |
 | `entities/player/` | 이동, 대시, 스태미나, 경험치, 무기 컨테이너, 피격 — [`Architecture_Player.md`](Architecture/Architecture_Player.md) |
 | `entities/mob/` | 공통 `Mob`, 변종, 원거리 투사체, 공격 예고 |
 | `weapons/` | `WeaponData`, 카탈로그, `Gun`, 발사체·장판·궤도 |
 | `inventory/` | 장비 loadout, 세이브, registry, 전투 bridge |
 | `ui/` | 로비 외 UI, 일시정지, 무기 획득, 설정, 인벤토리 |
-| `effects/` | 경험치, 골드, 자석, 체력, hit flash, 플로팅 데미지 |
+| `effects/` | 픽업·연출·전투 피드백 — [`Architecture_Effects.md`](Architecture/Architecture_Effects.md) |
 | `world/map_arena/` | 맵 경계, 내부 스폰 좌표 |
 | `world/trees/` | Poisson 소나무 배치 |
 | `Docs/` | 문서 |
@@ -79,6 +80,9 @@
 - [`Architecture/Architecture_Mobs.md`](Architecture/Architecture_Mobs.md)
 - [`Architecture/Architecture_EliteForms.md`](Architecture/Architecture_EliteForms.md)
 - [`Architecture/Architecture_TestArena.md`](Architecture/Architecture_TestArena.md)
+- [`Architecture/Architecture_Pool.md`](Architecture/Architecture_Pool.md)
+- [`Architecture/Architecture_PhysicsLayers.md`](Architecture/Architecture_PhysicsLayers.md)
+- [`Architecture/Architecture_Effects.md`](Architecture/Architecture_Effects.md)
 - [`Agents/README.md`](Agents/README.md)
 - [`Agents/CoreConstraints.md`](Agents/CoreConstraints.md)
 - [`Architecture/README.md`](Architecture/README.md)

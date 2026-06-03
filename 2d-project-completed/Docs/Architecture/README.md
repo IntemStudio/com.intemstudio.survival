@@ -37,6 +37,9 @@
 | `Architecture_Mobs.md` | `mob.gd` 공통 계약, 변종 씬, 원거리 공격, 접촉 피해, 사망·보상·풀 반환, 보스/특수몹 확장 지점 | 몹 역할 기획, 등장 체감, 데모 콘텐츠 우선순위 |
 | `Architecture_EliteForms.md` | affix 롤·적용·runtime, `PlayerDebuffController`, relic 가방 보유, 드롭·XP 훅 | affix tier 스펙 본문, pity, DLC narrative |
 | `Architecture_TestArena.md` | F6 씬, 몹/무기/보조/상태이상 튜닝(적용/저장), 상태이상 탭 진입·자동 선택·저장 자동 반영, 사망 폭발 지연·예고 링, 인벤 GUI, 탭 UI | F5 웨이브·상자·밸런스 타임라인 |
+| `Architecture_Pool.md` | `ScenePool`, `PoolUtil`, acquire/release 순서, prewarm, pooled 노드 계약, 스폰 호출 경로 | 발사체 movement, 몹 AI, 물리 레이어 표·상수 정의 |
+| `Architecture_PhysicsLayers.md` | 2D 레이어 슬롯·마스크 표, `PhysicsLayers` 상수·`apply_*()`, 변경 동기 대상 | 발사체 movement, 몹 AI, 맵 Poisson 배치 |
+| `Architecture_Effects.md` | `effects/` 픽업·연출·피드백 지도, 자석 수집·풀 계약, floating text·hit flash·death burst·elite ember | 발사체, 몹 스킬 effects, HUD 레이아웃, KillRewards 수치 |
 
 ## 포함하지 않을 문서
 

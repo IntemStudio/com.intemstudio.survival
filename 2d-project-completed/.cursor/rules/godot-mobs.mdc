@@ -11,8 +11,8 @@ alwaysApply: false
 1. Add `mob_<name>.tscn` that uses script `res://entities/mob/mob.gd` and `class_name Mob`.
 2. Add a `PackedScene` constant and branch in `game/balance/mob_spawn_selector.gd` (`MobSpawnSelector.pick_scene`).
 3. Update `game/balance/default_balance_table.tres` (or the active `BalanceTable`) so spawn ratios / flags can select the new mob.
-4. Keep mob body `PhysicsLayers.apply_mob_body` (`layer=2`, `mask=2`) unless you also update `game/physics_layers.gd` and all weapon/projectile masks.
-5. Append the scene to `ScenePool.MOB_SCENES` in `game/pool/scene_pool.gd` for prewarm.
+4. Keep mob body `PhysicsLayers.apply_mob_body` (`layer=2`, `mask=2`) unless you also update `game/physics_layers.gd`, `Docs/Architecture/Architecture_PhysicsLayers.md`, and all weapon/projectile masks.
+5. Append the scene path to `ScenePool.MOB_PREWARM_SCENE_PATHS` in `game/pool/scene_pool.gd` for prewarm.
 
 If you skip step 2 or 3, the mob will never spawn in play.
 

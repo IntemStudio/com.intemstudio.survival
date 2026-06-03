@@ -2,7 +2,7 @@
 
 **역할:** 공격 시스템 **목표 아키텍처**와 **기능 개발 명세**를 한 문서에 둔다. 현재 구현(`WeaponData`, `Gun`, 발사체 씬, `Mob.apply_weapon_damage`)과의 대응·마이그레이션 경로를 포함한다.
 
-**진입:** [`AGENTS.md`](../../AGENTS.md) · 관련 구현: [`Architecture_Weapons.md`](Architecture_Weapons.md), [`Architecture_Projectiles.md`](Architecture_Projectiles.md), [`Architecture_Mobs.md`](Architecture_Mobs.md) · 플레이 규칙: [`Wiki/Combat.md`](../Wiki/Combat.md)
+**진입:** [`AGENTS.md`](../../AGENTS.md) · 관련 구현: [`Architecture_Weapons.md`](Architecture_Weapons.md), [`Architecture_Projectiles.md`](Architecture_Projectiles.md), [`Architecture_Mobs.md`](Architecture_Mobs.md), [`Architecture_PhysicsLayers.md`](Architecture_PhysicsLayers.md) · 플레이 규칙: [`Wiki/Combat.md`](../Wiki/Combat.md)
 
 **문서 상태:** 1차 인프라 + P1 Resolver 확장 + P2 특수몹 사망 burst 완료. `AttackEntity`·`TargetAttack`·`chain_on_end`는 2차.
 
@@ -480,7 +480,7 @@ func spawn_attack(context: AttackContext) -> AttackEntity
 
 | 변경 | 확인 |
 |------|------|
-| 새 Attack Entity 종류 | `AttackFactory`, `PhysicsLayers`, `ScenePool` prewarm, Architecture_Projectiles |
+| 새 Attack Entity 종류 | `AttackFactory`, `PhysicsLayers`, `ScenePool` prewarm, [`Architecture_Projectiles.md`](Architecture_Projectiles.md), [`Architecture_PhysicsLayers.md`](Architecture_PhysicsLayers.md) |
 | `AttackDefinition` 필드 추가 | `WeaponData`·카탈로그·툴팁·F6 스냅샷 |
 | Trigger 통합 | `Gun` 자동공격·수동 `attack`·궤도 companion |
 | 해결 API 변경 | `mob.gd`, `player.gd`, `game.gd` grep, 게임오버 피해 목록 |
@@ -505,6 +505,6 @@ func spawn_attack(context: AttackContext) -> AttackEntity
 
 ## Related Documents
 
-- 구현 상세(현행): [`Architecture_Weapons.md`](Architecture_Weapons.md), [`Architecture_Projectiles.md`](Architecture_Projectiles.md), [`Architecture_Mobs.md`](Architecture_Mobs.md)
+- 구현 상세(현행): [`Architecture_Weapons.md`](Architecture_Weapons.md), [`Architecture_Projectiles.md`](Architecture_Projectiles.md), [`Architecture_Mobs.md`](Architecture_Mobs.md), [`Architecture_Pool.md`](Architecture_Pool.md)
 - 작업 규칙: `.cursor/rules/godot-weapons.mdc`, `godot-pool.mdc`, `godot-mobs.mdc`
 - 플레이어 규칙: [`Wiki/Combat.md`](../Wiki/Combat.md)

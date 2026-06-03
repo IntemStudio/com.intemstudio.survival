@@ -165,9 +165,9 @@
 
 데모에서는 인벤토리를 영구 장비 세이브가 아니라 아레나 런 안의 선택지로 노출한다. 골드는 상자 비용이 되고, 상자는 웨이브 사이 빌드 보강 수단이 된다.
 
-## 엘리트 유물 (Relic) — 기획 v0.1 / 미착수
+## 엘리트 유물 (Relic) — 기획 v0.1 · **구현됨** (4종)
 
-**상세:** [`EliteForms.md`](EliteForms.md) §유물 카탈로그
+**상세:** [`EliteForms.md`](EliteForms.md) §유물 카탈로그 · 코드: [`Architecture_EliteForms.md`](../Architecture/Architecture_EliteForms.md)
 
 | 항목 | 규칙 |
 |------|------|
@@ -183,9 +183,9 @@
 | `relic_overloading` | 과전하 유물 | 무기 적중 → 0.75s 후 소형 폭발 (25% raw) |
 | `relic_glacial` | 빙하의 유물 | 무기 적중 → 1.5s 40% 감속 |
 | `relic_mending` | 수리 유물 | 3s마다 max HP 1% 회복 |
-| `relic_gilded` | 금빛 유물 | 처치 골드 +15% (DLC) |
+| `relic_gilded` | 금빛 유물 | 처치 골드 +15% (DLC) · **후속** |
 
-구현 전까지는 가방 = 무효 규칙만 적용됩니다.
+유물만 **가방 보유 = 효과 적용** 예외입니다. `relic_gilded`는 미등록.
 
 ## 미정 / 후속
 

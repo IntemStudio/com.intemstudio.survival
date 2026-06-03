@@ -1,6 +1,6 @@
 # Architecture — Mobs (몹)
 
-**진입:** [`AGENTS.md`](../../AGENTS.md) · 플레이 규칙: [`Wiki/Mobs.md`](../Wiki/Mobs.md), [`Wiki/Combat.md`](../Wiki/Combat.md) · 스폰/밸런스: [`Architecture_GameLoop_Balance.md`](Architecture_GameLoop_Balance.md) · 상태이상: [`Architecture_StatusEffects.md`](Architecture_StatusEffects.md)
+**진입:** [`AGENTS.md`](../../AGENTS.md) · 플레이 규칙: [`Wiki/Mobs.md`](../Wiki/Mobs.md), [`Wiki/Combat.md`](../Wiki/Combat.md) · 스폰/밸런스: [`Architecture_GameLoop_Balance.md`](Architecture_GameLoop_Balance.md) · 풀링: [`Architecture_Pool.md`](Architecture_Pool.md) · 상태이상: [`Architecture_StatusEffects.md`](Architecture_StatusEffects.md)
 
 몹 공통 스크립트, 변종 씬, 이동·공격, 상태이상, 사망·보상, 풀링 계약을 정리한다. 몹의 기획 역할, 데모 우선순위, 보스/특수몹 최종 패턴은 Wiki와 Backlog에서 관리한다.
 
@@ -150,7 +150,7 @@ Game.spawn_mob()
 | 접촉 피해 수정 | `Player` 접촉 루프, standoff 거리, 공격 범위 링, 고속 몹 overlap |
 | 보스/특수 패턴 추가 | 공통 `mob.gd`에 무리하게 넣을지, 전용 스크립트로 분리할지 먼저 결정 |
 | 사망 보상 변경 | 일반 사망과 클리어 사망 분리, XP/골드 풀링, 자석/체력 저확률 드랍 |
-| 풀링 변경 | `ScenePool` prewarm, `pool_reset()`, `pool_on_acquire()`, `mob_attack_mark`·`mob_charge_lane` release |
+| 풀링 변경 | [`Architecture_Pool.md`](Architecture_Pool.md), `ScenePool` prewarm, `pool_reset()`, `pool_on_acquire()`, `mob_attack_mark`·`mob_charge_lane` release |
 | F6 몹 튜닝 | `TestArenaMobSnapshot`, `DevTuningStore` / `DevTuningApplier`, F6 `MOB_OPTIONS`, 접촉/원거리/폭발/돌진/`chase_mode`/`jump_chase_*` — [`Architecture_TestArena.md`](Architecture_TestArena.md) QA 표 |
 | F5 authoring 반영 | `game.gd` `spawn_mob()`, `DevTuningStore.reload_mob_authoring()` on `_ready`, `.tres` 변경 후 F5 재시작 |
 | 피드백 UI 변경 | 체력바 설정, 상태이상 아이콘(`StatusEffectIcons`) 유무, target indicator, attack range ring, floating damage/status text, hit flash |

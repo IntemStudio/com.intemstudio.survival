@@ -141,7 +141,7 @@ ActionManager ACTION_DASH + stamina >= cost + 방향 유효
 | 회복 tick은 pause·비전투(접촉 피해 off)에서 진행하지 않는다. | 로비·무기 선택·웨이브 대기 중 충전 방지. |
 | `refresh_stats_from_loadout` / 버프 변경 시 스태미나 **최대만** 클램프; 현재값은 초과 시 `min(current, max)` | `_sync_health_bar_max`와 동일 패턴. |
 | `%DashCooldownBar`는 스태미나 잔량, `%StaminaRegenWaitBar`는 `regen_idle_time / regen_delay`(회복 시작 전)만 표시한다. | 만충이면 둘 다 숨김. |
-| `/root/Game`·`%Player`·`PhysicsLayers` 계약은 `godot-core.mdc`를 따른다. | 대시는 이동 레이어만 사용, 별도 layer 추가 금지(필요 시 문서·규칙 동시 갱신). |
+| `/root/Game`·`%Player`·`PhysicsLayers` 계약은 [`Architecture_PhysicsLayers.md`](Architecture_PhysicsLayers.md)를 따른다. | 대시는 이동 레이어만 사용, 별도 layer 추가 금지(필요 시 문서·규칙 동시 갱신). |
 | 부활 무적은 `_resolve_incoming_damage`에서 `taken=0`으로 통일한다. | 접촉·투사체 경로 누락 방지. |
 | `_try_emit_health_depleted`는 physics 프레임당 1회만 처리한다. | 동프레임 다중 치명타·이중 패배 방지. |
 | 패배는 `health_depleted`만 사용한다. 부활 성공 시 emit 금지. | `Game._on_player_health_depleted` 단일 진입. |
